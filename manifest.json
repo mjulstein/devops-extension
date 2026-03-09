@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "DevOps Daily Export",
+  "version": "0.1.0",
+  "description": "Create a daily Azure DevOps work-item summary in the side panel.",
+  "permissions": [
+    "sidePanel",
+    "activeTab",
+    "tabs",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://dev.azure.com/*"
+  ],
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://dev.azure.com/*"],
+      "js": ["content-script.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "DevOps Daily Export"
+  }
+}
