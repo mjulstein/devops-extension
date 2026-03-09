@@ -52,3 +52,25 @@ pre {
     border-radius: 8px;
     white-space: pre-wrap;
 }
+.button-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.loading {
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: #fff4cc;
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+.hidden {
+    display: none;
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}

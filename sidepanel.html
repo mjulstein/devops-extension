@@ -32,9 +32,20 @@
 
     <section class="card">
         <h2>Status</h2>
-        <button id="testBtn">Test button</button>
-        <button id="pingPageBtn">Ping current page</button>
-        <pre id="output">Waiting…</pre>
+        <div class="button-row">
+            <button id="testBtn">Test button</button>
+            <button id="pingPageBtn">Ping current page</button>
+            <button id="testApiBtn">Test Azure DevOps API</button>
+            <button id="fetchWorkItemsBtn">Fetch work items</button>
+        </div>
+
+        <div id="loadingState" class="loading hidden">Loading…</div>
+        <details id="debugDetails">
+            <summary>Raw response</summary>
+            <pre id="debugOutput">Waiting…</pre>
+        </details>
+        <div id="output"></div>
+
     </section>
 
 
