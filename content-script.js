@@ -72,7 +72,7 @@ async function fetchWorkItems(settings) {
           AND (
             [System.State] IN ('To Do', 'In Progress')
            OR (
-            [System.State] = 'Closed'
+            [System.State] IN ('Done', 'Closed')
           AND [Microsoft.VSTS.Common.ClosedDate] >= '${weekAgoStr}'
             )
             )
