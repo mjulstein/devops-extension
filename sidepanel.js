@@ -9,6 +9,7 @@ const projectInput = document.getElementById("projectInput");
 const assignedToInput = document.getElementById("assignedToInput");
 const saveSettingsBtn = document.getElementById("saveSettingsBtn");
 const testBtn = document.getElementById("testBtn");
+const pingPageBtn = document.getElementById("pingPageBtn");
 const output = document.getElementById("output");
 
 async function loadSettings() {
@@ -36,8 +37,28 @@ async function showStoredSettings() {
     const stored = await chrome.storage.local.get(DEFAULT_SETTINGS);
     output.textContent = JSON.stringify(stored, null, 2);
 }
+async function getActiveTab() {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    return tab;
+}
 
+async function pingCurrentPage() {
+    try {
+        const tab = await getActiveTab();
+
+        if (!tab?.id) {
+            output.textContent = "No active tab found.";
+            return;
+        }
+
+        const response = await chrome.tabs.sendMessage(tab.id, { type: "PING_PAGE" });
+        output.textContent = JSON.stringify(response, null, 2);
+    } catch (error) {
+        output.textContent = `Could not talk to current page.\n\n${error.message}`;
+    }
+}
 saveSettingsBtn.addEventListener("click", saveSettings);
 testBtn.addEventListener("click", showStoredSettings);
+pingPageBtn.addEventListener("click", pingCurrentPage);
 
 loadSettings();
