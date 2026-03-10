@@ -43,8 +43,20 @@ export function StatusCard({
       <div>
         {result ? (
           <>
-            <WorkItemSection title="TODO" emptyText="No open items." items={result.openItems} />
-            <WorkItemSection title="Closed last week" emptyText="No recently closed items." items={result.closedItems} />
+            <WorkItemSection
+              title="TODO"
+              emptyText="No open items."
+              items={result.openItems}
+              showClosedAt={false}
+              showState={true}
+            />
+            <WorkItemSection
+              title="Closed last week"
+              emptyText="No recently closed items."
+              items={result.closedItems}
+              showClosedAt={true}
+              showState={false}
+            />
           </>
         ) : null}
       </div>

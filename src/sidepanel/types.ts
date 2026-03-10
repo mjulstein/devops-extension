@@ -4,6 +4,7 @@ export type Settings = {
 
 export type WorkItem = {
   id: number;
+  workItemType: string;
   title: string;
   state: string;
   assignedTo: string;

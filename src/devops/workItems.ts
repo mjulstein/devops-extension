@@ -10,6 +10,7 @@ export type WorkItemResult = {
 
 export type WorkItem = {
   id: number;
+  workItemType: string;
   title: string;
   state: string;
   assignedTo: string;
@@ -17,30 +18,6 @@ export type WorkItem = {
   closedDate: string | null;
   url: string;
 };
-
-export async function testAzdoApi(origin: string) {
-  const url = `${origin}/_apis/projects?api-version=7.0`;
-
-  const response = await fetch(url, {
-    method: "GET",
-    credentials: "include",
-    headers: {
-      Accept: "application/json"
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status} ${response.statusText}`);
-  }
-
-  const data = await response.json();
-
-  return {
-    url,
-    count: data.count,
-    firstProjectName: data.value?.[0]?.name ?? null
-  };
-}
 
 export async function fetchWorkItems(settings: FetchSettings): Promise<WorkItemResult> {
   const assignedTo = settings.assignedTo.trim();
@@ -53,7 +30,6 @@ export async function fetchWorkItems(settings: FetchSettings): Promise<WorkItemR
   const today = new Date();
   const weekAgo = new Date(today);
   weekAgo.setDate(today.getDate() - 7);
-
   const weekAgoString = formatDateForWiql(weekAgo);
 
   const wiql = `
@@ -103,6 +79,7 @@ export async function fetchWorkItems(settings: FetchSettings): Promise<WorkItemR
 
   const fields = [
     "System.Id",
+    "System.WorkItemType",
     "System.Title",
     "System.State",
     "System.AssignedTo",
@@ -139,6 +116,7 @@ export async function fetchWorkItems(settings: FetchSettings): Promise<WorkItemR
 
   const items: WorkItem[] = allItems.map((item) => {
     const id = item.fields["System.Id"];
+    const workItemType = item.fields["System.WorkItemType"] || "";
     const title = (item.fields["System.Title"] || "").trim();
     const state = item.fields["System.State"] || "";
     const assignedToValue = normalizeAssignedTo(item.fields["System.AssignedTo"]);
@@ -148,6 +126,7 @@ export async function fetchWorkItems(settings: FetchSettings): Promise<WorkItemR
 
     return {
       id,
+      workItemType,
       title,
       state,
       assignedTo: assignedToValue,
@@ -157,10 +136,15 @@ export async function fetchWorkItems(settings: FetchSettings): Promise<WorkItemR
     };
   });
 
+  const openItems = items.filter((item) => item.closedDate === null);
+  const closedItems = items
+    .filter((item) => item.closedDate !== null)
+    .sort((left, right) => getClosedDateTimestamp(right.closedDate) - getClosedDateTimestamp(left.closedDate));
+
   return {
     count: items.length,
-    openItems: items.filter((item) => item.closedDate === null),
-    closedItems: items.filter((item) => item.closedDate !== null)
+    openItems,
+    closedItems
   };
 }
 
@@ -200,6 +184,15 @@ function normalizeAssignedTo(value: unknown): string {
   }
 
   return String(value);
+}
+
+function getClosedDateTimestamp(value: string | null): number {
+  if (!value) {
+    return 0;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
 }
 
 function getOrganizationAndProjectFromUrl(rawUrl: string): { organization: string; project: string } {
