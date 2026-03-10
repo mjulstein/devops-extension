@@ -27,6 +27,11 @@ export function App() {
     setDebugText("Settings saved.");
   }
 
+  function onReloadExtension() {
+    setDebugText("Reloading extension...");
+    chrome.runtime.reload();
+  }
+
   async function onShowStoredSettings() {
     const stored = await loadSettings();
     setDebugText(JSON.stringify(stored, null, 2));
@@ -72,6 +77,7 @@ export function App() {
         settings={settings}
         onChange={setSettings}
         onSave={onSaveSettings}
+        onReloadExtension={onReloadExtension}
         isLoading={isLoading}
       />
 

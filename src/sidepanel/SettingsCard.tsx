@@ -4,10 +4,17 @@ type SettingsCardProps = {
   settings: Settings;
   onChange: (nextSettings: Settings) => void;
   onSave: () => Promise<void>;
+  onReloadExtension: () => void;
   isLoading: boolean;
 };
 
-export function SettingsCard({ settings, onChange, onSave, isLoading }: SettingsCardProps) {
+export function SettingsCard({
+  settings,
+  onChange,
+  onSave,
+  onReloadExtension,
+  isLoading
+}: SettingsCardProps) {
   return (
     <details className="card">
       <summary>
@@ -25,9 +32,14 @@ export function SettingsCard({ settings, onChange, onSave, isLoading }: Settings
         />
       </label>
 
-      <button onClick={() => void onSave()} disabled={isLoading}>
-        Save settings
-      </button>
+      <div className="button-row">
+        <button onClick={() => void onSave()} disabled={isLoading}>
+          Save settings
+        </button>
+        <button onClick={onReloadExtension} disabled={isLoading}>
+          Reload extension
+        </button>
+      </div>
     </details>
   );
 }

@@ -69,6 +69,8 @@ Load `dist/` as the unpacked extension directory in Edge.
 
 The extension stores runtime settings in browser storage.
 
+In the side panel **Settings** card, use **Reload extension** during development to apply updates quickly. You can still reload manually from `edge://extensions` if needed.
+
 Example structure:
 
 ```json
