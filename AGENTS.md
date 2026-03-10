@@ -26,6 +26,8 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - Side panel React component files should use `PascalCase.tsx`.
 - Utility/function modules should use `camelCase.ts`.
 - When moving or renaming tracked files, use `git mv` so history is preserved; do not create a new file and delete the old file as a substitute for a move.
+- Run `npm run lint` and `npm run build` after non-trivial changes.
+- Prettier formatting issues are surfaced as ESLint warnings via `prettier/prettier`.
 
 ## Repository Map
 
@@ -70,6 +72,7 @@ Before finishing a change, verify:
 - Side panel flow still works from the browser context.
 - Azure DevOps requests still rely on the active authenticated session.
 - Documentation reflects the current behavior and file structure.
+- Linting passes with `npm run lint` (or intentionally reported warnings are explained).
 
 ## Documentation Maintenance Rule
 

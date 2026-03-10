@@ -17,6 +17,8 @@ A raw JSON response is also available in a collapsible section for debugging.
 - React + TypeScript side panel UI
 - TypeScript content script and service worker
 - Manifest V3 Edge extension
+- ESLint 10 flat config with TypeScript + React linting
+- Prettier formatting with lint warnings via `prettier/prettier`
 
 ## Project Structure
 
@@ -87,16 +89,22 @@ Example structure:
 npm install
 ```
 
-2. Build extension files:
+2. Run linting:
+
+```bash
+npm run lint
+```
+
+3. Build extension files:
 
 ```bash
 npm run build
 ```
 
-3. Open Microsoft Edge and navigate to `edge://extensions`.
-4. Enable **Developer mode**.
-5. Click **Load unpacked**.
-6. Select the `dist/` directory.
+4. Open Microsoft Edge and navigate to `edge://extensions`.
+5. Enable **Developer mode**.
+6. Click **Load unpacked**.
+7. Select the `dist/` directory.
 
 ## Usage
 
