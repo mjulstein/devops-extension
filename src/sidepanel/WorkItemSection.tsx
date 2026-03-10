@@ -1,4 +1,4 @@
-import type { WorkItem } from "../functions/types";
+import type { WorkItem } from "./types";
 
 type WorkItemSectionProps = {
   title: string;

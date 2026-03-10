@@ -1,5 +1,5 @@
 import { WorkItemSection } from "./WorkItemSection";
-import type { RuntimeResponse, WorkItemResult } from "../functions/types";
+import type { RuntimeResponse, WorkItemResult } from "./types";
 
 type StatusCardProps = {
   loadingMessage: string;

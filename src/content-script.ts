@@ -1,4 +1,4 @@
-import { fetchWorkItems, testAzdoApi } from "./content/functions/workItems";
+import { fetchWorkItems, testAzdoApi } from "./devops/workItems";
 
 type RuntimeMessage =
   | { type: "PING_PAGE" }

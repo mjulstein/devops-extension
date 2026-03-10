@@ -1,4 +1,4 @@
-import type { Settings } from "../functions/types";
+import type { Settings } from "./types";
 
 type SettingsCardProps = {
   settings: Settings;

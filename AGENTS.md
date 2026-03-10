@@ -32,12 +32,12 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - `src/manifest.json` — extension manifest template copied to build output
 - `src/service-worker.ts` — extension startup/background behavior
 - `src/content-script.ts` — Azure DevOps page interaction and REST/WIQL calls
-- `src/content/functions/workItems.ts` — work-item query and transformation logic
+- `src/devops/workItems.ts` — work-item query and transformation logic
 - `src/sidepanel.html` — side panel HTML entry
 - `src/sidepanel.tsx` — React side panel entry
 - `src/sidepanel.css` — side panel styling
-- `src/sidepanel/components/*` — side panel React components
-- `src/sidepanel/functions/*` — side panel utility modules
+- `src/sidepanel/*Card.tsx` and `src/sidepanel/WorkItemSection.tsx` — side panel React components
+- `src/sidepanel/{chromeStorage,defaultSettings,tabMessaging,types}.ts` — side panel utility modules
 - `vite.config.ts` — Vite multi-entry build config for extension output
 - `dist/` — generated unpacked extension files (build output)
 - `README.md` — user/developer documentation

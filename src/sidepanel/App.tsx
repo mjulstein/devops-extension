@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { SettingsCard } from "./components/SettingsCard";
-import { StatusCard, parseResultFromResponse, stringifyResponse } from "./components/StatusCard";
-import { loadSettings, saveSettings } from "./functions/chromeStorage";
-import { defaultSettings } from "./functions/defaultSettings";
-import { fetchWorkItems, pingPage, testAzdoApi } from "./functions/tabMessaging";
-import type { Settings, WorkItemResult } from "./functions/types";
+import { SettingsCard } from "./SettingsCard";
+import { StatusCard, parseResultFromResponse, stringifyResponse } from "./StatusCard";
+import { loadSettings, saveSettings } from "./chromeStorage";
+import { defaultSettings } from "./defaultSettings";
+import { fetchWorkItems, pingPage, testAzdoApi } from "./tabMessaging";
+import type { Settings, WorkItemResult } from "./types";
 
 export function App() {
   const [settings, setSettings] = useState<Settings>(defaultSettings);
