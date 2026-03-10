@@ -1,17 +1,23 @@
 import { useEffect, useState } from "react";
 import { SettingsCard } from "./SettingsCard";
-import { StatusCard, parseResultFromResponse, stringifyResponse } from "./StatusCard";
+import { StatusCard } from "./StatusCard";
 import { loadSettings, saveSettings } from "./chromeStorage";
 import { defaultSettings } from "./defaultSettings";
-import { fetchWorkItems, pingPage, testAzdoApi } from "./tabMessaging";
+import { fetchWorkItems } from "./tabMessaging";
 import type { Settings, WorkItemResult } from "./types";
+
+type StatusMessage = {
+  kind: "info" | "success" | "error";
+  text: string;
+};
 
 export function App() {
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("Loading...");
-  const [debugText, setDebugText] = useState("Waiting...");
   const [result, setResult] = useState<WorkItemResult | null>(null);
+  const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(null);
+  const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -24,54 +30,47 @@ export function App() {
     await saveSettings({
       assignedTo: settings.assignedTo.trim()
     });
-    setDebugText("Settings saved.");
+    setStatusMessage({ kind: "success", text: "Settings saved." });
   }
 
   function onReloadExtension() {
-    setDebugText("Reloading extension...");
+    setHasFetchedOnce(false);
+    setStatusMessage({
+      kind: "info",
+      text: "Extension reloading. Refresh the active Azure DevOps tab before fetching again."
+    });
     chrome.runtime.reload();
   }
 
-  async function onShowStoredSettings() {
-    const stored = await loadSettings();
-    setDebugText(JSON.stringify(stored, null, 2));
-  }
-
-  async function runAction(action: () => Promise<unknown>, message: string, updateResult: boolean) {
+  async function onFetchWorkItems() {
     try {
       setIsLoading(true);
-      setLoadingMessage(message);
+      setLoadingMessage("Fetching work items...");
+      setHasFetchedOnce(true);
+      setStatusMessage(null);
 
-      const response = await action();
-      setDebugText(stringifyResponse(response));
+      const response = await fetchWorkItems(settings);
 
-      if (updateResult) {
-        const parsed = parseResultFromResponse(response);
-        setResult(parsed);
+      if (!response.ok) {
+        setResult(null);
+        setStatusMessage({ kind: "error", text: response.error });
+        return;
       }
+
+      setResult(response.result);
+      setStatusMessage({ kind: "success", text: `Fetched ${response.result.count} work item(s).` });
     } catch (error) {
       setResult(null);
-      setDebugText(error instanceof Error ? error.message : String(error));
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setStatusMessage({ kind: "error", text: errorMessage });
     } finally {
       setIsLoading(false);
     }
   }
 
-  async function onPingPage() {
-    await runAction(() => pingPage(), "Pinging current page...", false);
-  }
-
-  async function onTestApi() {
-    await runAction(() => testAzdoApi(), "Testing Azure DevOps API...", false);
-  }
-
-  async function onFetchWorkItems() {
-    await runAction(() => fetchWorkItems(settings), "Fetching work items...", true);
-  }
-
   return (
     <div className="wrap">
-      <h1>DevOps Daily Export</h1>
+      <h1>DevOps Work Items</h1>
 
       <SettingsCard
         settings={settings}
@@ -84,11 +83,13 @@ export function App() {
       <StatusCard
         loadingMessage={loadingMessage}
         isLoading={isLoading}
-        debugText={debugText}
         result={result}
-        onShowStoredSettings={onShowStoredSettings}
-        onPingPage={onPingPage}
-        onTestApi={onTestApi}
+        statusMessage={statusMessage}
+        preFetchHint={
+          hasFetchedOnce
+            ? null
+            : "Panel reloaded. Click Fetch work items to load the latest data."
+        }
         onFetchWorkItems={onFetchWorkItems}
         isActionDisabled={isLoading}
       />

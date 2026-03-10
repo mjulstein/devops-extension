@@ -16,10 +16,8 @@ export function SettingsCard({
   isLoading
 }: SettingsCardProps) {
   return (
-    <details className="card">
-      <summary>
-        <h2>Settings</h2>
-      </summary>
+    <section className="card">
+      <h2>Settings</h2>
       <p>Organization and project are read from the active Azure DevOps tab URL.</p>
 
       <label>
@@ -40,6 +38,6 @@ export function SettingsCard({
           Reload extension
         </button>
       </div>
-    </details>
+    </section>
   );
 }

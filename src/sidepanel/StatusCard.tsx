@@ -1,14 +1,15 @@
 import { WorkItemSection } from "./WorkItemSection";
-import type { RuntimeResponse, WorkItemResult } from "./types";
+import type { WorkItemResult } from "./types";
 
 type StatusCardProps = {
   loadingMessage: string;
   isLoading: boolean;
-  debugText: string;
   result: WorkItemResult | null;
-  onShowStoredSettings: () => Promise<void>;
-  onPingPage: () => Promise<void>;
-  onTestApi: () => Promise<void>;
+  statusMessage: {
+    kind: "info" | "success" | "error";
+    text: string;
+  } | null;
+  preFetchHint: string | null;
   onFetchWorkItems: () => Promise<void>;
   isActionDisabled: boolean;
 };
@@ -16,27 +17,16 @@ type StatusCardProps = {
 export function StatusCard({
   loadingMessage,
   isLoading,
-  debugText,
   result,
-  onShowStoredSettings,
-  onPingPage,
-  onTestApi,
+  statusMessage,
+  preFetchHint,
   onFetchWorkItems,
   isActionDisabled
 }: StatusCardProps) {
   return (
     <section className="card">
-      <h2>Status</h2>
+      <h2>Work items</h2>
       <div className="button-row">
-        <button onClick={() => void onShowStoredSettings()} disabled={isActionDisabled}>
-          Test button
-        </button>
-        <button onClick={() => void onPingPage()} disabled={isActionDisabled}>
-          Ping current page
-        </button>
-        <button onClick={() => void onTestApi()} disabled={isActionDisabled}>
-          Test Azure DevOps API
-        </button>
         <button onClick={() => void onFetchWorkItems()} disabled={isActionDisabled}>
           Fetch work items
         </button>
@@ -44,10 +34,11 @@ export function StatusCard({
 
       <div className={`loading ${isLoading ? "" : "hidden"}`}>{loadingMessage}</div>
 
-      <details>
-        <summary>Raw response</summary>
-        <pre>{debugText}</pre>
-      </details>
+      {preFetchHint ? <div className="status-message status-warning">{preFetchHint}</div> : null}
+
+      {statusMessage ? (
+        <div className={`status-message status-${statusMessage.kind}`}>{statusMessage.text}</div>
+      ) : null}
 
       <div>
         {result ? (
@@ -59,23 +50,4 @@ export function StatusCard({
       </div>
     </section>
   );
-}
-
-export function stringifyResponse(response: unknown): string {
-  return JSON.stringify(response, null, 2);
-}
-
-export function parseResultFromResponse(
-  response: RuntimeResponse<WorkItemResult> | unknown
-): WorkItemResult | null {
-  if (!response || typeof response !== "object") {
-    return null;
-  }
-
-  const typed = response as RuntimeResponse<WorkItemResult>;
-  if (!typed.ok) {
-    return null;
-  }
-
-  return typed.result;
 }

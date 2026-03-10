@@ -28,14 +28,6 @@ async function sendMessageToActiveTab<T>(message: unknown): Promise<T> {
   }
 }
 
-export async function pingPage() {
-  return sendMessageToActiveTab({ type: "PING_PAGE" });
-}
-
-export async function testAzdoApi() {
-  return sendMessageToActiveTab({ type: "TEST_AZDO_API" });
-}
-
 export async function fetchWorkItems(settings: Settings): Promise<RuntimeResponse<WorkItemResult>> {
   return sendMessageToActiveTab<RuntimeResponse<WorkItemResult>>({
     type: "FETCH_WORK_ITEMS",

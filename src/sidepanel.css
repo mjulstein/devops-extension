@@ -67,6 +67,29 @@ pre {
   font-size: 13px;
 }
 
+.status-message {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.status-info {
+  background: #e8f1ff;
+}
+
+.status-warning {
+  background: #fff4cc;
+}
+
+.status-success {
+  background: #e8f8ee;
+}
+
+.status-error {
+  background: #fdeaea;
+}
+
 .hidden {
   display: none;
 }
