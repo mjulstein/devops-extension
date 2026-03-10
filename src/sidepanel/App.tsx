@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
 import { SettingsCard } from './SettingsCard';
 import { StatusCard } from './StatusCard';
-import { loadSettings, saveSettings } from './chromeStorage';
+import {
+  loadCachedWorkItems,
+  loadSettings,
+  saveCachedWorkItems,
+  saveSettings
+} from './chromeStorage';
 import { defaultSettings } from './defaultSettings';
 import { fetchWorkItems } from './tabMessaging';
 import type { Settings, WorkItemResult } from './types';
@@ -23,8 +28,21 @@ export function App() {
 
   useEffect(() => {
     void (async () => {
-      const stored = await loadSettings();
-      setSettings(stored);
+      const [storedSettings, cachedResult] = await Promise.all([
+        loadSettings(),
+        loadCachedWorkItems()
+      ]);
+
+      setSettings(storedSettings);
+
+      if (cachedResult) {
+        setResult(cachedResult);
+        setHasFetchedOnce(true);
+        setStatusMessage({
+          kind: 'info',
+          text: 'Showing last fetched work items. Click Fetch work items to refresh.'
+        });
+      }
     })();
   }, []);
 
@@ -54,8 +72,12 @@ export function App() {
       const response = await fetchWorkItems(settings);
 
       if (!response.ok) {
-        setResult(null);
-        setStatusMessage({ kind: 'error', text: response.error });
+        setStatusMessage({
+          kind: 'error',
+          text: result
+            ? `${response.error} Showing last fetched work items.`
+            : response.error
+        });
         return;
       }
 
@@ -64,11 +86,16 @@ export function App() {
         kind: 'success',
         text: `Fetched ${response.result.count} work item(s).`
       });
+      void saveCachedWorkItems(response.result).catch(() => undefined);
     } catch (error) {
-      setResult(null);
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      setStatusMessage({ kind: 'error', text: errorMessage });
+      setStatusMessage({
+        kind: 'error',
+        text: result
+          ? `${errorMessage} Showing last fetched work items.`
+          : errorMessage
+      });
     } finally {
       setIsLoading(false);
     }
