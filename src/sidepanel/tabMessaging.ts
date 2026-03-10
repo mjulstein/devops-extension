@@ -1,12 +1,13 @@
-import type { RuntimeResponse, Settings, WorkItemResult } from "./types";
+import type { RuntimeResponse, Settings, WorkItemResult } from './types';
 
-const NO_RECEIVER_ERROR = "Could not establish connection. Receiving end does not exist.";
+const NO_RECEIVER_ERROR =
+  'Could not establish connection. Receiving end does not exist.';
 
 export async function getActiveTabId(): Promise<number> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
   if (!tab?.id) {
-    throw new Error("No active tab found.");
+    throw new Error('No active tab found.');
   }
 
   return tab.id;
@@ -21,16 +22,20 @@ async function sendMessageToActiveTab<T>(message: unknown): Promise<T> {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     if (errorMessage.includes(NO_RECEIVER_ERROR)) {
-      throw new Error("Extension reloaded. Refresh the active Azure DevOps tab, then try again.");
+      throw new Error(
+        'Extension reloaded. Refresh the active Azure DevOps tab, then try again.'
+      );
     }
 
     throw error instanceof Error ? error : new Error(errorMessage);
   }
 }
 
-export async function fetchWorkItems(settings: Settings): Promise<RuntimeResponse<WorkItemResult>> {
+export async function fetchWorkItems(
+  settings: Settings
+): Promise<RuntimeResponse<WorkItemResult>> {
   return sendMessageToActiveTab<RuntimeResponse<WorkItemResult>>({
-    type: "FETCH_WORK_ITEMS",
+    type: 'FETCH_WORK_ITEMS',
     payload: settings
   });
 }

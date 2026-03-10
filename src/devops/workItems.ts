@@ -19,12 +19,16 @@ export type WorkItem = {
   url: string;
 };
 
-export async function fetchWorkItems(settings: FetchSettings): Promise<WorkItemResult> {
+export async function fetchWorkItems(
+  settings: FetchSettings
+): Promise<WorkItemResult> {
   const assignedTo = settings.assignedTo.trim();
-  const { organization, project } = getOrganizationAndProjectFromUrl(window.location.href);
+  const { organization, project } = getOrganizationAndProjectFromUrl(
+    window.location.href
+  );
 
   if (!assignedTo) {
-    throw new Error("Missing assignedTo in settings.");
+    throw new Error('Missing assignedTo in settings.');
   }
 
   const today = new Date();
@@ -52,18 +56,20 @@ export async function fetchWorkItems(settings: FetchSettings): Promise<WorkItemR
   const wiqlUrl = `https://dev.azure.com/${encodeURIComponent(organization)}/${encodeURIComponent(project)}/_apis/wit/wiql?api-version=7.0`;
 
   const wiqlResponse = await fetch(wiqlUrl, {
-    method: "POST",
-    credentials: "include",
+    method: 'POST',
+    credentials: 'include',
     headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json"
+      Accept: 'application/json',
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify({ query: wiql })
   });
 
   if (!wiqlResponse.ok) {
     const text = await wiqlResponse.text();
-    throw new Error(`WIQL failed: HTTP ${wiqlResponse.status} ${wiqlResponse.statusText}\n${text}`);
+    throw new Error(
+      `WIQL failed: HTTP ${wiqlResponse.status} ${wiqlResponse.statusText}\n${text}`
+    );
   }
 
   const wiqlData = await wiqlResponse.json();
@@ -78,13 +84,13 @@ export async function fetchWorkItems(settings: FetchSettings): Promise<WorkItemR
   }
 
   const fields = [
-    "System.Id",
-    "System.WorkItemType",
-    "System.Title",
-    "System.State",
-    "System.AssignedTo",
-    "System.Parent",
-    "Microsoft.VSTS.Common.ClosedDate"
+    'System.Id',
+    'System.WorkItemType',
+    'System.Title',
+    'System.State',
+    'System.AssignedTo',
+    'System.Parent',
+    'Microsoft.VSTS.Common.ClosedDate'
   ];
 
   const idChunks = chunkArray(ids, 50);
@@ -93,21 +99,23 @@ export async function fetchWorkItems(settings: FetchSettings): Promise<WorkItemR
   for (const chunk of idChunks) {
     const workItemsUrl =
       `https://dev.azure.com/${encodeURIComponent(organization)}/${encodeURIComponent(project)}` +
-      `/_apis/wit/workitems?ids=${chunk.join(",")}` +
-      `&fields=${encodeURIComponent(fields.join(","))}` +
-      "&api-version=7.0";
+      `/_apis/wit/workitems?ids=${chunk.join(',')}` +
+      `&fields=${encodeURIComponent(fields.join(','))}` +
+      '&api-version=7.0';
 
     const workItemsResponse = await fetch(workItemsUrl, {
-      method: "GET",
-      credentials: "include",
+      method: 'GET',
+      credentials: 'include',
       headers: {
-        Accept: "application/json"
+        Accept: 'application/json'
       }
     });
 
     if (!workItemsResponse.ok) {
       const text = await workItemsResponse.text();
-      throw new Error(`Work items fetch failed: HTTP ${workItemsResponse.status} ${workItemsResponse.statusText}\n${text}`);
+      throw new Error(
+        `Work items fetch failed: HTTP ${workItemsResponse.status} ${workItemsResponse.statusText}\n${text}`
+      );
     }
 
     const workItemsData = await workItemsResponse.json();
@@ -115,13 +123,15 @@ export async function fetchWorkItems(settings: FetchSettings): Promise<WorkItemR
   }
 
   const items: WorkItem[] = allItems.map((item) => {
-    const id = item.fields["System.Id"];
-    const workItemType = item.fields["System.WorkItemType"] || "";
-    const title = (item.fields["System.Title"] || "").trim();
-    const state = item.fields["System.State"] || "";
-    const assignedToValue = normalizeAssignedTo(item.fields["System.AssignedTo"]);
-    const parentId = item.fields["System.Parent"] || null;
-    const closedDate = item.fields["Microsoft.VSTS.Common.ClosedDate"] || null;
+    const id = item.fields['System.Id'];
+    const workItemType = item.fields['System.WorkItemType'] || '';
+    const title = (item.fields['System.Title'] || '').trim();
+    const state = item.fields['System.State'] || '';
+    const assignedToValue = normalizeAssignedTo(
+      item.fields['System.AssignedTo']
+    );
+    const parentId = item.fields['System.Parent'] || null;
+    const closedDate = item.fields['Microsoft.VSTS.Common.ClosedDate'] || null;
     const url = `https://dev.azure.com/${organization}/${project}/_workitems/edit/${id}`;
 
     return {
@@ -139,7 +149,11 @@ export async function fetchWorkItems(settings: FetchSettings): Promise<WorkItemR
   const openItems = items.filter((item) => item.closedDate === null);
   const closedItems = items
     .filter((item) => item.closedDate !== null)
-    .sort((left, right) => getClosedDateTimestamp(right.closedDate) - getClosedDateTimestamp(left.closedDate));
+    .sort(
+      (left, right) =>
+        getClosedDateTimestamp(right.closedDate) -
+        getClosedDateTimestamp(left.closedDate)
+    );
 
   return {
     count: items.length,
@@ -160,8 +174,8 @@ function chunkArray<T>(items: T[], size: number): T[][] {
 
 function formatDateForWiql(date: Date): string {
   const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
 }
 
@@ -171,16 +185,16 @@ function escapeWiqlString(value: string): string {
 
 function normalizeAssignedTo(value: unknown): string {
   if (!value) {
-    return "";
+    return '';
   }
 
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     return value;
   }
 
-  if (typeof value === "object") {
+  if (typeof value === 'object') {
     const record = value as Record<string, unknown>;
-    return String(record.displayName ?? record.uniqueName ?? "");
+    return String(record.displayName ?? record.uniqueName ?? '');
   }
 
   return String(value);
@@ -195,19 +209,24 @@ function getClosedDateTimestamp(value: string | null): number {
   return Number.isNaN(date.getTime()) ? 0 : date.getTime();
 }
 
-function getOrganizationAndProjectFromUrl(rawUrl: string): { organization: string; project: string } {
+function getOrganizationAndProjectFromUrl(rawUrl: string): {
+  organization: string;
+  project: string;
+} {
   let parsedUrl: URL;
 
   try {
     parsedUrl = new URL(rawUrl);
   } catch {
-    throw new Error("Could not parse the current page URL.");
+    throw new Error('Could not parse the current page URL.');
   }
 
-  const segments = parsedUrl.pathname.split("/").filter(Boolean);
+  const segments = parsedUrl.pathname.split('/').filter(Boolean);
 
   if (segments.length < 2) {
-    throw new Error("Could not derive organization/project from URL. Open a project page in Azure DevOps.");
+    throw new Error(
+      'Could not derive organization/project from URL. Open a project page in Azure DevOps.'
+    );
   }
 
   return {

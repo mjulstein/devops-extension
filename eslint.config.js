@@ -1,25 +1,28 @@
-import js from "@eslint/js";
-import eslintReact from "@eslint-react/eslint-plugin";
-import prettierConfig from "eslint-config-prettier";
-import prettierPlugin from "eslint-plugin-prettier";
-import globals from "globals";
-import tseslint from "typescript-eslint";
+import js from '@eslint/js';
+import eslintReact from '@eslint-react/eslint-plugin';
+import prettierConfig from 'eslint-config-prettier';
+import prettierPlugin from 'eslint-plugin-prettier';
+import globals from 'globals';
+import tseslint from 'typescript-eslint';
 
-const reactRecommendedTs = eslintReact.configs["recommended-typescript"];
-const typeCheckedConfigs = [...tseslint.configs.recommendedTypeChecked, ...tseslint.configs.stylisticTypeChecked]
-  .filter((config) => config && typeof config === "object")
+const reactRecommendedTs = eslintReact.configs['recommended-typescript'];
+const typeCheckedConfigs = [
+  ...tseslint.configs.recommendedTypeChecked,
+  ...tseslint.configs.stylisticTypeChecked
+]
+  .filter((config) => config && typeof config === 'object')
   .map((config) => ({
     ...config,
-    files: ["**/*.{ts,tsx}"]
+    files: ['**/*.{ts,tsx}']
   }));
 
 export default tseslint.config(
   {
-    ignores: ["dist/**", "node_modules/**"]
+    ignores: ['dist/**', 'node_modules/**']
   },
   js.configs.recommended,
   {
-    files: ["**/*.{ts,tsx}"],
+    files: ['**/*.{ts,tsx}'],
     languageOptions: {
       parserOptions: {
         projectService: true,
@@ -29,7 +32,7 @@ export default tseslint.config(
   },
   ...typeCheckedConfigs,
   {
-    files: ["src/**/*.{ts,tsx}"],
+    files: ['src/**/*.{ts,tsx}'],
     languageOptions: {
       parserOptions: {
         ecmaFeatures: {
@@ -38,7 +41,7 @@ export default tseslint.config(
       },
       globals: {
         ...globals.browser,
-        chrome: "readonly"
+        chrome: 'readonly'
       }
     },
     plugins: {
@@ -50,11 +53,11 @@ export default tseslint.config(
     },
     rules: {
       ...(reactRecommendedTs.rules ?? {}),
-      "prettier/prettier": "warn"
+      'prettier/prettier': 'warn'
     }
   },
   {
-    files: ["vite.config.ts", "eslint.config.js"],
+    files: ['vite.config.ts', 'eslint.config.js'],
     languageOptions: {
       globals: {
         ...globals.node
@@ -64,7 +67,7 @@ export default tseslint.config(
       prettier: prettierPlugin
     },
     rules: {
-      "prettier/prettier": "warn"
+      'prettier/prettier': 'warn'
     }
   },
   prettierConfig

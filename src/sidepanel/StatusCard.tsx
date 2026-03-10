@@ -1,12 +1,12 @@
-import { WorkItemSection } from "./WorkItemSection";
-import type { WorkItemResult } from "./types";
+import { WorkItemSection } from './WorkItemSection';
+import type { WorkItemResult } from './types';
 
 type StatusCardProps = {
   loadingMessage: string;
   isLoading: boolean;
   result: WorkItemResult | null;
   statusMessage: {
-    kind: "info" | "success" | "error";
+    kind: 'info' | 'success' | 'error';
     text: string;
   } | null;
   preFetchHint: string | null;
@@ -27,17 +27,26 @@ export function StatusCard({
     <section className="card">
       <h2>Work items</h2>
       <div className="button-row">
-        <button onClick={() => void onFetchWorkItems()} disabled={isActionDisabled}>
+        <button
+          onClick={() => void onFetchWorkItems()}
+          disabled={isActionDisabled}
+        >
           Fetch work items
         </button>
       </div>
 
-      <div className={`loading ${isLoading ? "" : "hidden"}`}>{loadingMessage}</div>
+      <div className={`loading ${isLoading ? '' : 'hidden'}`}>
+        {loadingMessage}
+      </div>
 
-      {preFetchHint ? <div className="status-message status-warning">{preFetchHint}</div> : null}
+      {preFetchHint ? (
+        <div className="status-message status-warning">{preFetchHint}</div>
+      ) : null}
 
       {statusMessage ? (
-        <div className={`status-message status-${statusMessage.kind}`}>{statusMessage.text}</div>
+        <div className={`status-message status-${statusMessage.kind}`}>
+          {statusMessage.text}
+        </div>
       ) : null}
 
       <div>

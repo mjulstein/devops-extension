@@ -1,5 +1,5 @@
-import { defaultSettings } from "./defaultSettings";
-import type { Settings } from "./types";
+import { defaultSettings } from './defaultSettings';
+import type { Settings } from './types';
 
 export async function loadSettings(): Promise<Settings> {
   return chrome.storage.local.get(defaultSettings) as Promise<Settings>;

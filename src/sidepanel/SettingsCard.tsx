@@ -1,4 +1,4 @@
-import type { Settings } from "./types";
+import type { Settings } from './types';
 
 type SettingsCardProps = {
   settings: Settings;
@@ -18,7 +18,9 @@ export function SettingsCard({
   return (
     <section className="card">
       <h2>Settings</h2>
-      <p>Organization and project are read from the active Azure DevOps tab URL.</p>
+      <p>
+        Organization and project are read from the active Azure DevOps tab URL.
+      </p>
 
       <label>
         Assigned to
@@ -26,7 +28,9 @@ export function SettingsCard({
           type="text"
           placeholder="John Doe"
           value={settings.assignedTo}
-          onChange={(event) => onChange({ ...settings, assignedTo: event.target.value })}
+          onChange={(event) =>
+            onChange({ ...settings, assignedTo: event.target.value })
+          }
         />
       </label>
 

@@ -1,4 +1,4 @@
-import type { WorkItem } from "./types";
+import type { WorkItem } from './types';
 
 type WorkItemSectionProps = {
   title: string;
@@ -25,13 +25,22 @@ export function WorkItemSection({
           {items.map((item) => {
             const rowClass = showClosedAt
               ? showState
-                ? "with-closed-at"
-                : "with-closed-at-no-state"
-              : "without-closed-at";
+                ? 'with-closed-at'
+                : 'with-closed-at-no-state'
+              : 'without-closed-at';
 
             return (
-              <div key={item.id} className={`work-item-grid-row ${rowClass}`} role="listitem">
-                <a className="work-item-id" href={item.url} target="_blank" rel="noreferrer">
+              <div
+                key={item.id}
+                className={`work-item-grid-row ${rowClass}`}
+                role="listitem"
+              >
+                <a
+                  className="work-item-id"
+                  href={item.url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   {item.id}
                 </a>
                 <span className="work-item-type" title={item.workItemType}>
@@ -46,7 +55,9 @@ export function WorkItemSection({
                   </span>
                 ) : null}
                 {showClosedAt ? (
-                  <span className="work-item-closed-at">{formatClosedAt(item.closedDate)}</span>
+                  <span className="work-item-closed-at">
+                    {formatClosedAt(item.closedDate)}
+                  </span>
                 ) : null}
               </div>
             );
@@ -59,7 +70,7 @@ export function WorkItemSection({
 
 function formatClosedAt(value: string | null): string {
   if (!value) {
-    return "";
+    return '';
   }
 
   const date = new Date(value);
