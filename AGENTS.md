@@ -25,6 +25,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - Do not add secrets, tokens, or committed local configuration.
 - Side panel React component files should use `PascalCase.tsx`.
 - Utility/function modules should use `camelCase.ts`.
+- When moving or renaming tracked files, use `git mv` so history is preserved; do not create a new file and delete the old file as a substitute for a move.
 
 ## Repository Map
 
@@ -58,6 +59,7 @@ When making changes:
 3. If UI text, setup steps, configuration, permissions, or workflow changes, review `README.md`.
 4. If implementation conventions or agent instructions change, review `AGENTS.md`.
 5. If either document becomes inaccurate because of the change, update both.
+6. For file moves/renames, use `git mv` to keep file history and diffs clean.
 
 ## Validation Checklist
 
