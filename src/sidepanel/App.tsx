@@ -263,6 +263,11 @@ export function App() {
 
   function onSelectTab(tabId: SidepanelTabId) {
     setActiveTab(tabId);
+
+    if (tabId === 'settings') {
+      return;
+    }
+
     void saveActiveSidepanelTab(tabId).catch(() => undefined);
   }
 

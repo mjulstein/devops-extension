@@ -6,6 +6,8 @@ const CACHED_WORK_ITEMS_KEY = 'cachedWorkItems';
 const ACTIVE_SIDEPANEL_TAB_KEY = 'activeSidepanelTab';
 const HIDDEN_CHILD_TASK_STATES_KEY = 'hiddenChildTaskStates';
 
+type PersistedSidepanelTabId = Exclude<SidepanelTabId, 'settings'>;
+
 export async function loadSettings(): Promise<Settings> {
   return chrome.storage.local.get(defaultSettings);
 }
@@ -29,12 +31,16 @@ export async function saveCachedWorkItems(
 export async function loadActiveSidepanelTab(): Promise<SidepanelTabId> {
   const stored = await chrome.storage.local.get(ACTIVE_SIDEPANEL_TAB_KEY);
   const value = stored[ACTIVE_SIDEPANEL_TAB_KEY];
-  return isSidepanelTabId(value) ? value : 'work-items';
+  return isPersistedSidepanelTabId(value) ? value : 'work-items';
 }
 
 export async function saveActiveSidepanelTab(
   tabId: SidepanelTabId
 ): Promise<void> {
+  if (!isPersistedSidepanelTabId(tabId)) {
+    return;
+  }
+
   await chrome.storage.local.set({ [ACTIVE_SIDEPANEL_TAB_KEY]: tabId });
 }
 
@@ -83,10 +89,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function isSidepanelTabId(value: unknown): value is SidepanelTabId {
-  return (
-    value === 'settings' || value === 'work-items' || value === 'create-task'
-  );
+function isPersistedSidepanelTabId(
+  value: unknown
+): value is PersistedSidepanelTabId {
+  return value === 'work-items' || value === 'create-task';
 }
 
 function isStringArray(value: unknown): value is string[] {
