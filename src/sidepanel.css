@@ -219,7 +219,6 @@ button:disabled {
   gap: 4px;
   margin-bottom: 0;
   font-size: 11px;
-  user-select: none;
 }
 
 .state-filter-item input {
@@ -307,4 +306,17 @@ button:disabled {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.active-work-item-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.active-work-item-pin-toggle {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 11px;
 }

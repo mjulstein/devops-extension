@@ -1,5 +1,6 @@
 import { defaultSettings } from './defaultSettings';
 import type {
+  ActiveWorkItemContext,
   ParentSuggestionGroup,
   ParentSuggestionItem,
   ParentSuggestionStore,
@@ -13,6 +14,7 @@ const CACHED_WORK_ITEMS_KEY = 'cachedWorkItems';
 const ACTIVE_SIDEPANEL_TAB_KEY = 'activeSidepanelTab';
 const HIDDEN_CHILD_TASK_STATES_KEY = 'hiddenChildTaskStates';
 const PARENT_SUGGESTIONS_KEY = 'parentSuggestions';
+const PINNED_ACTIVE_WORK_ITEM_CONTEXT_KEY = 'pinnedActiveWorkItemContext';
 // Keep enough entries to support recency ordering while only rendering a small subset.
 const MAX_STORED_RECENT_SUGGESTIONS = 40;
 
@@ -133,6 +135,26 @@ export async function setParentSuggestionPinned(
   await chrome.storage.local.set({ [PARENT_SUGGESTIONS_KEY]: next });
 }
 
+export async function loadPinnedActiveWorkItemContext(): Promise<ActiveWorkItemContext | null> {
+  const stored = await chrome.storage.local.get(
+    PINNED_ACTIVE_WORK_ITEM_CONTEXT_KEY
+  );
+  const value = stored[PINNED_ACTIVE_WORK_ITEM_CONTEXT_KEY];
+  return isActiveWorkItemContext(value) ? value : null;
+}
+
+export async function savePinnedActiveWorkItemContext(
+  context: ActiveWorkItemContext
+): Promise<void> {
+  await chrome.storage.local.set({
+    [PINNED_ACTIVE_WORK_ITEM_CONTEXT_KEY]: context
+  });
+}
+
+export async function clearPinnedActiveWorkItemContext(): Promise<void> {
+  await chrome.storage.local.remove(PINNED_ACTIVE_WORK_ITEM_CONTEXT_KEY);
+}
+
 function isWorkItemResult(value: unknown): value is WorkItemResult {
   if (!isRecord(value)) {
     return false;
@@ -225,5 +247,23 @@ function isParentSuggestionItem(value: unknown): value is ParentSuggestionItem {
     typeof value.workItemType === 'string' &&
     typeof value.url === 'string' &&
     typeof value.lastVisitedAt === 'number'
+  );
+}
+
+function isActiveWorkItemContext(
+  value: unknown
+): value is ActiveWorkItemContext {
+  if (!isRecord(value) || !isRecord(value.current)) {
+    return false;
+  }
+
+  return (
+    typeof value.organization === 'string' &&
+    typeof value.project === 'string' &&
+    (typeof value.parentId === 'number' || value.parentId === null) &&
+    typeof value.current.id === 'number' &&
+    typeof value.current.title === 'string' &&
+    typeof value.current.workItemType === 'string' &&
+    typeof value.current.url === 'string'
   );
 }

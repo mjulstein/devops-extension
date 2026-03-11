@@ -4,14 +4,17 @@ import { StatusCard } from './StatusCard';
 import { CreateTaskCard } from './CreateTaskCard';
 import { Tabs, type SidepanelTabId } from './Tabs';
 import {
+  clearPinnedActiveWorkItemContext,
   loadActiveSidepanelTab,
   loadCachedWorkItems,
   loadHiddenChildTaskStates,
   loadParentSuggestions,
+  loadPinnedActiveWorkItemContext,
   loadSettings,
   saveActiveSidepanelTab,
   saveCachedWorkItems,
   saveHiddenChildTaskStates,
+  savePinnedActiveWorkItemContext,
   saveSettings,
   setParentSuggestionPinned,
   upsertParentSuggestion
@@ -21,6 +24,7 @@ import {
   createChildTask,
   fetchChildTasksForCurrentParent,
   fetchWorkItems,
+  getActiveTabId,
   getActiveWorkItemContext,
   setActiveWorkItemParent
 } from './tabMessaging';
@@ -74,6 +78,10 @@ export function App() {
   const [hiddenTaskStates, setHiddenTaskStates] = useState<string[]>([]);
   const [parentSuggestions, setParentSuggestions] =
     useState<ParentSuggestionStore>(EMPTY_PARENT_SUGGESTIONS);
+  const [pinnedActiveWorkItemContext, setPinnedActiveWorkItemContext] =
+    useState<ActiveWorkItemContext | null>(null);
+
+  const isActiveItemPinned = Boolean(pinnedActiveWorkItemContext);
 
   const availableTaskStates = useMemo(() => {
     const unique = new Set(childTasks.map((task) => task.state));
@@ -134,19 +142,22 @@ export function App() {
         cachedResult,
         storedActiveTab,
         storedHiddenStates,
-        storedParentSuggestions
+        storedParentSuggestions,
+        storedPinnedContext
       ] = await Promise.all([
         loadSettings(),
         loadCachedWorkItems(),
         loadActiveSidepanelTab(),
         loadHiddenChildTaskStates(),
-        loadParentSuggestions()
+        loadParentSuggestions(),
+        loadPinnedActiveWorkItemContext()
       ]);
 
       setSettings(storedSettings);
       setActiveTab(storedActiveTab);
       setHiddenTaskStates(storedHiddenStates);
       setParentSuggestions(storedParentSuggestions);
+      setPinnedActiveWorkItemContext(storedPinnedContext);
 
       if (cachedResult) {
         setResult(cachedResult);
@@ -157,22 +168,41 @@ export function App() {
         });
       }
 
+      if (storedPinnedContext) {
+        setActiveWorkItemContext(storedPinnedContext);
+        setParentWorkItemId(storedPinnedContext.parentId);
+        if (storedPinnedContext.parentId) {
+          await refreshChildTasks(storedPinnedContext.parentId);
+        }
+        return;
+      }
+
       await refreshActiveWorkItemContext();
     })();
   }, []);
 
   useEffect(() => {
     const onFocus = () => {
+      if (isActiveItemPinned) {
+        return;
+      }
+
       void refreshActiveWorkItemContext();
     };
 
     const onVisibilityChange = () => {
-      if (!document.hidden) {
-        void refreshActiveWorkItemContext();
+      if (document.hidden || isActiveItemPinned) {
+        return;
       }
+
+      void refreshActiveWorkItemContext();
     };
 
     const onTabActivated = () => {
+      if (isActiveItemPinned) {
+        return;
+      }
+
       void refreshActiveWorkItemContext();
     };
 
@@ -181,7 +211,7 @@ export function App() {
       changeInfo: chrome.tabs.OnUpdatedInfo,
       tab: chrome.tabs.Tab
     ) => {
-      if (!tab.active) {
+      if (isActiveItemPinned || !tab.active) {
         return;
       }
 
@@ -201,7 +231,7 @@ export function App() {
       chrome.tabs.onActivated.removeListener(onTabActivated);
       chrome.tabs.onUpdated.removeListener(onTabUpdated);
     };
-  }, []);
+  }, [isActiveItemPinned]);
 
   async function onSaveSettings() {
     await saveSettings({
@@ -258,8 +288,24 @@ export function App() {
     }
   }
 
-  async function refreshActiveWorkItemContext(forceResync = false) {
+  async function refreshActiveWorkItemContext(
+    forceResync = false,
+    bypassPinnedCheck = false
+  ) {
     try {
+      if (!bypassPinnedCheck && pinnedActiveWorkItemContext) {
+        setActiveWorkItemContext(pinnedActiveWorkItemContext);
+        setParentWorkItemId(pinnedActiveWorkItemContext.parentId);
+
+        if (pinnedActiveWorkItemContext.parentId) {
+          await refreshChildTasks(pinnedActiveWorkItemContext.parentId);
+        } else {
+          setChildTasks([]);
+        }
+
+        return;
+      }
+
       const response = await getActiveWorkItemContext(forceResync);
 
       if (!response.ok) {
@@ -456,6 +502,46 @@ export function App() {
     );
   }
 
+  async function onTogglePinActiveItem() {
+    if (isActiveItemPinned) {
+      setPinnedActiveWorkItemContext(null);
+      await clearPinnedActiveWorkItemContext();
+      setCreateTaskStatusMessage({
+        kind: 'info',
+        text: 'Active work item unpinned. Detection is enabled again.'
+      });
+      await refreshActiveWorkItemContext(false, true);
+      return;
+    }
+
+    if (!activeWorkItemContext) {
+      setCreateTaskStatusMessage({
+        kind: 'error',
+        text: 'Open or detect a work item before pinning.'
+      });
+      return;
+    }
+
+    setPinnedActiveWorkItemContext(activeWorkItemContext);
+    await savePinnedActiveWorkItemContext(activeWorkItemContext);
+    setCreateTaskStatusMessage({
+      kind: 'success',
+      text: `Pinned #${activeWorkItemContext.current.id}. Detection is now bypassed.`
+    });
+  }
+
+  async function onActiveItemBannerClick() {
+    if (isActiveItemPinned && pinnedActiveWorkItemContext) {
+      const tabId = await getActiveTabId();
+      await chrome.tabs.update(tabId, {
+        url: pinnedActiveWorkItemContext.current.url
+      });
+      return;
+    }
+
+    await onForceResyncActiveItem();
+  }
+
   async function onForceResyncActiveItem() {
     setCreateTaskStatusMessage({
       kind: 'info',
@@ -470,19 +556,37 @@ export function App() {
 
   return (
     <div className="wrap">
-      <button
-        type="button"
-        className="active-work-item-banner"
-        title="Click to resync from the active Azure DevOps page state"
-        onClick={() => {
-          void onForceResyncActiveItem();
-        }}
-      >
-        <span className="active-work-item-label">
-          Active item (click to resync)
-        </span>
-        <span className="active-work-item-title">{activeItemHeading}</span>
-      </button>
+      <div className="active-work-item-row">
+        <button
+          type="button"
+          className="active-work-item-banner"
+          title={
+            isActiveItemPinned
+              ? 'Pinned: click to open this work item'
+              : 'Click to resync from the active Azure DevOps page state'
+          }
+          onClick={() => {
+            void onActiveItemBannerClick();
+          }}
+        >
+          <span className="active-work-item-label">
+            {isActiveItemPinned
+              ? 'Active item (pinned: click to open)'
+              : 'Active item (click to resync)'}
+          </span>
+          <span className="active-work-item-title">{activeItemHeading}</span>
+        </button>
+
+        <button
+          type="button"
+          className="active-work-item-pin-toggle"
+          onClick={() => {
+            void onTogglePinActiveItem();
+          }}
+        >
+          {isActiveItemPinned ? 'unpin' : 'pin'}
+        </button>
+      </div>
       <Tabs activeTab={activeTab} onSelectTab={onSelectTab} />
 
       {activeTab === 'settings' ? (

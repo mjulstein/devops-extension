@@ -17,6 +17,32 @@ export async function resolveActiveWorkItemContext(
       : getWorkItemIdFromUrl(rawUrl);
 
   if (!workItemId) {
+    if (typeof preferredParentId === 'number' && preferredParentId > 0) {
+      const preferredParent = await getWorkItemDetails(
+        organization,
+        project,
+        preferredParentId
+      );
+
+      if (!isSupportedParentType(preferredParent.workItemType)) {
+        throw new Error(
+          `Selected parent #${preferredParentId} has type "${preferredParent.workItemType}" and cannot be used as a task parent.`
+        );
+      }
+
+      return {
+        organization,
+        project,
+        parentId: preferredParentId,
+        current: {
+          id: preferredParentId,
+          title: preferredParent.title,
+          workItemType: preferredParent.workItemType,
+          url: `https://dev.azure.com/${organization}/${project}/_workitems/edit/${preferredParentId}`
+        }
+      };
+    }
+
     throw new Error(
       'Could not detect a work item id from the current page. Open a work item first.'
     );
