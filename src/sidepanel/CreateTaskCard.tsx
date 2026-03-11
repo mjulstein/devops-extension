@@ -6,6 +6,9 @@ type CreateTaskCardProps = {
   onCreateTask: () => Promise<void>;
   parentWorkItemId: number | null;
   createdTasks: ChildTaskItem[];
+  availableTaskStates: string[];
+  hiddenTaskStates: string[];
+  onToggleTaskStateFilter: (state: string, isChecked: boolean) => void;
   isActionDisabled: boolean;
   statusMessage: {
     kind: 'info' | 'success' | 'error';
@@ -19,6 +22,9 @@ export function CreateTaskCard({
   onCreateTask,
   parentWorkItemId,
   createdTasks,
+  availableTaskStates,
+  hiddenTaskStates,
+  onToggleTaskStateFilter,
   isActionDisabled,
   statusMessage
 }: CreateTaskCardProps) {
@@ -66,6 +72,24 @@ export function CreateTaskCard({
         <div className="current-parent">Current parent: not detected</div>
       )}
 
+      <div className="state-filter-row">
+        {availableTaskStates.map((state) => {
+          const isChecked = !hiddenTaskStates.includes(state);
+          return (
+            <label key={state} className="state-filter-item" title={state}>
+              <input
+                type="checkbox"
+                checked={isChecked}
+                onChange={(event) =>
+                  onToggleTaskStateFilter(state, event.target.checked)
+                }
+              />
+              <span>{abbreviateState(state)}</span>
+            </label>
+          );
+        })}
+      </div>
+
       <div className="created-task-list">
         {createdTasks.length ? (
           createdTasks.map((task) => (
@@ -87,4 +111,25 @@ export function CreateTaskCard({
       </div>
     </section>
   );
+}
+
+function abbreviateState(state: string): string {
+  const parts = state
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!parts.length) {
+    return '?';
+  }
+
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+
+  return parts
+    .map((part) => part[0] ?? '')
+    .join('')
+    .slice(0, 3)
+    .toUpperCase();
 }

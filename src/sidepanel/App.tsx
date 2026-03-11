@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { SettingsCard } from './SettingsCard';
 import { StatusCard } from './StatusCard';
 import { CreateTaskCard } from './CreateTaskCard';
 import {
   loadActiveSidepanelTab,
   loadCachedWorkItems,
+  loadHiddenChildTaskStates,
   loadSettings,
   saveActiveSidepanelTab,
   saveCachedWorkItems,
+  saveHiddenChildTaskStates,
   saveSettings
 } from './chromeStorage';
 import { defaultSettings } from './defaultSettings';
@@ -46,17 +48,33 @@ export function App() {
   const [createTaskStatusMessage, setCreateTaskStatusMessage] =
     useState<StatusMessage | null>(null);
   const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
+  const [hiddenTaskStates, setHiddenTaskStates] = useState<string[]>([]);
+
+  const availableTaskStates = useMemo(() => {
+    const unique = new Set(childTasks.map((task) => task.state));
+    return Array.from(unique).sort((left, right) => {
+      return getStateSortWeight(left) - getStateSortWeight(right);
+    });
+  }, [childTasks]);
+
+  const visibleChildTasks = useMemo(() => {
+    const hidden = new Set(hiddenTaskStates);
+    return childTasks.filter((task) => !hidden.has(task.state));
+  }, [childTasks, hiddenTaskStates]);
 
   useEffect(() => {
     void (async () => {
-      const [storedSettings, cachedResult, storedActiveTab] = await Promise.all([
-        loadSettings(),
-        loadCachedWorkItems(),
-        loadActiveSidepanelTab()
-      ]);
+      const [storedSettings, cachedResult, storedActiveTab, storedHiddenStates] =
+        await Promise.all([
+          loadSettings(),
+          loadCachedWorkItems(),
+          loadActiveSidepanelTab(),
+          loadHiddenChildTaskStates()
+        ]);
 
       setSettings(storedSettings);
       setActiveTab(storedActiveTab);
+      setHiddenTaskStates(storedHiddenStates);
 
       if (cachedResult) {
         setResult(cachedResult);
@@ -253,6 +271,22 @@ export function App() {
     void saveActiveSidepanelTab(tabId).catch(() => undefined);
   }
 
+  function onToggleTaskStateFilter(state: string, isChecked: boolean) {
+    setHiddenTaskStates((current) => {
+      const nextSet = new Set(current);
+
+      if (isChecked) {
+        nextSet.delete(state);
+      } else {
+        nextSet.add(state);
+      }
+
+      const next = Array.from(nextSet);
+      void saveHiddenChildTaskStates(next).catch(() => undefined);
+      return next;
+    });
+  }
+
   return (
     <div className="wrap">
       <nav className="tab-row" aria-label="Side panel sections">
@@ -301,11 +335,21 @@ export function App() {
           onTaskTitleChange={setTaskTitle}
           onCreateTask={onCreateTaskFromCurrentWorkItem}
           parentWorkItemId={parentWorkItemId}
-          createdTasks={childTasks}
+          createdTasks={visibleChildTasks}
+          availableTaskStates={availableTaskStates}
+          hiddenTaskStates={hiddenTaskStates}
+          onToggleTaskStateFilter={onToggleTaskStateFilter}
           isActionDisabled={isLoading || isCreatingTask}
           statusMessage={createTaskStatusMessage}
         />
       ) : null}
     </div>
   );
+}
+
+function getStateSortWeight(state: string): number {
+  const normalized = state.trim().toLowerCase();
+  return normalized === 'to do' || normalized === 'todo' || normalized === 'new'
+    ? 0
+    : 1;
 }

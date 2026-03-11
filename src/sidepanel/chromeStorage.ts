@@ -8,6 +8,7 @@ import type {
 
 const CACHED_WORK_ITEMS_KEY = 'cachedWorkItems';
 const ACTIVE_SIDEPANEL_TAB_KEY = 'activeSidepanelTab';
+const HIDDEN_CHILD_TASK_STATES_KEY = 'hiddenChildTaskStates';
 
 export async function loadSettings(): Promise<Settings> {
   return chrome.storage.local.get(defaultSettings);
@@ -39,6 +40,16 @@ export async function saveActiveSidepanelTab(
   tabId: SidepanelTabId
 ): Promise<void> {
   await chrome.storage.local.set({ [ACTIVE_SIDEPANEL_TAB_KEY]: tabId });
+}
+
+export async function loadHiddenChildTaskStates(): Promise<string[]> {
+  const stored = await chrome.storage.local.get(HIDDEN_CHILD_TASK_STATES_KEY);
+  const value = stored[HIDDEN_CHILD_TASK_STATES_KEY];
+  return isStringArray(value) ? value : [];
+}
+
+export async function saveHiddenChildTaskStates(states: string[]): Promise<void> {
+  await chrome.storage.local.set({ [HIDDEN_CHILD_TASK_STATES_KEY]: states });
 }
 
 function isWorkItemResult(value: unknown): value is WorkItemResult {
@@ -80,4 +91,8 @@ function isSidepanelTabId(value: unknown): value is SidepanelTabId {
   return (
     value === 'settings' || value === 'work-items' || value === 'create-task'
   );
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
 }
