@@ -70,7 +70,7 @@ export function getWorkItemIdFromUrl(rawUrl: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function getHashParamCandidates(rawHash: string): Array<string | null> {
+function getHashParamCandidates(rawHash: string): (string | null)[] {
   if (!rawHash) {
     return [];
   }

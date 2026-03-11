@@ -33,7 +33,8 @@ async function sendMessageToActiveTab<T>(message: unknown): Promise<T> {
 
     if (errorMessage.includes(NO_RECEIVER_ERROR)) {
       throw new Error(
-        'Extension reloaded. Refresh the active Azure DevOps tab, then try again.'
+        'Extension reloaded. Refresh the active Azure DevOps tab, then try again.',
+        { cause: error }
       );
     }
 

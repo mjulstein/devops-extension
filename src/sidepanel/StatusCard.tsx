@@ -1,7 +1,7 @@
 import type { WorkItemResult } from '@/types';
 import { WorkItemSection } from './WorkItemSection';
 
-type StatusCardProps = {
+interface StatusCardProps {
   loadingMessage: string;
   isLoading: boolean;
   result: WorkItemResult | null;
@@ -12,7 +12,7 @@ type StatusCardProps = {
   preFetchHint: string | null;
   onFetchWorkItems: () => Promise<void>;
   isActionDisabled: boolean;
-};
+}
 
 export function StatusCard({
   loadingMessage,

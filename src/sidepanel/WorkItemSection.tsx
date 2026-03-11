@@ -1,12 +1,12 @@
 import type { WorkItem } from '@/types';
 
-type WorkItemSectionProps = {
+interface WorkItemSectionProps {
   title: string;
   emptyText: string;
   items: WorkItem[];
   showClosedAt: boolean;
   showState?: boolean;
-};
+}
 
 export function WorkItemSection({
   title,

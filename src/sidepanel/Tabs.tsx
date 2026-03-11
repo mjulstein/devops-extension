@@ -1,11 +1,11 @@
 export type SidepanelTabId = 'settings' | 'work-items' | 'create-task';
 
-type TabsProps = {
+interface TabsProps {
   activeTab: SidepanelTabId;
   onSelectTab: (tabId: SidepanelTabId) => void;
-};
+}
 
-const TAB_ORDER: Array<{ id: SidepanelTabId; label: string }> = [
+const TAB_ORDER: { id: SidepanelTabId; label: string }[] = [
   { id: 'work-items', label: 'Work items' },
   { id: 'create-task', label: 'Create child tasks' },
   { id: 'settings', label: 'Settings' }

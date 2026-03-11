@@ -110,7 +110,7 @@ function detectVisuallyActiveWorkItemId(): number | null {
 }
 
 function detectTopmostSurfaceFromViewport(): HTMLElement | null {
-  const samplePoints: Array<{ x: number; y: number }> = [
+  const samplePoints: { x: number; y: number }[] = [
     { x: 60, y: 60 },
     { x: 120, y: 90 },
     { x: 220, y: 90 }

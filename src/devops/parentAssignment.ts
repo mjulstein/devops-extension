@@ -67,10 +67,10 @@ export async function setParentForActiveWorkItem(
     `https://dev.azure.com/${encodeURIComponent(organization)}/${encodeURIComponent(project)}` +
     `/_apis/wit/workItems/${selectedParentId}`;
 
-  const operations: Array<
+  const operations: (
     | { op: 'remove'; path: string }
     | { op: 'add'; path: string; value: { rel: string; url: string } }
-  > = [];
+  )[] = [];
 
   if (typeof existingParent?.relationIndex === 'number') {
     operations.push({
@@ -148,12 +148,14 @@ function findCurrentParentRelation(data: unknown): {
     return null;
   }
 
+  const relations = data.relations as unknown[];
+
   for (
     let relationIndex = 0;
-    relationIndex < data.relations.length;
+    relationIndex < relations.length;
     relationIndex += 1
   ) {
-    const relation = data.relations[relationIndex];
+    const relation = relations[relationIndex];
 
     if (!isObject(relation)) {
       continue;

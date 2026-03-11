@@ -54,8 +54,8 @@ export async function fetchWorkItems(
     );
   }
 
-  const wiqlData = await wiqlResponse.json();
-  const ids = (wiqlData.workItems || []).map((item: { id: number }) => item.id);
+  const wiqlData: unknown = await wiqlResponse.json();
+  const ids = extractWorkItemIdsFromWiql(wiqlData);
 
   if (!ids.length) {
     return {
@@ -76,7 +76,7 @@ export async function fetchWorkItems(
   ];
 
   const idChunks = chunkArray(ids, 50);
-  const allItems: any[] = [];
+  const allItems: WorkItem[] = [];
 
   for (const chunk of idChunks) {
     const workItemsUrl =
@@ -100,36 +100,19 @@ export async function fetchWorkItems(
       );
     }
 
-    const workItemsData = await workItemsResponse.json();
-    allItems.push(...(workItemsData.value || []));
+    const workItemsData: unknown = await workItemsResponse.json();
+    const payloads = extractWorkItemPayloads(workItemsData);
+
+    for (const payload of payloads) {
+      const parsed = toWorkItem(payload, organization, project);
+      if (parsed) {
+        allItems.push(parsed);
+      }
+    }
   }
 
-  const items: WorkItem[] = allItems.map((item) => {
-    const id = item.fields['System.Id'];
-    const workItemType = item.fields['System.WorkItemType'] || '';
-    const title = (item.fields['System.Title'] || '').trim();
-    const state = item.fields['System.State'] || '';
-    const assignedToValue = normalizeAssignedTo(
-      item.fields['System.AssignedTo']
-    );
-    const parentId = item.fields['System.Parent'] || null;
-    const closedDate = item.fields['Microsoft.VSTS.Common.ClosedDate'] || null;
-    const url = `https://dev.azure.com/${organization}/${project}/_workitems/edit/${id}`;
-
-    return {
-      id,
-      workItemType,
-      title,
-      state,
-      assignedTo: assignedToValue,
-      parentId,
-      closedDate,
-      url
-    };
-  });
-
-  const openItems = items.filter((item) => item.closedDate === null);
-  const closedItems = items
+  const openItems = allItems.filter((item) => item.closedDate === null);
+  const closedItems = allItems
     .filter((item) => item.closedDate !== null)
     .sort(
       (left, right) =>
@@ -138,7 +121,7 @@ export async function fetchWorkItems(
     );
 
   return {
-    count: items.length,
+    count: allItems.length,
     openItems,
     closedItems
   };
@@ -174,12 +157,21 @@ function normalizeAssignedTo(value: unknown): string {
     return value;
   }
 
-  if (typeof value === 'object') {
-    const record = value as Record<string, unknown>;
-    return String(record.displayName ?? record.uniqueName ?? '');
+  if (isRecord(value)) {
+    const displayName = value.displayName;
+    if (typeof displayName === 'string') {
+      return displayName;
+    }
+
+    const uniqueName = value.uniqueName;
+    if (typeof uniqueName === 'string') {
+      return uniqueName;
+    }
+
+    return '';
   }
 
-  return String(value);
+  return '';
 }
 
 function getClosedDateTimestamp(value: string | null): number {
@@ -189,4 +181,82 @@ function getClosedDateTimestamp(value: string | null): number {
 
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
+function extractWorkItemIdsFromWiql(data: unknown): number[] {
+  if (!isRecord(data) || !Array.isArray(data.workItems)) {
+    return [];
+  }
+
+  const ids: number[] = [];
+
+  for (const item of data.workItems) {
+    if (!isRecord(item)) {
+      continue;
+    }
+
+    const id = item.id;
+    if (typeof id === 'number' && Number.isFinite(id)) {
+      ids.push(id);
+    }
+  }
+
+  return ids;
+}
+
+function extractWorkItemPayloads(data: unknown): Record<string, unknown>[] {
+  if (!isRecord(data) || !Array.isArray(data.value)) {
+    return [];
+  }
+
+  return data.value.filter((entry): entry is Record<string, unknown> =>
+    isRecord(entry)
+  );
+}
+
+function toWorkItem(
+  item: Record<string, unknown>,
+  organization: string,
+  project: string
+): WorkItem | null {
+  const fieldsUnknown = item.fields;
+  if (!isRecord(fieldsUnknown)) {
+    return null;
+  }
+
+  const id = fieldsUnknown['System.Id'];
+  if (typeof id !== 'number' || !Number.isFinite(id)) {
+    return null;
+  }
+
+  const workItemTypeRaw = fieldsUnknown['System.WorkItemType'];
+  const titleRaw = fieldsUnknown['System.Title'];
+  const stateRaw = fieldsUnknown['System.State'];
+  const assignedToRaw = fieldsUnknown['System.AssignedTo'];
+  const parentIdRaw = fieldsUnknown['System.Parent'];
+  const closedDateRaw = fieldsUnknown['Microsoft.VSTS.Common.ClosedDate'];
+
+  const workItemType =
+    typeof workItemTypeRaw === 'string' ? workItemTypeRaw : '';
+  const title = typeof titleRaw === 'string' ? titleRaw.trim() : '';
+  const state = typeof stateRaw === 'string' ? stateRaw : '';
+  const assignedTo = normalizeAssignedTo(assignedToRaw);
+  const parentId = typeof parentIdRaw === 'number' ? parentIdRaw : null;
+  const closedDate = typeof closedDateRaw === 'string' ? closedDateRaw : null;
+  const url = `https://dev.azure.com/${organization}/${project}/_workitems/edit/${id}`;
+
+  return {
+    id,
+    workItemType,
+    title,
+    state,
+    assignedTo,
+    parentId,
+    closedDate,
+    url
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }

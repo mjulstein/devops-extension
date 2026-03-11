@@ -1,12 +1,12 @@
 import type { Settings } from '@/types';
 
-type SettingsCardProps = {
+interface SettingsCardProps {
   settings: Settings;
   onChange: (nextSettings: Settings) => void;
   onSave: () => Promise<void>;
   onReloadExtension: () => void;
   isLoading: boolean;
-};
+}
 
 export function SettingsCard({
   settings,
