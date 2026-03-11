@@ -32,6 +32,8 @@ export type CreatedChildTask = {
   parentId: number;
 };
 
+export type SidepanelTabId = 'settings' | 'work-items' | 'create-task';
+
 export type RuntimeResponse<T> =
   | { ok: true; result: T }
   | { ok: false; error: string };

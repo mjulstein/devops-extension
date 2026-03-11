@@ -3,8 +3,10 @@ import { SettingsCard } from './SettingsCard';
 import { StatusCard } from './StatusCard';
 import { CreateTaskCard } from './CreateTaskCard';
 import {
+  loadActiveSidepanelTab,
   loadCachedWorkItems,
   loadSettings,
+  saveActiveSidepanelTab,
   saveCachedWorkItems,
   saveSettings
 } from './chromeStorage';
@@ -14,7 +16,18 @@ import {
   fetchWorkItems,
   getActiveWorkItemContext
 } from './tabMessaging';
-import type { CreatedChildTask, Settings, WorkItemResult } from './types';
+import type {
+  CreatedChildTask,
+  Settings,
+  SidepanelTabId,
+  WorkItemResult
+} from './types';
+
+const TAB_ORDER: Array<{ id: SidepanelTabId; label: string }> = [
+  { id: 'settings', label: 'Settings' },
+  { id: 'work-items', label: 'Work items' },
+  { id: 'create-task', label: 'Create child tasks' }
+];
 
 type StatusMessage = {
   kind: 'info' | 'success' | 'error';
@@ -22,6 +35,7 @@ type StatusMessage = {
 };
 
 export function App() {
+  const [activeTab, setActiveTab] = useState<SidepanelTabId>('work-items');
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
@@ -43,12 +57,14 @@ export function App() {
 
   useEffect(() => {
     void (async () => {
-      const [storedSettings, cachedResult] = await Promise.all([
+      const [storedSettings, cachedResult, storedActiveTab] = await Promise.all([
         loadSettings(),
-        loadCachedWorkItems()
+        loadCachedWorkItems(),
+        loadActiveSidepanelTab()
       ]);
 
       setSettings(storedSettings);
+      setActiveTab(storedActiveTab);
 
       if (cachedResult) {
         setResult(cachedResult);
@@ -227,41 +243,64 @@ export function App() {
     }
   }
 
+  function onSelectTab(tabId: SidepanelTabId) {
+    setActiveTab(tabId);
+    void saveActiveSidepanelTab(tabId).catch(() => undefined);
+  }
+
   return (
     <div className="wrap">
-      <h1>DevOps Work Items</h1>
+      <nav className="tab-row" aria-label="Side panel sections">
+        {TAB_ORDER.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={`tab-handle ${activeTab === tab.id ? 'active' : ''}`}
+            aria-pressed={activeTab === tab.id}
+            onClick={() => onSelectTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
 
-      <SettingsCard
-        settings={settings}
-        onChange={setSettings}
-        onSave={onSaveSettings}
-        onReloadExtension={onReloadExtension}
-        isLoading={isLoading}
-      />
+      {activeTab === 'settings' ? (
+        <SettingsCard
+          settings={settings}
+          onChange={setSettings}
+          onSave={onSaveSettings}
+          onReloadExtension={onReloadExtension}
+          isLoading={isLoading}
+        />
+      ) : null}
 
-      <StatusCard
-        loadingMessage={loadingMessage}
-        isLoading={isLoading}
-        result={result}
-        statusMessage={statusMessage}
-        preFetchHint={
-          hasFetchedOnce
-            ? null
-            : 'Panel reloaded. Click Fetch work items to load the latest data.'
-        }
-        onFetchWorkItems={onFetchWorkItems}
-        isActionDisabled={isLoading || isCreatingTask}
-      />
+      {activeTab === 'work-items' ? (
+        <StatusCard
+          loadingMessage={loadingMessage}
+          isLoading={isLoading}
+          result={result}
+          statusMessage={statusMessage}
+          preFetchHint={
+            hasFetchedOnce
+              ? null
+              : 'Panel reloaded. Click Fetch work items to load the latest data.'
+          }
+          onFetchWorkItems={onFetchWorkItems}
+          isActionDisabled={isLoading || isCreatingTask}
+        />
+      ) : null}
 
-      <CreateTaskCard
-        taskTitle={taskTitle}
-        onTaskTitleChange={setTaskTitle}
-        onCreateTask={onCreateTaskFromCurrentWorkItem}
-        parentWorkItemId={parentWorkItemId}
-        createdTasks={visibleCreatedTasks}
-        isActionDisabled={isLoading || isCreatingTask}
-        statusMessage={createTaskStatusMessage}
-      />
+      {activeTab === 'create-task' ? (
+        <CreateTaskCard
+          taskTitle={taskTitle}
+          onTaskTitleChange={setTaskTitle}
+          onCreateTask={onCreateTaskFromCurrentWorkItem}
+          parentWorkItemId={parentWorkItemId}
+          createdTasks={visibleCreatedTasks}
+          isActionDisabled={isLoading || isCreatingTask}
+          statusMessage={createTaskStatusMessage}
+        />
+      ) : null}
     </div>
   );
 }

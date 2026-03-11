@@ -28,7 +28,6 @@ export function CreateTaskCard({
 
   return (
     <section className="card">
-      <h2>Create child tasks</h2>
       <form
         className="create-task-form"
         onSubmit={(event) => {

@@ -1,7 +1,13 @@
 import { defaultSettings } from './defaultSettings';
-import type { Settings, WorkItem, WorkItemResult } from './types';
+import type {
+  Settings,
+  SidepanelTabId,
+  WorkItem,
+  WorkItemResult
+} from './types';
 
 const CACHED_WORK_ITEMS_KEY = 'cachedWorkItems';
+const ACTIVE_SIDEPANEL_TAB_KEY = 'activeSidepanelTab';
 
 export async function loadSettings(): Promise<Settings> {
   return chrome.storage.local.get(defaultSettings);
@@ -21,6 +27,18 @@ export async function saveCachedWorkItems(
   result: WorkItemResult
 ): Promise<void> {
   await chrome.storage.local.set({ [CACHED_WORK_ITEMS_KEY]: result });
+}
+
+export async function loadActiveSidepanelTab(): Promise<SidepanelTabId> {
+  const stored = await chrome.storage.local.get(ACTIVE_SIDEPANEL_TAB_KEY);
+  const value = stored[ACTIVE_SIDEPANEL_TAB_KEY];
+  return isSidepanelTabId(value) ? value : 'work-items';
+}
+
+export async function saveActiveSidepanelTab(
+  tabId: SidepanelTabId
+): Promise<void> {
+  await chrome.storage.local.set({ [ACTIVE_SIDEPANEL_TAB_KEY]: tabId });
 }
 
 function isWorkItemResult(value: unknown): value is WorkItemResult {
@@ -56,4 +74,10 @@ function isWorkItem(value: unknown): value is WorkItem {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function isSidepanelTabId(value: unknown): value is SidepanelTabId {
+  return (
+    value === 'settings' || value === 'work-items' || value === 'create-task'
+  );
 }

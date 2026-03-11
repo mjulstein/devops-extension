@@ -25,7 +25,6 @@ export function StatusCard({
 }: StatusCardProps) {
   return (
     <section className="card">
-      <h2>Work items</h2>
       <div className="button-row">
         <button
           onClick={() => void onFetchWorkItems()}

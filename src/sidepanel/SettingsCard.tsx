@@ -17,7 +17,6 @@ export function SettingsCard({
 }: SettingsCardProps) {
   return (
     <section className="card">
-      <h2>Settings</h2>
       <p>
         Organization and project are read from the active Azure DevOps tab URL.
       </p>
