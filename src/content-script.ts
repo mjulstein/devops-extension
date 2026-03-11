@@ -142,6 +142,11 @@ async function createChildTask(rawTitle: string): Promise<CreatedChildTask> {
   }
 
   const context = await getActiveWorkItemContext();
+  const parentDetails = await getWorkItemDetails(
+    context.organization,
+    context.project,
+    context.parentId
+  );
   const parentApiUrl =
     `https://dev.azure.com/${encodeURIComponent(context.organization)}/${encodeURIComponent(context.project)}` +
     `/_apis/wit/workItems/${context.parentId}`;
@@ -150,6 +155,43 @@ async function createChildTask(rawTitle: string): Promise<CreatedChildTask> {
     `https://dev.azure.com/${encodeURIComponent(context.organization)}/${encodeURIComponent(context.project)}` +
     '/_apis/wit/workitems/$Task?api-version=7.0';
 
+  const patchOperations: Array<{
+    op: 'add';
+    path: string;
+    value: string | { rel: string; url: string };
+  }> = [
+    {
+      op: 'add',
+      path: '/fields/System.Title',
+      value: title
+    }
+  ];
+
+  if (parentDetails.areaPath) {
+    patchOperations.push({
+      op: 'add',
+      path: '/fields/System.AreaPath',
+      value: parentDetails.areaPath
+    });
+  }
+
+  if (parentDetails.iterationPath) {
+    patchOperations.push({
+      op: 'add',
+      path: '/fields/System.IterationPath',
+      value: parentDetails.iterationPath
+    });
+  }
+
+  patchOperations.push({
+    op: 'add',
+    path: '/relations/-',
+    value: {
+      rel: 'System.LinkTypes.Hierarchy-Reverse',
+      url: parentApiUrl
+    }
+  });
+
   const response = await fetch(createUrl, {
     method: 'POST',
     credentials: 'include',
@@ -157,21 +199,7 @@ async function createChildTask(rawTitle: string): Promise<CreatedChildTask> {
       Accept: 'application/json',
       'Content-Type': 'application/json-patch+json'
     },
-    body: JSON.stringify([
-      {
-        op: 'add',
-        path: '/fields/System.Title',
-        value: title
-      },
-      {
-        op: 'add',
-        path: '/relations/-',
-        value: {
-          rel: 'System.LinkTypes.Hierarchy-Reverse',
-          url: parentApiUrl
-        }
-      }
-    ])
+    body: JSON.stringify(patchOperations)
   });
 
   if (!response.ok) {
@@ -238,10 +266,15 @@ async function getWorkItemDetails(
   organization: string,
   project: string,
   workItemId: number
-): Promise<{ workItemType: string; parentId: number | null }> {
+): Promise<{
+  workItemType: string;
+  parentId: number | null;
+  areaPath: string;
+  iterationPath: string;
+}> {
   const url =
     `https://dev.azure.com/${encodeURIComponent(organization)}/${encodeURIComponent(project)}` +
-    `/_apis/wit/workitems/${workItemId}?fields=${encodeURIComponent('System.WorkItemType,System.Parent')}` +
+    `/_apis/wit/workitems/${workItemId}?fields=${encodeURIComponent('System.WorkItemType,System.Parent,System.AreaPath,System.IterationPath')}` +
     '&api-version=7.0';
 
   const response = await fetch(url, {
@@ -262,16 +295,26 @@ async function getWorkItemDetails(
   const data: unknown = await response.json();
 
   if (!isObject(data) || !isObject(data.fields)) {
-    return { workItemType: '', parentId: null };
+    return {
+      workItemType: '',
+      parentId: null,
+      areaPath: '',
+      iterationPath: ''
+    };
   }
 
   const workItemTypeRaw = data.fields['System.WorkItemType'];
   const parentIdRaw = data.fields['System.Parent'];
+  const areaPathRaw = data.fields['System.AreaPath'];
+  const iterationPathRaw = data.fields['System.IterationPath'];
 
   return {
     workItemType:
       typeof workItemTypeRaw === 'string' ? workItemTypeRaw.trim() : '',
-    parentId: typeof parentIdRaw === 'number' ? parentIdRaw : null
+    parentId: typeof parentIdRaw === 'number' ? parentIdRaw : null,
+    areaPath: typeof areaPathRaw === 'string' ? areaPathRaw.trim() : '',
+    iterationPath:
+      typeof iterationPathRaw === 'string' ? iterationPathRaw.trim() : ''
   };
 }
 
