@@ -1,11 +1,11 @@
-import type { CreatedChildTask } from './types';
+import type { ChildTaskItem } from './types';
 
 type CreateTaskCardProps = {
   taskTitle: string;
   onTaskTitleChange: (value: string) => void;
   onCreateTask: () => Promise<void>;
   parentWorkItemId: number | null;
-  createdTasks: CreatedChildTask[];
+  createdTasks: ChildTaskItem[];
   isActionDisabled: boolean;
   statusMessage: {
     kind: 'info' | 'success' | 'error';
@@ -56,7 +56,7 @@ export function CreateTaskCard({
         </div>
       ) : (
         <div className="status-message status-info">
-          Open a Bug or PBI, type a title, and press Enter to create each child task.
+          Open a Bug, PBI, Improvement, or a child Task page, then press Enter to create task children for its parent.
         </div>
       )}
 
@@ -76,12 +76,12 @@ export function CreateTaskCard({
               rel="noreferrer"
               className="created-task-link"
             >
-              #{task.id} - {task.title}
+              #{task.id} [{task.state}] - {task.title}
             </a>
           ))
         ) : (
           <div className="created-task-empty">
-            No created child tasks for the current work item yet.
+            No child tasks found for the current parent work item.
           </div>
         )}
       </div>

@@ -15,6 +15,9 @@ type RuntimeMessage =
       payload: {
         title: string;
       };
+    }
+  | {
+      type: 'FETCH_CHILD_TASKS_FOR_CURRENT_PARENT';
     };
 
 type ActiveWorkItemContext = {
@@ -26,6 +29,14 @@ type ActiveWorkItemContext = {
 type CreatedChildTask = {
   id: number;
   title: string;
+  url: string;
+  parentId: number;
+};
+
+type ChildTaskItem = {
+  id: number;
+  title: string;
+  state: string;
   url: string;
   parentId: number;
 };
@@ -58,6 +69,15 @@ chrome.runtime.onMessage.addListener(
         );
       return true;
     }
+
+    if (message.type === 'FETCH_CHILD_TASKS_FOR_CURRENT_PARENT') {
+      fetchChildTasksForCurrentParent()
+        .then((result) => sendResponse({ ok: true, result }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
   }
 );
 
@@ -73,19 +93,45 @@ async function getActiveWorkItemContext(): Promise<ActiveWorkItemContext> {
     );
   }
 
-  const workItemType = await getWorkItemType(organization, project, workItemId);
+  const current = await getWorkItemDetails(organization, project, workItemId);
 
-  if (!isSupportedParentType(workItemType)) {
-    throw new Error(
-      `Current item type is "${workItemType}". Only Bug, Product Backlog Item, PBI, or Improvement can be a parent.`
-    );
+  if (isSupportedParentType(current.workItemType)) {
+    return {
+      organization,
+      project,
+      parentId: workItemId
+    };
   }
 
-  return {
-    organization,
-    project,
-    parentId: workItemId
-  };
+  if (current.workItemType.toLowerCase() === 'task') {
+    if (!current.parentId) {
+      throw new Error(
+        `Current item is Task #${workItemId} and has no parent work item.`
+      );
+    }
+
+    const parent = await getWorkItemDetails(
+      organization,
+      project,
+      current.parentId
+    );
+
+    if (!isSupportedParentType(parent.workItemType)) {
+      throw new Error(
+        `Current item is Task #${workItemId}, but its parent type is "${parent.workItemType}". Parent must be Bug, Product Backlog Item, PBI, or Improvement.`
+      );
+    }
+
+    return {
+      organization,
+      project,
+      parentId: current.parentId
+    };
+  }
+
+  throw new Error(
+    `Current item type is "${current.workItemType}". Only Bug, Product Backlog Item, PBI, or Improvement can be a parent.`
+  );
 }
 
 async function createChildTask(rawTitle: string): Promise<CreatedChildTask> {
@@ -148,6 +194,204 @@ async function createChildTask(rawTitle: string): Promise<CreatedChildTask> {
     parentId: context.parentId,
     url: `https://dev.azure.com/${context.organization}/${context.project}/_workitems/edit/${id}`
   };
+}
+
+async function fetchChildTasksForCurrentParent(): Promise<ChildTaskItem[]> {
+  const context = await getActiveWorkItemContext();
+  const relationUrl =
+    `https://dev.azure.com/${encodeURIComponent(context.organization)}/${encodeURIComponent(context.project)}` +
+    `/_apis/wit/workitems/${context.parentId}?$expand=relations&api-version=7.0`;
+
+  const relationResponse = await fetch(relationUrl, {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json'
+    }
+  });
+
+  if (!relationResponse.ok) {
+    const text = await relationResponse.text();
+    throw new Error(
+      `Could not load child-task links: HTTP ${relationResponse.status} ${relationResponse.statusText}\n${text}`
+    );
+  }
+
+  const relationData: unknown = await relationResponse.json();
+  const childIds = extractChildIdsFromRelations(relationData);
+
+  if (!childIds.length) {
+    return [];
+  }
+
+  const childItems = await fetchTaskItemsByIds(
+    context.organization,
+    context.project,
+    childIds,
+    context.parentId
+  );
+
+  return childItems.sort(compareChildTasks);
+}
+
+async function getWorkItemDetails(
+  organization: string,
+  project: string,
+  workItemId: number
+): Promise<{ workItemType: string; parentId: number | null }> {
+  const url =
+    `https://dev.azure.com/${encodeURIComponent(organization)}/${encodeURIComponent(project)}` +
+    `/_apis/wit/workitems/${workItemId}?fields=${encodeURIComponent('System.WorkItemType,System.Parent')}` +
+    '&api-version=7.0';
+
+  const response = await fetch(url, {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(
+      `Could not inspect the current work item: HTTP ${response.status} ${response.statusText}\n${text}`
+    );
+  }
+
+  const data: unknown = await response.json();
+
+  if (!isObject(data) || !isObject(data.fields)) {
+    return { workItemType: '', parentId: null };
+  }
+
+  const workItemTypeRaw = data.fields['System.WorkItemType'];
+  const parentIdRaw = data.fields['System.Parent'];
+
+  return {
+    workItemType:
+      typeof workItemTypeRaw === 'string' ? workItemTypeRaw.trim() : '',
+    parentId: typeof parentIdRaw === 'number' ? parentIdRaw : null
+  };
+}
+
+async function fetchTaskItemsByIds(
+  organization: string,
+  project: string,
+  childIds: number[],
+  parentId: number
+): Promise<ChildTaskItem[]> {
+  const url =
+    `https://dev.azure.com/${encodeURIComponent(organization)}/${encodeURIComponent(project)}` +
+    `/_apis/wit/workitems?ids=${childIds.join(',')}` +
+    `&fields=${encodeURIComponent('System.Id,System.Title,System.State,System.WorkItemType')}` +
+    '&api-version=7.0';
+
+  const response = await fetch(url, {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(
+      `Could not load child-task details: HTTP ${response.status} ${response.statusText}\n${text}`
+    );
+  }
+
+  const data: unknown = await response.json();
+  if (!isObject(data) || !Array.isArray(data.value)) {
+    return [];
+  }
+
+  const items: ChildTaskItem[] = [];
+
+  for (const value of data.value) {
+    if (!isObject(value) || !isObject(value.fields)) {
+      continue;
+    }
+
+    const id = value.fields['System.Id'];
+    const title = value.fields['System.Title'];
+    const state = value.fields['System.State'];
+    const workItemType = value.fields['System.WorkItemType'];
+
+    if (
+      typeof id !== 'number' ||
+      typeof title !== 'string' ||
+      typeof state !== 'string' ||
+      typeof workItemType !== 'string'
+    ) {
+      continue;
+    }
+
+    if (workItemType.toLowerCase() !== 'task') {
+      continue;
+    }
+
+    items.push({
+      id,
+      title,
+      state,
+      parentId,
+      url: `https://dev.azure.com/${organization}/${project}/_workitems/edit/${id}`
+    });
+  }
+
+  return items;
+}
+
+function extractChildIdsFromRelations(data: unknown): number[] {
+  if (!isObject(data) || !Array.isArray(data.relations)) {
+    return [];
+  }
+
+  const ids: number[] = [];
+
+  for (const relation of data.relations) {
+    if (!isObject(relation)) {
+      continue;
+    }
+
+    if (relation.rel !== 'System.LinkTypes.Hierarchy-Forward') {
+      continue;
+    }
+
+    if (typeof relation.url !== 'string') {
+      continue;
+    }
+
+    const idMatch = /\/workItems\/(\d+)$/i.exec(relation.url);
+    if (!idMatch) {
+      continue;
+    }
+
+    const parsed = Number(idMatch[1]);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      ids.push(parsed);
+    }
+  }
+
+  return ids;
+}
+
+function compareChildTasks(left: ChildTaskItem, right: ChildTaskItem): number {
+  return (
+    getStateSortWeight(left.state) -
+      getStateSortWeight(right.state) ||
+    left.state.localeCompare(right.state) ||
+    right.id - left.id
+  );
+}
+
+function getStateSortWeight(state: string): number {
+  const normalized = state.trim().toLowerCase();
+  return normalized === 'to do' || normalized === 'todo' || normalized === 'new'
+    ? 0
+    : 1;
 }
 
 function getWorkItemIdFromUrl(rawUrl: string): number | null {
@@ -216,45 +460,6 @@ function getHashParamCandidates(rawHash: string): Array<string | null> {
   ];
 }
 
-async function getWorkItemType(
-  organization: string,
-  project: string,
-  workItemId: number
-): Promise<string> {
-  const url =
-    `https://dev.azure.com/${encodeURIComponent(organization)}/${encodeURIComponent(project)}` +
-    `/_apis/wit/workitems/${workItemId}?fields=${encodeURIComponent('System.WorkItemType')}` +
-    '&api-version=7.0';
-
-  const response = await fetch(url, {
-    method: 'GET',
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json'
-    }
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(
-      `Could not inspect the current work item: HTTP ${response.status} ${response.statusText}\n${text}`
-    );
-  }
-
-  const data: unknown = await response.json();
-
-  if (!isObject(data)) {
-    return '';
-  }
-
-  const fields = data.fields;
-  if (!isObject(fields)) {
-    return '';
-  }
-
-  const workItemType = fields['System.WorkItemType'];
-  return typeof workItemType === 'string' ? workItemType.trim() : '';
-}
 
 function getNumericIdFromResponse(data: unknown): number | null {
   if (!isObject(data)) {

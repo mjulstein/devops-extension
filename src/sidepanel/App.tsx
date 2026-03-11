@@ -13,15 +13,11 @@ import {
 import { defaultSettings } from './defaultSettings';
 import {
   createChildTask,
+  fetchChildTasksForCurrentParent,
   fetchWorkItems,
   getActiveWorkItemContext
 } from './tabMessaging';
-import type {
-  CreatedChildTask,
-  Settings,
-  SidepanelTabId,
-  WorkItemResult
-} from './types';
+import type { ChildTaskItem, Settings, SidepanelTabId, WorkItemResult } from './types';
 
 const TAB_ORDER: Array<{ id: SidepanelTabId; label: string }> = [
   { id: 'settings', label: 'Settings' },
@@ -41,7 +37,7 @@ export function App() {
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [taskTitle, setTaskTitle] = useState('');
   const [parentWorkItemId, setParentWorkItemId] = useState<number | null>(null);
-  const [createdTasks, setCreatedTasks] = useState<CreatedChildTask[]>([]);
+  const [childTasks, setChildTasks] = useState<ChildTaskItem[]>([]);
   const [loadingMessage, setLoadingMessage] = useState('Loading...');
   const [result, setResult] = useState<WorkItemResult | null>(null);
   const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(
@@ -50,10 +46,6 @@ export function App() {
   const [createTaskStatusMessage, setCreateTaskStatusMessage] =
     useState<StatusMessage | null>(null);
   const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
-
-  const visibleCreatedTasks = parentWorkItemId
-    ? createdTasks.filter((task) => task.parentId === parentWorkItemId)
-    : [];
 
   useEffect(() => {
     void (async () => {
@@ -96,7 +88,7 @@ export function App() {
 
     const onTabUpdated = (
       _tabId: number,
-      changeInfo: chrome.tabs.TabChangeInfo,
+      changeInfo: chrome.tabs.OnUpdatedInfo,
       tab: chrome.tabs.Tab
     ) => {
       if (!tab.active) {
@@ -182,6 +174,7 @@ export function App() {
 
       if (!response.ok) {
         setParentWorkItemId(null);
+        setChildTasks([]);
         setCreateTaskStatusMessage({ kind: 'info', text: response.error });
         return;
       }
@@ -191,12 +184,24 @@ export function App() {
         kind: 'info',
         text: `Ready to create child tasks for #${response.result.parentId}.`
       });
+      await refreshChildTasks();
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       setParentWorkItemId(null);
+      setChildTasks([]);
       setCreateTaskStatusMessage({ kind: 'error', text: errorMessage });
     }
+  }
+
+  async function refreshChildTasks() {
+    const response = await fetchChildTasksForCurrentParent();
+
+    if (!response.ok) {
+      throw new Error(response.error);
+    }
+
+    setChildTasks(response.result);
   }
 
   async function onCreateTaskFromCurrentWorkItem() {
@@ -225,7 +230,7 @@ export function App() {
       }
 
       setParentWorkItemId(response.result.parentId);
-      setCreatedTasks((current) => [response.result, ...current]);
+      await refreshChildTasks();
       setTaskTitle('');
       setCreateTaskStatusMessage({
         kind: 'success',
@@ -296,7 +301,7 @@ export function App() {
           onTaskTitleChange={setTaskTitle}
           onCreateTask={onCreateTaskFromCurrentWorkItem}
           parentWorkItemId={parentWorkItemId}
-          createdTasks={visibleCreatedTasks}
+          createdTasks={childTasks}
           isActionDisabled={isLoading || isCreatingTask}
           statusMessage={createTaskStatusMessage}
         />
