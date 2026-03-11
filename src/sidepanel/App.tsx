@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { SettingsCard } from './SettingsCard';
 import { StatusCard } from './StatusCard';
+import { CreateTaskCard } from './CreateTaskCard';
 import {
   loadCachedWorkItems,
   loadSettings,
@@ -8,8 +9,12 @@ import {
   saveSettings
 } from './chromeStorage';
 import { defaultSettings } from './defaultSettings';
-import { fetchWorkItems } from './tabMessaging';
-import type { Settings, WorkItemResult } from './types';
+import {
+  createChildTask,
+  fetchWorkItems,
+  getActiveWorkItemContext
+} from './tabMessaging';
+import type { CreatedChildTask, Settings, WorkItemResult } from './types';
 
 type StatusMessage = {
   kind: 'info' | 'success' | 'error';
@@ -19,12 +24,22 @@ type StatusMessage = {
 export function App() {
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [taskTitle, setTaskTitle] = useState('');
+  const [parentWorkItemId, setParentWorkItemId] = useState<number | null>(null);
+  const [createdTasks, setCreatedTasks] = useState<CreatedChildTask[]>([]);
   const [loadingMessage, setLoadingMessage] = useState('Loading...');
   const [result, setResult] = useState<WorkItemResult | null>(null);
   const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(
     null
   );
+  const [createTaskStatusMessage, setCreateTaskStatusMessage] =
+    useState<StatusMessage | null>(null);
   const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
+
+  const visibleCreatedTasks = parentWorkItemId
+    ? createdTasks.filter((task) => task.parentId === parentWorkItemId)
+    : [];
 
   useEffect(() => {
     void (async () => {
@@ -43,7 +58,51 @@ export function App() {
           text: 'Showing last fetched work items. Click Fetch work items to refresh.'
         });
       }
+
+      await refreshActiveWorkItemContext();
     })();
+  }, []);
+
+  useEffect(() => {
+    const onFocus = () => {
+      void refreshActiveWorkItemContext();
+    };
+
+    const onVisibilityChange = () => {
+      if (!document.hidden) {
+        void refreshActiveWorkItemContext();
+      }
+    };
+
+    const onTabActivated = () => {
+      void refreshActiveWorkItemContext();
+    };
+
+    const onTabUpdated = (
+      _tabId: number,
+      changeInfo: chrome.tabs.TabChangeInfo,
+      tab: chrome.tabs.Tab
+    ) => {
+      if (!tab.active) {
+        return;
+      }
+
+      if (changeInfo.status === 'complete' || changeInfo.url) {
+        void refreshActiveWorkItemContext();
+      }
+    };
+
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    chrome.tabs.onActivated.addListener(onTabActivated);
+    chrome.tabs.onUpdated.addListener(onTabUpdated);
+
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      chrome.tabs.onActivated.removeListener(onTabActivated);
+      chrome.tabs.onUpdated.removeListener(onTabUpdated);
+    };
   }, []);
 
   async function onSaveSettings() {
@@ -101,6 +160,73 @@ export function App() {
     }
   }
 
+  async function refreshActiveWorkItemContext() {
+    try {
+      const response = await getActiveWorkItemContext();
+
+      if (!response.ok) {
+        setParentWorkItemId(null);
+        setCreateTaskStatusMessage({ kind: 'info', text: response.error });
+        return;
+      }
+
+      setParentWorkItemId(response.result.parentId);
+      setCreateTaskStatusMessage({
+        kind: 'info',
+        text: `Ready to create child tasks for #${response.result.parentId}.`
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      setParentWorkItemId(null);
+      setCreateTaskStatusMessage({ kind: 'error', text: errorMessage });
+    }
+  }
+
+  async function onCreateTaskFromCurrentWorkItem() {
+    const trimmedTitle = taskTitle.trim();
+
+    if (!trimmedTitle) {
+      setCreateTaskStatusMessage({
+        kind: 'error',
+        text: 'Enter a task title before creating.'
+      });
+      return;
+    }
+
+    try {
+      setIsCreatingTask(true);
+      setCreateTaskStatusMessage(null);
+
+      const response = await createChildTask(trimmedTitle);
+
+      if (!response.ok) {
+        setCreateTaskStatusMessage({
+          kind: 'error',
+          text: response.error
+        });
+        return;
+      }
+
+      setParentWorkItemId(response.result.parentId);
+      setCreatedTasks((current) => [response.result, ...current]);
+      setTaskTitle('');
+      setCreateTaskStatusMessage({
+        kind: 'success',
+        text: `Created task #${response.result.id} under #${response.result.parentId}.`
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      setCreateTaskStatusMessage({
+        kind: 'error',
+        text: errorMessage
+      });
+    } finally {
+      setIsCreatingTask(false);
+    }
+  }
+
   return (
     <div className="wrap">
       <h1>DevOps Work Items</h1>
@@ -124,7 +250,17 @@ export function App() {
             : 'Panel reloaded. Click Fetch work items to load the latest data.'
         }
         onFetchWorkItems={onFetchWorkItems}
-        isActionDisabled={isLoading}
+        isActionDisabled={isLoading || isCreatingTask}
+      />
+
+      <CreateTaskCard
+        taskTitle={taskTitle}
+        onTaskTitleChange={setTaskTitle}
+        onCreateTask={onCreateTaskFromCurrentWorkItem}
+        parentWorkItemId={parentWorkItemId}
+        createdTasks={visibleCreatedTasks}
+        isActionDisabled={isLoading || isCreatingTask}
+        statusMessage={createTaskStatusMessage}
       />
     </div>
   );

@@ -19,6 +19,19 @@ export type WorkItemResult = {
   closedItems: WorkItem[];
 };
 
+export type ActiveWorkItemContext = {
+  organization: string;
+  project: string;
+  parentId: number;
+};
+
+export type CreatedChildTask = {
+  id: number;
+  title: string;
+  url: string;
+  parentId: number;
+};
+
 export type RuntimeResponse<T> =
   | { ok: true; result: T }
   | { ok: false; error: string };

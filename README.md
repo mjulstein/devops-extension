@@ -9,6 +9,14 @@ Results are displayed in the side panel as clickable links grouped into:
 - **TODO**: active work items assigned to the configured user
 - **Closed last week**: work items assigned to the user that were completed within the last 7 days
 
+A dedicated **Create child tasks** section is available at the bottom of the panel.
+
+- Open a Bug or PBI work item in the active tab.
+- Type a task title (required).
+- Press **Enter** (or click **Create task for #workItemId**).
+
+Each new child task is created immediately and listed under the button as a clickable link so you can create many tasks quickly.
+
 A raw JSON response is also available in a collapsible section for debugging.
 
 ## Tech Stack
@@ -36,6 +44,7 @@ devops-extension/
 │     ├─ App.tsx
 │     ├─ SettingsCard.tsx
 │     ├─ StatusCard.tsx
+│     ├─ CreateTaskCard.tsx
 │     ├─ WorkItemSection.tsx
 │     ├─ chromeStorage.ts
 │     ├─ defaultSettings.ts
@@ -112,6 +121,7 @@ npm run build
 2. Open the extension side panel.
 3. Configure only `Assigned to` (organization/project are read from the active Azure DevOps URL).
 4. Click **Fetch work items**.
+5. To create child tasks, open a Bug or PBI work item in the active tab, type a title in **Task title**, and press **Enter** repeatedly to build a list of created tasks.
 
 The extension queries Azure DevOps using the current browser session and displays matching work items in the side panel.
 

@@ -1,4 +1,10 @@
-import type { RuntimeResponse, Settings, WorkItemResult } from './types';
+import type {
+  ActiveWorkItemContext,
+  CreatedChildTask,
+  RuntimeResponse,
+  Settings,
+  WorkItemResult
+} from './types';
 
 const NO_RECEIVER_ERROR =
   'Could not establish connection. Receiving end does not exist.';
@@ -27,7 +33,9 @@ async function sendMessageToActiveTab<T>(message: unknown): Promise<T> {
       );
     }
 
-    throw error instanceof Error ? error : new Error(errorMessage);
+    throw error instanceof Error
+      ? error
+      : new Error(errorMessage, { cause: error });
   }
 }
 
@@ -37,5 +45,22 @@ export async function fetchWorkItems(
   return sendMessageToActiveTab<RuntimeResponse<WorkItemResult>>({
     type: 'FETCH_WORK_ITEMS',
     payload: settings
+  });
+}
+
+export async function getActiveWorkItemContext(): Promise<
+  RuntimeResponse<ActiveWorkItemContext>
+> {
+  return sendMessageToActiveTab<RuntimeResponse<ActiveWorkItemContext>>({
+    type: 'GET_ACTIVE_WORK_ITEM_CONTEXT'
+  });
+}
+
+export async function createChildTask(
+  title: string
+): Promise<RuntimeResponse<CreatedChildTask>> {
+  return sendMessageToActiveTab<RuntimeResponse<CreatedChildTask>>({
+    type: 'CREATE_CHILD_TASK',
+    payload: { title }
   });
 }
