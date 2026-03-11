@@ -15,7 +15,8 @@
     "skipLibCheck": true,
     "types": [
       "chrome",
-      "node"
+      "node",
+      "vitest/globals"
     ],
     "baseUrl": ".",
     "paths": {

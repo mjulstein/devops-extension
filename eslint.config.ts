@@ -66,6 +66,19 @@ export default defineConfig([
     }
   },
   {
+    files: ['**/*.test.{ts,tsx}'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        beforeEach: 'readonly',
+        describe: 'readonly',
+        expect: 'readonly',
+        it: 'readonly',
+        vi: 'readonly'
+      }
+    }
+  },
+  {
     files: ['vite.config.ts', 'eslint.config.js', 'eslint.config.ts'],
     languageOptions: {
       globals: {

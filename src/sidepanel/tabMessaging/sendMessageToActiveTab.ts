@@ -1,0 +1,25 @@
+import { getActiveTabId } from './getActiveTabId';
+
+const NO_RECEIVER_ERROR =
+  'Could not establish connection. Receiving end does not exist.';
+
+export async function sendMessageToActiveTab<T>(message: unknown): Promise<T> {
+  const tabId = await getActiveTabId();
+
+  try {
+    return (await chrome.tabs.sendMessage(tabId, message)) as T;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    if (errorMessage.includes(NO_RECEIVER_ERROR)) {
+      throw new Error(
+        'Extension reloaded. Refresh the active Azure DevOps tab, then try again.',
+        { cause: error }
+      );
+    }
+
+    throw error instanceof Error
+      ? error
+      : new Error(errorMessage, { cause: error });
+  }
+}

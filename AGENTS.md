@@ -27,7 +27,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - Side panel React component files should use `PascalCase.tsx`.
 - Utility/function modules should use `camelCase.ts`.
 - When moving or renaming tracked files, use `git mv` so history is preserved; do not create a new file and delete the old file as a substitute for a move.
-- Run `npm run lint` and `npm run build` after non-trivial changes.
+- Run `npm run lint`, `npm test`, and `npm run build` after non-trivial changes.
 - Prettier formatting issues are surfaced as ESLint warnings via `prettier/prettier`.
 
 ## Repository Map
@@ -41,7 +41,9 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - `src/sidepanel.tsx` — React side panel entry
 - `src/sidepanel.css` — side panel styling
 - `src/sidepanel/*Card.tsx` and `src/sidepanel/WorkItemSection.tsx` — side panel React components
-- `src/sidepanel/{chromeStorage,defaultSettings,tabMessaging,types}.ts` — side panel utility modules
+- `src/sidepanel/{chromeStorage,defaultSettings,types}.ts` — side panel utility modules
+- `src/sidepanel/tabMessaging/index.ts` + `src/sidepanel/tabMessaging/*.ts` — side panel tab messaging barrel + function modules
+- `src/sidepanel/tabMessaging/*.test.ts` / `*.test.tsx` — Vitest unit tests (globals enabled)
 - `vite.config.ts` — Vite multi-entry build config for extension output
 - `dist/` — generated unpacked extension files (build output)
 - `README.md` — user/developer documentation
@@ -75,6 +77,7 @@ Before finishing a change, verify:
 - Azure DevOps requests still rely on the active authenticated session.
 - Documentation reflects the current behavior and file structure.
 - Linting passes with `npm run lint` (or intentionally reported warnings are explained).
+- Tests pass with `npm test` (or intentionally reported failures are explained).
 
 ## Documentation Maintenance Rule
 

@@ -27,6 +27,7 @@ A raw JSON response is also available in a collapsible section for debugging.
 - Manifest V3 Edge extension
 - ESLint 10 flat config with TypeScript + React linting
 - Prettier formatting with lint warnings via `prettier/prettier`
+- Vitest 4 for unit tests (`*.test.ts` / `*.test.tsx`) with globals enabled
 
 ## Project Structure
 
@@ -39,6 +40,11 @@ devops-extension/
 │  │  └─ ...
 │  ├─ sidepanel/
 │  │  ├─ App.tsx
+│  │  ├─ tabMessaging/
+│  │  │  ├─ index.ts
+│  │  │  ├─ getActiveTabId.ts
+│  │  │  ├─ getActiveTabId.test.ts
+│  │  │  └─ ...
 │  │  └─ ...
 │  ├─ content-script.ts
 │  ├─ service-worker.ts
@@ -108,10 +114,16 @@ npm run lint
 npm run build
 ```
 
-4. Open Microsoft Edge and navigate to `edge://extensions`.
-5. Enable **Developer mode**.
-6. Click **Load unpacked**.
-7. Select the `dist/` directory.
+4. Run tests:
+
+```bash
+npm test
+```
+
+5. Open Microsoft Edge and navigate to `edge://extensions`.
+6. Enable **Developer mode**.
+7. Click **Load unpacked**.
+8. Select the `dist/` directory.
 
 ## Usage
 

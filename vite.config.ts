@@ -1,6 +1,6 @@
 import { copyFileSync, existsSync, renameSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 
 function copyManifestPlugin() {
   return {
@@ -27,6 +27,10 @@ export default defineConfig({
     }
   },
   publicDir: false,
+  test: {
+    globals: true,
+    include: ['**/*.test.ts', '**/*.test.tsx']
+  },
   build: {
     outDir: 'dist',
     emptyOutDir: true,
