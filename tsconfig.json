@@ -16,10 +16,20 @@
     "types": [
       "chrome",
       "node"
-    ]
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@/types": [
+        "types/index.ts"
+      ],
+      "@/types/*": [
+        "types/*"
+      ]
+    }
   },
   "include": [
     "src",
+    "types",
     "vite.config.ts"
   ]
 }

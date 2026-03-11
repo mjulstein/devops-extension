@@ -1,4 +1,4 @@
-import type { ChildTaskItem } from './types';
+import type { ChildTaskItem } from '@/types';
 
 type CreateTaskCardProps = {
   taskTitle: string;

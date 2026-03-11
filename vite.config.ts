@@ -20,6 +20,12 @@ function copyManifestPlugin() {
 }
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@/types': resolve(__dirname, 'types/index.ts'),
+      '@': resolve(__dirname, 'src')
+    }
+  },
   publicDir: false,
   build: {
     outDir: 'dist',

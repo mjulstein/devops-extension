@@ -1,10 +1,6 @@
 import { defaultSettings } from './defaultSettings';
-import type {
-  Settings,
-  SidepanelTabId,
-  WorkItem,
-  WorkItemResult
-} from './types';
+import type { Settings, WorkItem, WorkItemResult } from '@/types';
+import type { SidepanelTabId } from './Tabs';
 
 const CACHED_WORK_ITEMS_KEY = 'cachedWorkItems';
 const ACTIVE_SIDEPANEL_TAB_KEY = 'activeSidepanelTab';

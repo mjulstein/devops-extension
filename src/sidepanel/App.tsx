@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { SettingsCard } from './SettingsCard';
 import { StatusCard } from './StatusCard';
 import { CreateTaskCard } from './CreateTaskCard';
+import { Tabs, type SidepanelTabId } from './Tabs';
 import {
   loadActiveSidepanelTab,
   loadCachedWorkItems,
@@ -19,13 +20,7 @@ import {
   fetchWorkItems,
   getActiveWorkItemContext
 } from './tabMessaging';
-import type { ChildTaskItem, Settings, SidepanelTabId, WorkItemResult } from './types';
-
-const TAB_ORDER: Array<{ id: SidepanelTabId; label: string }> = [
-  { id: 'settings', label: 'Settings' },
-  { id: 'work-items', label: 'Work items' },
-  { id: 'create-task', label: 'Create child tasks' }
-];
+import type { ChildTaskItem, Settings, WorkItemResult } from '@/types';
 
 type StatusMessage = {
   kind: 'info' | 'success' | 'error';
@@ -289,19 +284,7 @@ export function App() {
 
   return (
     <div className="wrap">
-      <nav className="tab-row" aria-label="Side panel sections">
-        {TAB_ORDER.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            className={`tab-handle ${activeTab === tab.id ? 'active' : ''}`}
-            aria-pressed={activeTab === tab.id}
-            onClick={() => onSelectTab(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
+      <Tabs activeTab={activeTab} onSelectTab={onSelectTab} />
 
       {activeTab === 'settings' ? (
         <SettingsCard

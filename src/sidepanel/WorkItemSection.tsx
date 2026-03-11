@@ -1,4 +1,4 @@
-import type { WorkItem } from './types';
+import type { WorkItem } from '@/types';
 
 type WorkItemSectionProps = {
   title: string;

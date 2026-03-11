@@ -1,5 +1,5 @@
+import type { WorkItemResult } from '@/types';
 import { WorkItemSection } from './WorkItemSection';
-import type { WorkItemResult } from './types';
 
 type StatusCardProps = {
   loadingMessage: string;

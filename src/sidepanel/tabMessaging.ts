@@ -2,10 +2,13 @@ import type {
   ActiveWorkItemContext,
   ChildTaskItem,
   CreatedChildTask,
-  RuntimeResponse,
   Settings,
   WorkItemResult
-} from './types';
+} from '@/types';
+
+export type RuntimeResponse<T> =
+  | { ok: true; result: T }
+  | { ok: false; error: string };
 
 const NO_RECEIVER_ERROR =
   'Could not establish connection. Receiving end does not exist.';

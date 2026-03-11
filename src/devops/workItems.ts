@@ -1,26 +1,8 @@
-export type FetchSettings = {
-  assignedTo: string;
-};
-
-export type WorkItemResult = {
-  count: number;
-  openItems: WorkItem[];
-  closedItems: WorkItem[];
-};
-
-export type WorkItem = {
-  id: number;
-  workItemType: string;
-  title: string;
-  state: string;
-  assignedTo: string;
-  parentId: number | null;
-  closedDate: string | null;
-  url: string;
-};
+import type { Settings, WorkItem, WorkItemResult } from '@/types';
+import { getOrganizationAndProjectFromUrl } from './urlContext';
 
 export async function fetchWorkItems(
-  settings: FetchSettings
+  settings: Settings
 ): Promise<WorkItemResult> {
   const assignedTo = settings.assignedTo.trim();
   const { organization, project } = getOrganizationAndProjectFromUrl(
@@ -207,30 +189,4 @@ function getClosedDateTimestamp(value: string | null): number {
 
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? 0 : date.getTime();
-}
-
-function getOrganizationAndProjectFromUrl(rawUrl: string): {
-  organization: string;
-  project: string;
-} {
-  let parsedUrl: URL;
-
-  try {
-    parsedUrl = new URL(rawUrl);
-  } catch {
-    throw new Error('Could not parse the current page URL.');
-  }
-
-  const segments = parsedUrl.pathname.split('/').filter(Boolean);
-
-  if (segments.length < 2) {
-    throw new Error(
-      'Could not derive organization/project from URL. Open a project page in Azure DevOps.'
-    );
-  }
-
-  return {
-    organization: decodeURIComponent(segments[0]),
-    project: decodeURIComponent(segments[1])
-  };
 }
