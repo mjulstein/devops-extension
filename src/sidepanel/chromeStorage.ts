@@ -71,7 +71,9 @@ export async function loadHiddenChildTaskStates(): Promise<string[]> {
   return isStringArray(value) ? value : [];
 }
 
-export async function saveHiddenChildTaskStates(states: string[]): Promise<void> {
+export async function saveHiddenChildTaskStates(
+  states: string[]
+): Promise<void> {
   await chrome.storage.local.set({ [HIDDEN_CHILD_TASK_STATES_KEY]: states });
 }
 
@@ -173,10 +175,14 @@ function isPersistedSidepanelTabId(
 }
 
 function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+  return (
+    Array.isArray(value) && value.every((entry) => typeof entry === 'string')
+  );
 }
 
-function isParentSuggestionStore(value: unknown): value is ParentSuggestionStore {
+function isParentSuggestionStore(
+  value: unknown
+): value is ParentSuggestionStore {
   if (!isRecord(value)) {
     return false;
   }

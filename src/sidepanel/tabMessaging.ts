@@ -8,7 +8,7 @@ import type {
 
 export type RuntimeResponse<T> =
   | { ok: true; result: T }
-  | { ok: false, error: string };
+  | { ok: false; error: string };
 
 const NO_RECEIVER_ERROR =
   'Could not establish connection. Receiving end does not exist.';

@@ -1,6 +1,9 @@
 import { getWorkItemDetails, isSupportedParentType } from './workItemDetails';
 import { isObject } from './typeGuards';
-import { getOrganizationAndProjectFromUrl, getWorkItemIdFromUrl } from './urlContext';
+import {
+  getOrganizationAndProjectFromUrl,
+  getWorkItemIdFromUrl
+} from './urlContext';
 
 export async function setParentForActiveWorkItem(
   rawUrl: string,
@@ -14,14 +17,20 @@ export async function setParentForActiveWorkItem(
   const currentWorkItemId = getWorkItemIdFromUrl(rawUrl);
 
   if (!currentWorkItemId) {
-    throw new Error('Could not detect the active work item id from the current URL.');
+    throw new Error(
+      'Could not detect the active work item id from the current URL.'
+    );
   }
 
   if (currentWorkItemId === selectedParentId) {
     throw new Error('A work item cannot be its own parent.');
   }
 
-  const current = await getWorkItemDetails(organization, project, currentWorkItemId);
+  const current = await getWorkItemDetails(
+    organization,
+    project,
+    currentWorkItemId
+  );
   const selectedParent = await getWorkItemDetails(
     organization,
     project,
@@ -139,7 +148,11 @@ function findCurrentParentRelation(data: unknown): {
     return null;
   }
 
-  for (let relationIndex = 0; relationIndex < data.relations.length; relationIndex += 1) {
+  for (
+    let relationIndex = 0;
+    relationIndex < data.relations.length;
+    relationIndex += 1
+  ) {
     const relation = data.relations[relationIndex];
 
     if (!isObject(relation)) {
@@ -168,4 +181,3 @@ function findCurrentParentRelation(data: unknown): {
 
   return null;
 }
-

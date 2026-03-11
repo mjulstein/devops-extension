@@ -57,9 +57,10 @@ export function getWorkItemIdFromUrl(rawUrl: string): number | null {
     }
   }
 
-  const hashIdMatch = /(?:^|[?&/#])(?:id|workitem|workItem|workItemId)=(\d+)(?:[&#/]|$)/i.exec(
-    parsedUrl.hash
-  );
+  const hashIdMatch =
+    /(?:^|[?&/#])(?:id|workitem|workItem|workItemId)=(\d+)(?:[&#/]|$)/i.exec(
+      parsedUrl.hash
+    );
 
   if (!hashIdMatch) {
     return null;
@@ -89,4 +90,3 @@ function getHashParamCandidates(rawHash: string): Array<string | null> {
     hashParams.get('workItemId')
   ];
 }
-

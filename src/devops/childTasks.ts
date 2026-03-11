@@ -9,7 +9,9 @@ export async function fetchChildTasksForActiveParent(
   const context = await resolveActiveWorkItemContext(rawUrl, preferredParentId);
 
   if (!context.parentId) {
-    throw new Error('No parent work item is selected or detected for loading child tasks.');
+    throw new Error(
+      'No parent work item is selected or detected for loading child tasks.'
+    );
   }
 
   const relationUrl =

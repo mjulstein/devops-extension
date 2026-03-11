@@ -17,7 +17,9 @@ export async function createChildTaskFromActivePage(
   const context = await resolveActiveWorkItemContext(rawUrl, preferredParentId);
 
   if (!context.parentId) {
-    throw new Error('No parent work item is selected or detected for task creation.');
+    throw new Error(
+      'No parent work item is selected or detected for task creation.'
+    );
   }
 
   const parentDetails = await getWorkItemDetails(
@@ -34,9 +36,7 @@ export async function createChildTaskFromActivePage(
     op: 'add';
     path: string;
     value: string | { rel: string; url: string };
-  }[] = [
-    { op: 'add', path: '/fields/System.Title', value: title }
-  ];
+  }[] = [{ op: 'add', path: '/fields/System.Title', value: title }];
 
   if (parentDetails.areaPath) {
     patchOperations.push({

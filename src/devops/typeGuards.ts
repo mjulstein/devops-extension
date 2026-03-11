@@ -14,4 +14,3 @@ export function getNumericIdFromResponse(data: unknown): number | null {
 
   return idValue;
 }
-

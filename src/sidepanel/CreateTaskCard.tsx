@@ -76,14 +76,17 @@ export function CreateTaskCard({
         </div>
       ) : (
         <div className="status-message status-info">
-          Open a Bug, PBI, Improvement, or a child Task page, then press Enter to create task children for its parent.
+          Open a Bug, PBI, Improvement, or a child Task page, then press Enter
+          to create task children for its parent.
         </div>
       )}
 
       {parentWorkItemId ? (
         <div className="current-parent">
           Current parent: #{parentWorkItemId}{' '}
-          {isParentDetected ? '(detected from active work item)' : '(selected from suggestions)'}
+          {isParentDetected
+            ? '(detected from active work item)'
+            : '(selected from suggestions)'}
         </div>
       ) : (
         <div className="current-parent">Current parent: not set</div>
@@ -184,10 +187,7 @@ export function CreateTaskCard({
 }
 
 function abbreviateState(state: string): string {
-  const parts = state
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+  const parts = state.trim().split(/\s+/).filter(Boolean);
 
   if (!parts.length) {
     return '?';
