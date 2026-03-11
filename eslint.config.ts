@@ -1,3 +1,5 @@
+import { defineConfig } from 'eslint/config';
+import css from '@eslint/css';
 import js from '@eslint/js';
 import eslintReact from '@eslint-react/eslint-plugin';
 import prettierConfig from 'eslint-config-prettier';
@@ -5,7 +7,11 @@ import prettierPlugin from 'eslint-plugin-prettier';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
+const cssRecommended = css.configs.recommended;
 const reactRecommendedTs = eslintReact.configs['recommended-typescript'];
+const reactRecommendedPlugins = pickRecord(reactRecommendedTs, 'plugins');
+const reactRecommendedSettings = pickRecord(reactRecommendedTs, 'settings');
+const reactRecommendedRules = pickRecord(reactRecommendedTs, 'rules');
 const typeCheckedConfigs = [
   ...tseslint.configs.recommendedTypeChecked,
   ...tseslint.configs.stylisticTypeChecked
@@ -16,11 +22,14 @@ const typeCheckedConfigs = [
     files: ['**/*.{ts,tsx}']
   }));
 
-export default tseslint.config(
+export default defineConfig([
   {
     ignores: ['dist/**', 'node_modules/**']
   },
-  js.configs.recommended,
+  {
+    files: ['**/*.{js,mjs,cjs,ts,tsx}'],
+    ...js.configs.recommended
+  },
   {
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
@@ -45,19 +54,19 @@ export default tseslint.config(
       }
     },
     plugins: {
-      ...(reactRecommendedTs.plugins ?? {}),
+      ...reactRecommendedPlugins,
       prettier: prettierPlugin
     },
     settings: {
-      ...(reactRecommendedTs.settings ?? {})
+      ...reactRecommendedSettings
     },
     rules: {
-      ...(reactRecommendedTs.rules ?? {}),
+      ...reactRecommendedRules,
       'prettier/prettier': 'warn'
     }
   },
   {
-    files: ['vite.config.ts', 'eslint.config.js'],
+    files: ['vite.config.ts', 'eslint.config.js', 'eslint.config.ts'],
     languageOptions: {
       globals: {
         ...globals.node
@@ -70,5 +79,30 @@ export default tseslint.config(
       'prettier/prettier': 'warn'
     }
   },
-  prettierConfig
-);
+  prettierConfig,
+  {
+    files: ['**/*.{css,module.css}'],
+    language: 'css/css',
+    ...cssRecommended,
+    rules: {
+      ...(cssRecommended.rules ?? {}),
+      'css/use-baseline': 'warn'
+    }
+  }
+]);
+
+function pickRecord(
+  source: unknown,
+  key: 'plugins' | 'settings' | 'rules'
+): Record<string, unknown> {
+  if (!isRecord(source)) {
+    return {};
+  }
+
+  const value = source[key];
+  return isRecord(value) ? value : {};
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}

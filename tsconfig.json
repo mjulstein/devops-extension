@@ -30,6 +30,7 @@
   "include": [
     "src",
     "types",
-    "vite.config.ts"
+    "vite.config.ts",
+    "eslint.config.ts"
   ]
 }
