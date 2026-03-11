@@ -258,11 +258,19 @@ export function App() {
     }
   }
 
-  async function refreshActiveWorkItemContext() {
+  async function refreshActiveWorkItemContext(forceResync = false) {
     try {
-      const response = await getActiveWorkItemContext();
+      const response = await getActiveWorkItemContext(forceResync);
 
       if (!response.ok) {
+        if (forceResync && activeWorkItemContext) {
+          setCreateTaskStatusMessage({
+            kind: 'info',
+            text: `Resync did not find a new active item. Keeping ${activeItemHeading}.`
+          });
+          return;
+        }
+
         setActiveWorkItemContext(null);
         setParentWorkItemId(null);
         setChildTasks([]);
@@ -299,6 +307,15 @@ export function App() {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
+
+      if (forceResync && activeWorkItemContext) {
+        setCreateTaskStatusMessage({
+          kind: 'error',
+          text: `Resync failed: ${errorMessage}`
+        });
+        return;
+      }
+
       setActiveWorkItemContext(null);
       setParentWorkItemId(null);
       setChildTasks([]);
@@ -331,7 +348,10 @@ export function App() {
       setIsCreatingTask(true);
       setCreateTaskStatusMessage(null);
 
-      const response = await createChildTask(trimmedTitle, parentWorkItemId ?? undefined);
+      const response = await createChildTask(
+        trimmedTitle,
+        parentWorkItemId ?? undefined
+      );
 
       if (!response.ok) {
         setCreateTaskStatusMessage({
@@ -436,16 +456,33 @@ export function App() {
     );
   }
 
+  async function onForceResyncActiveItem() {
+    setCreateTaskStatusMessage({
+      kind: 'info',
+      text: 'Resyncing active work item from page state...'
+    });
+    await refreshActiveWorkItemContext(true);
+  }
+
   const activeItemHeading = activeWorkItemContext
     ? `#${activeWorkItemContext.current.id} [${activeWorkItemContext.current.workItemType || 'Unknown'}] ${activeWorkItemContext.current.title || '(untitled)'}`
     : 'No active Azure DevOps work item detected';
 
   return (
     <div className="wrap">
-      <div className="active-work-item-banner" title={activeItemHeading}>
-        <span className="active-work-item-label">Active item</span>
+      <button
+        type="button"
+        className="active-work-item-banner"
+        title="Click to resync from the active Azure DevOps page state"
+        onClick={() => {
+          void onForceResyncActiveItem();
+        }}
+      >
+        <span className="active-work-item-label">
+          Active item (click to resync)
+        </span>
         <span className="active-work-item-title">{activeItemHeading}</span>
-      </div>
+      </button>
       <Tabs activeTab={activeTab} onSelectTab={onSelectTab} />
 
       {activeTab === 'settings' ? (
@@ -510,14 +547,10 @@ function isParentableType(workItemType: string): boolean {
   );
 }
 
-function getSuggestionSource(
-  context: ActiveWorkItemContext
-):
-  | {
-      group: ParentSuggestionGroup;
-      item: Omit<ParentSuggestionItem, 'lastVisitedAt'>;
-    }
-  | null {
+function getSuggestionSource(context: ActiveWorkItemContext): {
+  group: ParentSuggestionGroup;
+  item: Omit<ParentSuggestionItem, 'lastVisitedAt'>;
+} | null {
   const normalizedType = normalizeWorkItemType(context.current.workItemType);
 
   if (isParentableType(normalizedType)) {

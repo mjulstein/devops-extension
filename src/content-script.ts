@@ -4,6 +4,7 @@ import { fetchChildTasksForActiveParent } from './devops/childTasks';
 import { createChildTaskFromActivePage } from './devops/taskCreation';
 import { fetchWorkItems } from './devops/workItems';
 import { setParentForActiveWorkItem } from './devops/parentAssignment';
+import { detectActiveWorkItemId } from './devops/activeWorkItemDom';
 
 type RuntimeMessage =
   | {
@@ -12,6 +13,9 @@ type RuntimeMessage =
     }
   | {
       type: 'GET_ACTIVE_WORK_ITEM_CONTEXT';
+      payload?: {
+        forceResync?: boolean;
+      };
     }
   | {
       type: 'CREATE_CHILD_TASK';
@@ -45,7 +49,15 @@ chrome.runtime.onMessage.addListener(
     }
 
     if (message.type === 'GET_ACTIVE_WORK_ITEM_CONTEXT') {
-      resolveActiveWorkItemContext(window.location.href)
+      const detectedWorkItemId = detectActiveWorkItemId(
+        Boolean(message.payload?.forceResync)
+      );
+
+      resolveActiveWorkItemContext(
+        window.location.href,
+        undefined,
+        detectedWorkItemId
+      )
         .then((result) => sendResponse({ ok: true, result }))
         .catch((error: Error) =>
           sendResponse({ ok: false, error: error.message })

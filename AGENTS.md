@@ -22,6 +22,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - Keep changes minimal and targeted.
 - Preserve the current architecture unless a change request requires restructuring.
 - Keep the extension usable with the existing authenticated Azure DevOps session.
+- Keep `src/content-script.ts` as a generic runtime message bridge; place Azure DevOps-specific selectors, parsing, and API/domain logic under `src/devops/` modules.
 - Do not add secrets, tokens, or committed local configuration.
 - Side panel React component files should use `PascalCase.tsx`.
 - Utility/function modules should use `camelCase.ts`.
@@ -33,7 +34,8 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 
 - `src/manifest.json` — extension manifest template copied to build output
 - `src/service-worker.ts` — extension startup/background behavior
-- `src/content-script.ts` — Azure DevOps page interaction and REST/WIQL calls
+- `src/content-script.ts` — generic runtime message router between side panel and domain modules
+- `src/devops/*` — Azure DevOps-specific DOM detection, URL/context parsing, REST/WIQL, and task/parent operations
 - `src/devops/workItems.ts` — work-item query and transformation logic
 - `src/sidepanel.html` — side panel HTML entry
 - `src/sidepanel.tsx` — React side panel entry

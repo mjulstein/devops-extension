@@ -52,11 +52,12 @@ export async function fetchWorkItems(
   });
 }
 
-export async function getActiveWorkItemContext(): Promise<
-  RuntimeResponse<ActiveWorkItemContext>
-> {
+export async function getActiveWorkItemContext(
+  forceResync = false
+): Promise<RuntimeResponse<ActiveWorkItemContext>> {
   return sendMessageToActiveTab<RuntimeResponse<ActiveWorkItemContext>>({
-    type: 'GET_ACTIVE_WORK_ITEM_CONTEXT'
+    type: 'GET_ACTIVE_WORK_ITEM_CONTEXT',
+    payload: { forceResync }
   });
 }
 

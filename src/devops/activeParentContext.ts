@@ -1,13 +1,20 @@
 import type { ActiveWorkItemContext } from '@/types';
 import { getWorkItemDetails, isSupportedParentType } from './workItemDetails';
-import { getOrganizationAndProjectFromUrl, getWorkItemIdFromUrl } from './urlContext';
+import {
+  getOrganizationAndProjectFromUrl,
+  getWorkItemIdFromUrl
+} from './urlContext';
 
 export async function resolveActiveWorkItemContext(
   rawUrl: string,
-  preferredParentId?: number
+  preferredParentId?: number,
+  activeWorkItemIdOverride?: number
 ): Promise<ActiveWorkItemContext> {
   const { organization, project } = getOrganizationAndProjectFromUrl(rawUrl);
-  const workItemId = getWorkItemIdFromUrl(rawUrl);
+  const workItemId =
+    typeof activeWorkItemIdOverride === 'number' && activeWorkItemIdOverride > 0
+      ? activeWorkItemIdOverride
+      : getWorkItemIdFromUrl(rawUrl);
 
   if (!workItemId) {
     throw new Error(
@@ -56,7 +63,11 @@ export async function resolveActiveWorkItemContext(
       return context;
     }
 
-    const parent = await getWorkItemDetails(organization, project, current.parentId);
+    const parent = await getWorkItemDetails(
+      organization,
+      project,
+      current.parentId
+    );
     if (isSupportedParentType(parent.workItemType)) {
       context.parentId = current.parentId;
     }

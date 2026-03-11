@@ -275,11 +275,22 @@ button:disabled {
 .active-work-item-banner {
   display: grid;
   gap: 2px;
-  margin-bottom: 10px;
+  width: 100%;
+  margin: 0 0 10px;
   padding: 8px 10px;
   background: #eef3ff;
   border: 1px solid #ccd9f5;
   border-radius: 8px;
+  text-align: left;
+}
+
+.active-work-item-banner:hover {
+  background: #e5edff;
+}
+
+.active-work-item-banner:focus-visible {
+  outline: 2px solid #4d88ff;
+  outline-offset: 1px;
 }
 
 .active-work-item-label {

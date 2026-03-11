@@ -34,6 +34,7 @@ A raw JSON response is also available in a collapsible section for debugging.
 devops-extension/
 ├─ src/
 │  ├─ devops/
+│  │  ├─ activeWorkItemDom.ts
 │  │  ├─ workItems.ts
 │  │  └─ ...
 │  ├─ sidepanel/
@@ -52,6 +53,8 @@ devops-extension/
 ├─ tsconfig.json
 └─ vite.config.ts
 ```
+
+`src/content-script.ts` is intentionally kept as a generic runtime message bridge. Azure DevOps-specific DOM parsing, URL/context detection, and API logic live in `src/devops/` modules.
 
 ## Naming Conventions
 
