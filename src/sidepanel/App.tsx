@@ -7,25 +7,51 @@ import {
   loadActiveSidepanelTab,
   loadCachedWorkItems,
   loadHiddenChildTaskStates,
+  loadParentSuggestions,
   loadSettings,
   saveActiveSidepanelTab,
   saveCachedWorkItems,
   saveHiddenChildTaskStates,
-  saveSettings
+  saveSettings,
+  setParentSuggestionPinned,
+  upsertParentSuggestion
 } from './chromeStorage';
 import { defaultSettings } from './defaultSettings';
 import {
   createChildTask,
   fetchChildTasksForCurrentParent,
   fetchWorkItems,
-  getActiveWorkItemContext
+  getActiveWorkItemContext,
+  setActiveWorkItemParent
 } from './tabMessaging';
-import type { ChildTaskItem, Settings, WorkItemResult } from '@/types';
+import type {
+  ActiveWorkItemContext,
+  ChildTaskItem,
+  ParentSuggestionGroup,
+  ParentSuggestionItem,
+  ParentSuggestionStore,
+  Settings,
+  WorkItemResult
+} from '@/types';
 
-type StatusMessage = {
+interface StatusMessage {
   kind: 'info' | 'success' | 'error';
   text: string;
+}
+
+const EMPTY_PARENT_SUGGESTIONS: ParentSuggestionStore = {
+  recentByGroup: {
+    parentable: [],
+    feature: []
+  },
+  pinnedIdsByGroup: {
+    parentable: [],
+    feature: []
+  }
 };
+
+const MAX_DYNAMIC_SUGGESTIONS = 5;
+const MAX_IN_MEMORY_SUGGESTIONS = 40;
 
 export function App() {
   const [activeTab, setActiveTab] = useState<SidepanelTabId>('work-items');
@@ -33,6 +59,8 @@ export function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [taskTitle, setTaskTitle] = useState('');
+  const [activeWorkItemContext, setActiveWorkItemContext] =
+    useState<ActiveWorkItemContext | null>(null);
   const [parentWorkItemId, setParentWorkItemId] = useState<number | null>(null);
   const [childTasks, setChildTasks] = useState<ChildTaskItem[]>([]);
   const [loadingMessage, setLoadingMessage] = useState('Loading...');
@@ -44,6 +72,8 @@ export function App() {
     useState<StatusMessage | null>(null);
   const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
   const [hiddenTaskStates, setHiddenTaskStates] = useState<string[]>([]);
+  const [parentSuggestions, setParentSuggestions] =
+    useState<ParentSuggestionStore>(EMPTY_PARENT_SUGGESTIONS);
 
   const availableTaskStates = useMemo(() => {
     const unique = new Set(childTasks.map((task) => task.state));
@@ -57,19 +87,66 @@ export function App() {
     return childTasks.filter((task) => !hidden.has(task.state));
   }, [childTasks, hiddenTaskStates]);
 
+  const suggestionGroup: ParentSuggestionGroup | null = (() => {
+    const workItemType = normalizeWorkItemType(
+      activeWorkItemContext?.current.workItemType ?? ''
+    );
+
+    if (workItemType === 'task') {
+      return 'parentable';
+    }
+
+    if (isParentableType(workItemType)) {
+      return 'feature';
+    }
+
+    return null;
+  })();
+
+  const suggestedParents: (ParentSuggestionItem & { isPinned: boolean })[] =
+    (() => {
+      if (!suggestionGroup) {
+        return [];
+      }
+
+      const recent = parentSuggestions.recentByGroup[suggestionGroup];
+      const pinnedIds = parentSuggestions.pinnedIdsByGroup[suggestionGroup];
+      const byId = new Map(recent.map((entry) => [entry.id, entry]));
+
+      const pinned = pinnedIds
+        .map((id) => byId.get(id))
+        .filter((entry): entry is ParentSuggestionItem => Boolean(entry))
+        .map((entry) => ({ ...entry, isPinned: true }));
+
+      const pinnedSet = new Set(pinned.map((entry) => entry.id));
+      const dynamic = recent
+        .filter((entry) => !pinnedSet.has(entry.id))
+        .slice(0, MAX_DYNAMIC_SUGGESTIONS)
+        .map((entry) => ({ ...entry, isPinned: false }));
+
+      return [...pinned, ...dynamic];
+    })();
+
   useEffect(() => {
     void (async () => {
-      const [storedSettings, cachedResult, storedActiveTab, storedHiddenStates] =
-        await Promise.all([
-          loadSettings(),
-          loadCachedWorkItems(),
-          loadActiveSidepanelTab(),
-          loadHiddenChildTaskStates()
-        ]);
+      const [
+        storedSettings,
+        cachedResult,
+        storedActiveTab,
+        storedHiddenStates,
+        storedParentSuggestions
+      ] = await Promise.all([
+        loadSettings(),
+        loadCachedWorkItems(),
+        loadActiveSidepanelTab(),
+        loadHiddenChildTaskStates(),
+        loadParentSuggestions()
+      ]);
 
       setSettings(storedSettings);
       setActiveTab(storedActiveTab);
       setHiddenTaskStates(storedHiddenStates);
+      setParentSuggestions(storedParentSuggestions);
 
       if (cachedResult) {
         setResult(cachedResult);
@@ -186,29 +263,51 @@ export function App() {
       const response = await getActiveWorkItemContext();
 
       if (!response.ok) {
+        setActiveWorkItemContext(null);
         setParentWorkItemId(null);
         setChildTasks([]);
         setCreateTaskStatusMessage({ kind: 'info', text: response.error });
         return;
       }
 
+      setActiveWorkItemContext(response.result);
       setParentWorkItemId(response.result.parentId);
-      setCreateTaskStatusMessage({
-        kind: 'info',
-        text: `Ready to create child tasks for #${response.result.parentId}.`
-      });
-      await refreshChildTasks();
+
+      const suggestion = getSuggestionSource(response.result);
+      if (suggestion) {
+        setParentSuggestions((current) =>
+          upsertSuggestionInMemory(current, suggestion.group, suggestion.item)
+        );
+        void upsertParentSuggestion(suggestion.group, suggestion.item).catch(
+          () => undefined
+        );
+      }
+
+      if (response.result.parentId) {
+        setCreateTaskStatusMessage({
+          kind: 'info',
+          text: `Ready to create child tasks for #${response.result.parentId}.`
+        });
+        await refreshChildTasks(response.result.parentId);
+      } else {
+        setChildTasks([]);
+        setCreateTaskStatusMessage({
+          kind: 'info',
+          text: 'No parent detected. Pick a suggested parent or open a parentable work item.'
+        });
+      }
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
+      setActiveWorkItemContext(null);
       setParentWorkItemId(null);
       setChildTasks([]);
       setCreateTaskStatusMessage({ kind: 'error', text: errorMessage });
     }
   }
 
-  async function refreshChildTasks() {
-    const response = await fetchChildTasksForCurrentParent();
+  async function refreshChildTasks(preferredParentId?: number) {
+    const response = await fetchChildTasksForCurrentParent(preferredParentId);
 
     if (!response.ok) {
       throw new Error(response.error);
@@ -232,7 +331,7 @@ export function App() {
       setIsCreatingTask(true);
       setCreateTaskStatusMessage(null);
 
-      const response = await createChildTask(trimmedTitle);
+      const response = await createChildTask(trimmedTitle, parentWorkItemId ?? undefined);
 
       if (!response.ok) {
         setCreateTaskStatusMessage({
@@ -243,7 +342,7 @@ export function App() {
       }
 
       setParentWorkItemId(response.result.parentId);
-      await refreshChildTasks();
+      await refreshChildTasks(response.result.parentId);
       setTaskTitle('');
       setCreateTaskStatusMessage({
         kind: 'success',
@@ -287,8 +386,66 @@ export function App() {
     });
   }
 
+  async function onSetSuggestedParent(parentId: number) {
+    try {
+      setCreateTaskStatusMessage({
+        kind: 'info',
+        text: `Setting #${parentId} as parent for the active work item...`
+      });
+
+      const response = await setActiveWorkItemParent(parentId);
+      if (!response.ok) {
+        setCreateTaskStatusMessage({ kind: 'error', text: response.error });
+        return;
+      }
+
+      await refreshActiveWorkItemContext();
+      setCreateTaskStatusMessage({
+        kind: 'success',
+        text: `Parent updated to #${parentId} for the active work item.`
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      setCreateTaskStatusMessage({ kind: 'error', text: errorMessage });
+    }
+  }
+
+  function onTogglePinSuggestedParent(parentId: number, isPinned: boolean) {
+    if (!suggestionGroup) {
+      return;
+    }
+
+    setParentSuggestions((current) => {
+      const existing = current.pinnedIdsByGroup[suggestionGroup];
+      const nextPinned = isPinned
+        ? [parentId, ...existing.filter((entry) => entry !== parentId)]
+        : existing.filter((entry) => entry !== parentId);
+
+      return {
+        ...current,
+        pinnedIdsByGroup: {
+          ...current.pinnedIdsByGroup,
+          [suggestionGroup]: nextPinned
+        }
+      };
+    });
+
+    void setParentSuggestionPinned(suggestionGroup, parentId, isPinned).catch(
+      () => undefined
+    );
+  }
+
+  const activeItemHeading = activeWorkItemContext
+    ? `#${activeWorkItemContext.current.id} [${activeWorkItemContext.current.workItemType || 'Unknown'}] ${activeWorkItemContext.current.title || '(untitled)'}`
+    : 'No active Azure DevOps work item detected';
+
   return (
     <div className="wrap">
+      <div className="active-work-item-banner" title={activeItemHeading}>
+        <span className="active-work-item-label">Active item</span>
+        <span className="active-work-item-title">{activeItemHeading}</span>
+      </div>
       <Tabs activeTab={activeTab} onSelectTab={onSelectTab} />
 
       {activeTab === 'settings' ? (
@@ -323,16 +480,107 @@ export function App() {
           onTaskTitleChange={setTaskTitle}
           onCreateTask={onCreateTaskFromCurrentWorkItem}
           parentWorkItemId={parentWorkItemId}
+          isParentDetected={Boolean(parentWorkItemId)}
           createdTasks={visibleChildTasks}
           availableTaskStates={availableTaskStates}
           hiddenTaskStates={hiddenTaskStates}
           onToggleTaskStateFilter={onToggleTaskStateFilter}
           isActionDisabled={isLoading || isCreatingTask}
           statusMessage={createTaskStatusMessage}
+          suggestedParents={suggestedParents}
+          suggestionMode={getSuggestionModeLabel(suggestionGroup)}
+          onSetSuggestedParent={onSetSuggestedParent}
+          onTogglePinSuggestedParent={onTogglePinSuggestedParent}
         />
       ) : null}
     </div>
   );
+}
+
+function normalizeWorkItemType(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function isParentableType(workItemType: string): boolean {
+  return (
+    workItemType === 'bug' ||
+    workItemType === 'pbi' ||
+    workItemType === 'product backlog item' ||
+    workItemType === 'improvement'
+  );
+}
+
+function getSuggestionSource(
+  context: ActiveWorkItemContext
+):
+  | {
+      group: ParentSuggestionGroup;
+      item: Omit<ParentSuggestionItem, 'lastVisitedAt'>;
+    }
+  | null {
+  const normalizedType = normalizeWorkItemType(context.current.workItemType);
+
+  if (isParentableType(normalizedType)) {
+    return {
+      group: 'parentable',
+      item: {
+        id: context.current.id,
+        title: context.current.title,
+        workItemType: context.current.workItemType,
+        url: context.current.url
+      }
+    };
+  }
+
+  if (normalizedType === 'feature') {
+    return {
+      group: 'feature',
+      item: {
+        id: context.current.id,
+        title: context.current.title,
+        workItemType: context.current.workItemType,
+        url: context.current.url
+      }
+    };
+  }
+
+  return null;
+}
+
+function upsertSuggestionInMemory(
+  current: ParentSuggestionStore,
+  group: ParentSuggestionGroup,
+  item: Omit<ParentSuggestionItem, 'lastVisitedAt'>
+): ParentSuggestionStore {
+  const now = Date.now();
+  const pinnedIds = new Set(current.pinnedIdsByGroup[group]);
+  const sorted = [
+    { ...item, lastVisitedAt: now },
+    ...current.recentByGroup[group].filter((entry) => entry.id !== item.id)
+  ];
+
+  const pinned = sorted.filter((entry) => pinnedIds.has(entry.id));
+  const dynamic = sorted
+    .filter((entry) => !pinnedIds.has(entry.id))
+    .slice(0, MAX_IN_MEMORY_SUGGESTIONS);
+
+  return {
+    ...current,
+    recentByGroup: {
+      ...current.recentByGroup,
+      [group]: [...pinned, ...dynamic]
+    }
+  };
+}
+
+function getSuggestionModeLabel(
+  group: ParentSuggestionGroup | null
+): 'parentable' | 'feature' | null {
+  if (!group) {
+    return null;
+  }
+
+  return group;
 }
 
 function getStateSortWeight(state: string): number {

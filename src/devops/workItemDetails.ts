@@ -2,6 +2,7 @@ import { isObject } from './typeGuards';
 
 export interface WorkItemDetails {
   workItemType: string;
+  title: string;
   parentId: number | null;
   areaPath: string;
   iterationPath: string;
@@ -14,7 +15,7 @@ export async function getWorkItemDetails(
 ): Promise<WorkItemDetails> {
   const url =
     `https://dev.azure.com/${encodeURIComponent(organization)}/${encodeURIComponent(project)}` +
-    `/_apis/wit/workitems/${workItemId}?fields=${encodeURIComponent('System.WorkItemType,System.Parent,System.AreaPath,System.IterationPath')}` +
+    `/_apis/wit/workitems/${workItemId}?fields=${encodeURIComponent('System.WorkItemType,System.Title,System.Parent,System.AreaPath,System.IterationPath')}` +
     '&api-version=7.0';
 
   const response = await fetch(url, {
@@ -33,10 +34,17 @@ export async function getWorkItemDetails(
   const data: unknown = await response.json();
 
   if (!isObject(data) || !isObject(data.fields)) {
-    return { workItemType: '', parentId: null, areaPath: '', iterationPath: '' };
+    return {
+      workItemType: '',
+      title: '',
+      parentId: null,
+      areaPath: '',
+      iterationPath: ''
+    };
   }
 
   const workItemTypeRaw = data.fields['System.WorkItemType'];
+  const titleRaw = data.fields['System.Title'];
   const parentIdRaw = data.fields['System.Parent'];
   const areaPathRaw = data.fields['System.AreaPath'];
   const iterationPathRaw = data.fields['System.IterationPath'];
@@ -44,6 +52,7 @@ export async function getWorkItemDetails(
   return {
     workItemType:
       typeof workItemTypeRaw === 'string' ? workItemTypeRaw.trim() : '',
+    title: typeof titleRaw === 'string' ? titleRaw.trim() : '',
     parentId: typeof parentIdRaw === 'number' ? parentIdRaw : null,
     areaPath: typeof areaPathRaw === 'string' ? areaPathRaw.trim() : '',
     iterationPath:
@@ -60,4 +69,3 @@ export function isSupportedParentType(workItemType: string): boolean {
     normalized === 'improvement'
   );
 }
-

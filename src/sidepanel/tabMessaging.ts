@@ -8,7 +8,7 @@ import type {
 
 export type RuntimeResponse<T> =
   | { ok: true; result: T }
-  | { ok: false; error: string };
+  | { ok: false, error: string };
 
 const NO_RECEIVER_ERROR =
   'Could not establish connection. Receiving end does not exist.';
@@ -61,18 +61,29 @@ export async function getActiveWorkItemContext(): Promise<
 }
 
 export async function createChildTask(
-  title: string
+  title: string,
+  preferredParentId?: number
 ): Promise<RuntimeResponse<CreatedChildTask>> {
   return sendMessageToActiveTab<RuntimeResponse<CreatedChildTask>>({
     type: 'CREATE_CHILD_TASK',
-    payload: { title }
+    payload: { title, preferredParentId }
   });
 }
 
-export async function fetchChildTasksForCurrentParent(): Promise<
-  RuntimeResponse<ChildTaskItem[]>
-> {
+export async function fetchChildTasksForCurrentParent(
+  preferredParentId?: number
+): Promise<RuntimeResponse<ChildTaskItem[]>> {
   return sendMessageToActiveTab<RuntimeResponse<ChildTaskItem[]>>({
-    type: 'FETCH_CHILD_TASKS_FOR_CURRENT_PARENT'
+    type: 'FETCH_CHILD_TASKS_FOR_CURRENT_PARENT',
+    payload: { preferredParentId }
+  });
+}
+
+export async function setActiveWorkItemParent(
+  parentId: number
+): Promise<RuntimeResponse<null>> {
+  return sendMessageToActiveTab<RuntimeResponse<null>>({
+    type: 'SET_ACTIVE_WORK_ITEM_PARENT',
+    payload: { parentId }
   });
 }

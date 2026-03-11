@@ -5,7 +5,8 @@ import { getWorkItemDetails } from './workItemDetails';
 
 export async function createChildTaskFromActivePage(
   rawTitle: string,
-  rawUrl: string
+  rawUrl: string,
+  preferredParentId?: number
 ): Promise<CreatedChildTask> {
   const title = rawTitle.trim();
 
@@ -13,7 +14,12 @@ export async function createChildTaskFromActivePage(
     throw new Error('Enter a task title before creating.');
   }
 
-  const context = await resolveActiveWorkItemContext(rawUrl);
+  const context = await resolveActiveWorkItemContext(rawUrl, preferredParentId);
+
+  if (!context.parentId) {
+    throw new Error('No parent work item is selected or detected for task creation.');
+  }
+
   const parentDetails = await getWorkItemDetails(
     context.organization,
     context.project,
@@ -24,11 +30,11 @@ export async function createChildTaskFromActivePage(
     `https://dev.azure.com/${encodeURIComponent(context.organization)}/${encodeURIComponent(context.project)}` +
     `/_apis/wit/workItems/${context.parentId}`;
 
-  const patchOperations: Array<{
+  const patchOperations: {
     op: 'add';
     path: string;
     value: string | { rel: string; url: string };
-  }> = [
+  }[] = [
     { op: 'add', path: '/fields/System.Title', value: title }
   ];
 
@@ -89,4 +95,3 @@ export async function createChildTaskFromActivePage(
     url: `https://dev.azure.com/${context.organization}/${context.project}/_workitems/edit/${id}`
   };
 }
-

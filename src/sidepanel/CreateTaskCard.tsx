@@ -1,10 +1,15 @@
-import type { ChildTaskItem } from '@/types';
+import type { ChildTaskItem, ParentSuggestionItem } from '@/types';
 
-type CreateTaskCardProps = {
+interface ParentSuggestionView extends ParentSuggestionItem {
+  isPinned: boolean;
+}
+
+interface CreateTaskCardProps {
   taskTitle: string;
   onTaskTitleChange: (value: string) => void;
   onCreateTask: () => Promise<void>;
   parentWorkItemId: number | null;
+  isParentDetected: boolean;
   createdTasks: ChildTaskItem[];
   availableTaskStates: string[];
   hiddenTaskStates: string[];
@@ -14,19 +19,28 @@ type CreateTaskCardProps = {
     kind: 'info' | 'success' | 'error';
     text: string;
   } | null;
-};
+  suggestedParents: ParentSuggestionView[];
+  suggestionMode: 'parentable' | 'feature' | null;
+  onSetSuggestedParent: (parentId: number) => Promise<void>;
+  onTogglePinSuggestedParent: (parentId: number, isPinned: boolean) => void;
+}
 
 export function CreateTaskCard({
   taskTitle,
   onTaskTitleChange,
   onCreateTask,
   parentWorkItemId,
+  isParentDetected,
   createdTasks,
   availableTaskStates,
   hiddenTaskStates,
   onToggleTaskStateFilter,
   isActionDisabled,
-  statusMessage
+  statusMessage,
+  suggestedParents,
+  suggestionMode,
+  onSetSuggestedParent,
+  onTogglePinSuggestedParent
 }: CreateTaskCardProps) {
   const buttonLabel = parentWorkItemId
     ? `create task for #${parentWorkItemId}`
@@ -67,10 +81,66 @@ export function CreateTaskCard({
       )}
 
       {parentWorkItemId ? (
-        <div className="current-parent">Current parent: #{parentWorkItemId}</div>
+        <div className="current-parent">
+          Current parent: #{parentWorkItemId}{' '}
+          {isParentDetected ? '(detected from active work item)' : '(selected from suggestions)'}
+        </div>
       ) : (
-        <div className="current-parent">Current parent: not detected</div>
+        <div className="current-parent">Current parent: not set</div>
       )}
+
+      <div className="parent-suggestion-list">
+        <div className="parent-suggestion-title">
+          {suggestionMode === 'feature'
+            ? 'Recent features'
+            : suggestionMode === 'parentable'
+              ? 'Recent bugs / improvements / PBIs'
+              : 'Recent parent suggestions'}
+        </div>
+
+        {suggestedParents.length ? (
+          suggestedParents.map((item) => {
+            const isSelected = parentWorkItemId === item.id;
+            return (
+              <div key={item.id} className="parent-suggestion-row">
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`parent-suggestion-link ${isSelected ? 'selected' : ''}`}
+                  title={item.title}
+                >
+                  #{item.id} [{item.workItemType}] - {item.title}
+                </a>
+                <button
+                  type="button"
+                  className="parent-suggestion-action"
+                  onClick={() => {
+                    void onSetSuggestedParent(item.id);
+                  }}
+                >
+                  set as parent
+                </button>
+                <button
+                  type="button"
+                  className="parent-suggestion-action parent-suggestion-pin"
+                  onClick={() =>
+                    onTogglePinSuggestedParent(item.id, !item.isPinned)
+                  }
+                >
+                  {item.isPinned ? 'unpin' : 'pin'}
+                </button>
+              </div>
+            );
+          })
+        ) : (
+          <div className="created-task-empty">
+            {suggestionMode
+              ? 'No recent suggestions yet. Visit a matching parentable work item to populate this list.'
+              : 'Suggestions appear here when the active item is a Task, Bug, PBI, Improvement, or Feature.'}
+          </div>
+        )}
+      </div>
 
       <div className="state-filter-row">
         {availableTaskStates.map((state) => {

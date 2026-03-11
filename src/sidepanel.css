@@ -226,3 +226,74 @@ button:disabled {
   margin: 0;
   width: auto;
 }
+
+.parent-suggestion-list {
+  margin-top: 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.parent-suggestion-title {
+  font-size: 12px;
+  color: #444;
+}
+
+.parent-suggestion-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.parent-suggestion-link {
+  font-size: 12px;
+  color: #0a5bd3;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.parent-suggestion-link:hover {
+  text-decoration: underline;
+}
+
+.parent-suggestion-link.selected {
+  font-weight: 700;
+}
+
+.parent-suggestion-action {
+  margin-top: 0;
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.parent-suggestion-pin {
+  min-width: 50px;
+}
+
+.active-work-item-banner {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  background: #eef3ff;
+  border: 1px solid #ccd9f5;
+  border-radius: 8px;
+}
+
+.active-work-item-label {
+  font-size: 11px;
+  color: #5a6d96;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.active-work-item-title {
+  font-size: 12px;
+  color: #1f2c4a;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

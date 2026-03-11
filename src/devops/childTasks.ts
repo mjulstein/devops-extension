@@ -3,9 +3,15 @@ import { resolveActiveWorkItemContext } from './activeParentContext';
 import { isObject } from './typeGuards';
 
 export async function fetchChildTasksForActiveParent(
-  rawUrl: string
+  rawUrl: string,
+  preferredParentId?: number
 ): Promise<ChildTaskItem[]> {
-  const context = await resolveActiveWorkItemContext(rawUrl);
+  const context = await resolveActiveWorkItemContext(rawUrl, preferredParentId);
+
+  if (!context.parentId) {
+    throw new Error('No parent work item is selected or detected for loading child tasks.');
+  }
+
   const relationUrl =
     `https://dev.azure.com/${encodeURIComponent(context.organization)}/${encodeURIComponent(context.project)}` +
     `/_apis/wit/workitems/${context.parentId}?$expand=relations&api-version=7.0`;
@@ -152,4 +158,3 @@ function getStateSortWeight(state: string): number {
     ? 0
     : 1;
 }
-

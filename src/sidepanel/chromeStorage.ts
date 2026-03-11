@@ -1,12 +1,33 @@
 import { defaultSettings } from './defaultSettings';
-import type { Settings, WorkItem, WorkItemResult } from '@/types';
+import type {
+  ParentSuggestionGroup,
+  ParentSuggestionItem,
+  ParentSuggestionStore,
+  Settings,
+  WorkItem,
+  WorkItemResult
+} from '@/types';
 import type { SidepanelTabId } from './Tabs';
 
 const CACHED_WORK_ITEMS_KEY = 'cachedWorkItems';
 const ACTIVE_SIDEPANEL_TAB_KEY = 'activeSidepanelTab';
 const HIDDEN_CHILD_TASK_STATES_KEY = 'hiddenChildTaskStates';
+const PARENT_SUGGESTIONS_KEY = 'parentSuggestions';
+// Keep enough entries to support recency ordering while only rendering a small subset.
+const MAX_STORED_RECENT_SUGGESTIONS = 40;
 
 type PersistedSidepanelTabId = Exclude<SidepanelTabId, 'settings'>;
+
+const EMPTY_PARENT_SUGGESTIONS: ParentSuggestionStore = {
+  recentByGroup: {
+    parentable: [],
+    feature: []
+  },
+  pinnedIdsByGroup: {
+    parentable: [],
+    feature: []
+  }
+};
 
 export async function loadSettings(): Promise<Settings> {
   return chrome.storage.local.get(defaultSettings);
@@ -54,6 +75,62 @@ export async function saveHiddenChildTaskStates(states: string[]): Promise<void>
   await chrome.storage.local.set({ [HIDDEN_CHILD_TASK_STATES_KEY]: states });
 }
 
+export async function loadParentSuggestions(): Promise<ParentSuggestionStore> {
+  const stored = await chrome.storage.local.get(PARENT_SUGGESTIONS_KEY);
+  const value = stored[PARENT_SUGGESTIONS_KEY];
+  return isParentSuggestionStore(value) ? value : EMPTY_PARENT_SUGGESTIONS;
+}
+
+export async function upsertParentSuggestion(
+  group: ParentSuggestionGroup,
+  item: Omit<ParentSuggestionItem, 'lastVisitedAt'>
+): Promise<void> {
+  const current = await loadParentSuggestions();
+  const now = Date.now();
+  const pinnedIds = new Set(current.pinnedIdsByGroup[group]);
+  const sorted = [
+    { ...item, lastVisitedAt: now },
+    ...current.recentByGroup[group].filter((entry) => entry.id !== item.id)
+  ];
+
+  const pinnedEntries = sorted.filter((entry) => pinnedIds.has(entry.id));
+  const dynamicEntries = sorted
+    .filter((entry) => !pinnedIds.has(entry.id))
+    .slice(0, MAX_STORED_RECENT_SUGGESTIONS);
+
+  const next: ParentSuggestionStore = {
+    ...current,
+    recentByGroup: {
+      ...current.recentByGroup,
+      [group]: [...pinnedEntries, ...dynamicEntries]
+    }
+  };
+
+  await chrome.storage.local.set({ [PARENT_SUGGESTIONS_KEY]: next });
+}
+
+export async function setParentSuggestionPinned(
+  group: ParentSuggestionGroup,
+  workItemId: number,
+  isPinned: boolean
+): Promise<void> {
+  const current = await loadParentSuggestions();
+  const pinned = current.pinnedIdsByGroup[group];
+  const nextPinned = isPinned
+    ? [workItemId, ...pinned.filter((entry) => entry !== workItemId)]
+    : pinned.filter((entry) => entry !== workItemId);
+
+  const next: ParentSuggestionStore = {
+    ...current,
+    pinnedIdsByGroup: {
+      ...current.pinnedIdsByGroup,
+      [group]: nextPinned
+    }
+  };
+
+  await chrome.storage.local.set({ [PARENT_SUGGESTIONS_KEY]: next });
+}
+
 function isWorkItemResult(value: unknown): value is WorkItemResult {
   if (!isRecord(value)) {
     return false;
@@ -97,4 +174,50 @@ function isPersistedSidepanelTabId(
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+}
+
+function isParentSuggestionStore(value: unknown): value is ParentSuggestionStore {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    isSuggestionItemArray(value.recentByGroup, 'parentable') &&
+    isSuggestionItemArray(value.recentByGroup, 'feature') &&
+    isPinnedIdArray(value.pinnedIdsByGroup, 'parentable') &&
+    isPinnedIdArray(value.pinnedIdsByGroup, 'feature')
+  );
+}
+
+function isSuggestionItemArray(
+  record: unknown,
+  key: ParentSuggestionGroup
+): boolean {
+  if (!isRecord(record) || !Array.isArray(record[key])) {
+    return false;
+  }
+
+  return record[key].every(isParentSuggestionItem);
+}
+
+function isPinnedIdArray(record: unknown, key: ParentSuggestionGroup): boolean {
+  if (!isRecord(record) || !Array.isArray(record[key])) {
+    return false;
+  }
+
+  return record[key].every((entry) => typeof entry === 'number');
+}
+
+function isParentSuggestionItem(value: unknown): value is ParentSuggestionItem {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.id === 'number' &&
+    typeof value.title === 'string' &&
+    typeof value.workItemType === 'string' &&
+    typeof value.url === 'string' &&
+    typeof value.lastVisitedAt === 'number'
+  );
 }
