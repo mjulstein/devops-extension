@@ -25,6 +25,7 @@ import {
   fetchChildTasksForCurrentParent,
   fetchWorkItems,
   getActiveTabId,
+  isActiveTabAzureDevOps,
   getActiveWorkItemContext,
   setActiveWorkItemParent
 } from './tabMessaging';
@@ -80,6 +81,7 @@ export function App() {
     useState<ParentSuggestionStore>(EMPTY_PARENT_SUGGESTIONS);
   const [pinnedActiveWorkItemContext, setPinnedActiveWorkItemContext] =
     useState<ActiveWorkItemContext | null>(null);
+  const [linkExternal, setLinkExternal] = useState(true);
 
   const isActiveItemPinned = Boolean(pinnedActiveWorkItemContext);
 
@@ -158,6 +160,7 @@ export function App() {
       setHiddenTaskStates(storedHiddenStates);
       setParentSuggestions(storedParentSuggestions);
       setPinnedActiveWorkItemContext(storedPinnedContext);
+      await refreshActiveTabLinkMode();
 
       if (cachedResult) {
         setResult(cachedResult);
@@ -183,6 +186,8 @@ export function App() {
 
   useEffect(() => {
     const onFocus = () => {
+      void refreshActiveTabLinkMode();
+
       if (isActiveItemPinned) {
         return;
       }
@@ -191,6 +196,8 @@ export function App() {
     };
 
     const onVisibilityChange = () => {
+      void refreshActiveTabLinkMode();
+
       if (document.hidden || isActiveItemPinned) {
         return;
       }
@@ -199,6 +206,8 @@ export function App() {
     };
 
     const onTabActivated = () => {
+      void refreshActiveTabLinkMode();
+
       if (isActiveItemPinned) {
         return;
       }
@@ -211,6 +220,8 @@ export function App() {
       changeInfo: chrome.tabs.OnUpdatedInfo,
       tab: chrome.tabs.Tab
     ) => {
+      void refreshActiveTabLinkMode();
+
       if (isActiveItemPinned || !tab.active) {
         return;
       }
@@ -232,6 +243,15 @@ export function App() {
       chrome.tabs.onUpdated.removeListener(onTabUpdated);
     };
   }, [isActiveItemPinned]);
+
+  async function refreshActiveTabLinkMode() {
+    try {
+      const isAzureDevOpsTab = await isActiveTabAzureDevOps();
+      setLinkExternal(!isAzureDevOpsTab);
+    } catch {
+      setLinkExternal(true);
+    }
+  }
 
   async function onSaveSettings() {
     await saveSettings({
@@ -612,6 +632,7 @@ export function App() {
           }
           onFetchWorkItems={onFetchWorkItems}
           isActionDisabled={isLoading || isCreatingTask}
+          linkExternal={linkExternal}
         />
       ) : null}
 
@@ -632,6 +653,7 @@ export function App() {
           suggestionMode={getSuggestionModeLabel(suggestionGroup)}
           onSetSuggestedParent={onSetSuggestedParent}
           onTogglePinSuggestedParent={onTogglePinSuggestedParent}
+          linkExternal={linkExternal}
         />
       ) : null}
     </div>

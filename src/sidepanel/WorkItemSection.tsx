@@ -1,4 +1,5 @@
 import type { WorkItem } from '@/types';
+import { Link } from './Link';
 
 interface WorkItemSectionProps {
   title: string;
@@ -6,6 +7,7 @@ interface WorkItemSectionProps {
   items: WorkItem[];
   showClosedAt: boolean;
   showState?: boolean;
+  linkExternal: boolean;
 }
 
 export function WorkItemSection({
@@ -13,7 +15,8 @@ export function WorkItemSection({
   emptyText,
   items,
   showClosedAt,
-  showState = true
+  showState = true,
+  linkExternal
 }: WorkItemSectionProps) {
   return (
     <>
@@ -35,14 +38,13 @@ export function WorkItemSection({
                 className={`work-item-grid-row ${rowClass}`}
                 role="listitem"
               >
-                <a
+                <Link
                   className="work-item-id"
                   href={item.url}
-                  target="_blank"
-                  rel="noreferrer"
+                  external={linkExternal}
                 >
                   {item.id}
-                </a>
+                </Link>
                 <span className="work-item-type" title={item.workItemType}>
                   {item.workItemType}
                 </span>

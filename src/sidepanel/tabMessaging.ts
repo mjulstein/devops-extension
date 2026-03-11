@@ -23,6 +23,11 @@ export async function getActiveTabId(): Promise<number> {
   return tab.id;
 }
 
+export async function isActiveTabAzureDevOps(): Promise<boolean> {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  return isAzureDevOpsUrl(tab?.url);
+}
+
 async function sendMessageToActiveTab<T>(message: unknown): Promise<T> {
   const tabId = await getActiveTabId();
 
@@ -88,4 +93,21 @@ export async function setActiveWorkItemParent(
     type: 'SET_ACTIVE_WORK_ITEM_PARENT',
     payload: { parentId }
   });
+}
+
+function isAzureDevOpsUrl(rawUrl: string | undefined): boolean {
+  if (!rawUrl) {
+    return false;
+  }
+
+  let parsedUrl: URL;
+
+  try {
+    parsedUrl = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+
+  const hostname = parsedUrl.hostname.toLowerCase();
+  return hostname === 'dev.azure.com' || hostname.endsWith('.visualstudio.com');
 }

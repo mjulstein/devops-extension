@@ -12,6 +12,7 @@ interface StatusCardProps {
   preFetchHint: string | null;
   onFetchWorkItems: () => Promise<void>;
   isActionDisabled: boolean;
+  linkExternal: boolean;
 }
 
 export function StatusCard({
@@ -21,7 +22,8 @@ export function StatusCard({
   statusMessage,
   preFetchHint,
   onFetchWorkItems,
-  isActionDisabled
+  isActionDisabled,
+  linkExternal
 }: StatusCardProps) {
   return (
     <section className="card">
@@ -57,6 +59,7 @@ export function StatusCard({
               items={result.openItems}
               showClosedAt={false}
               showState={true}
+              linkExternal={linkExternal}
             />
             <WorkItemSection
               title="Closed last week"
@@ -64,6 +67,7 @@ export function StatusCard({
               items={result.closedItems}
               showClosedAt={true}
               showState={false}
+              linkExternal={linkExternal}
             />
           </>
         ) : null}

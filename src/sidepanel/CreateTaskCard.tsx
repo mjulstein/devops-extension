@@ -1,4 +1,5 @@
 import type { ChildTaskItem, ParentSuggestionItem } from '@/types';
+import { Link } from './Link';
 
 interface ParentSuggestionView extends ParentSuggestionItem {
   isPinned: boolean;
@@ -23,6 +24,7 @@ interface CreateTaskCardProps {
   suggestionMode: 'parentable' | 'feature' | null;
   onSetSuggestedParent: (parentId: number) => Promise<void>;
   onTogglePinSuggestedParent: (parentId: number, isPinned: boolean) => void;
+  linkExternal: boolean;
 }
 
 export function CreateTaskCard({
@@ -40,7 +42,8 @@ export function CreateTaskCard({
   suggestedParents,
   suggestionMode,
   onSetSuggestedParent,
-  onTogglePinSuggestedParent
+  onTogglePinSuggestedParent,
+  linkExternal
 }: CreateTaskCardProps) {
   const buttonLabel = parentWorkItemId
     ? `create task for #${parentWorkItemId}`
@@ -106,15 +109,14 @@ export function CreateTaskCard({
             const isSelected = parentWorkItemId === item.id;
             return (
               <div key={item.id} className="parent-suggestion-row">
-                <a
+                <Link
                   href={item.url}
-                  target="_blank"
-                  rel="noreferrer"
+                  external={linkExternal}
                   className={`parent-suggestion-link ${isSelected ? 'selected' : ''}`}
                   title={item.title}
                 >
                   #{item.id} [{item.workItemType}] - {item.title}
-                </a>
+                </Link>
                 <button
                   type="button"
                   className="parent-suggestion-action"
@@ -166,15 +168,14 @@ export function CreateTaskCard({
       <div className="created-task-list">
         {createdTasks.length ? (
           createdTasks.map((task) => (
-            <a
+            <Link
               key={task.id}
               href={task.url}
-              target="_blank"
-              rel="noreferrer"
+              external={linkExternal}
               className="created-task-link"
             >
               #{task.id} [{task.state}] - {task.title}
-            </a>
+            </Link>
           ))
         ) : (
           <div className="created-task-empty">
