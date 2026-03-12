@@ -5,7 +5,7 @@ interface ParentSuggestionView extends ParentSuggestionItem {
   isPinned: boolean;
 }
 
-interface CreateTaskCardProps {
+interface WorkItemCardProps {
   taskTitle: string;
   onTaskTitleChange: (value: string) => void;
   onCreateTask: () => Promise<void>;
@@ -27,7 +27,7 @@ interface CreateTaskCardProps {
   linkExternal: boolean;
 }
 
-export function CreateTaskCard({
+export function WorkItemCard({
   taskTitle,
   onTaskTitleChange,
   onCreateTask,
@@ -44,7 +44,7 @@ export function CreateTaskCard({
   onSetSuggestedParent,
   onTogglePinSuggestedParent,
   linkExternal
-}: CreateTaskCardProps) {
+}: WorkItemCardProps) {
   const buttonLabel = parentWorkItemId
     ? `create task for #${parentWorkItemId}`
     : 'create task for #workitemId';
@@ -52,7 +52,7 @@ export function CreateTaskCard({
   return (
     <section className="card">
       <form
-        className="create-task-form"
+        className="work-item-form"
         onSubmit={(event) => {
           event.preventDefault();
           void onCreateTask();

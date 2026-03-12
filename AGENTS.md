@@ -40,7 +40,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - `src/sidepanel.html` — side panel HTML entry
 - `src/sidepanel.tsx` — React side panel entry
 - `src/sidepanel.css` — side panel styling
-- `src/sidepanel/*Card.tsx` and `src/sidepanel/WorkItemSection.tsx` — side panel React components
+- `src/sidepanel/*Card.tsx` (for example `src/sidepanel/WorkItemCard.tsx`) and `src/sidepanel/WorkItemSection.tsx` — side panel React components
 - `src/sidepanel/{chromeStorage,defaultSettings,types}.ts` — side panel utility modules
 - `src/sidepanel/tabMessaging/index.ts` + `src/sidepanel/tabMessaging/*.ts` — side panel tab messaging barrel + function modules
 - `src/sidepanel/tabMessaging/*.test.ts` / `*.test.tsx` — Vitest unit tests (globals enabled)

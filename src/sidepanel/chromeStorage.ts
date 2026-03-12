@@ -54,7 +54,7 @@ export async function saveCachedWorkItems(
 export async function loadActiveSidepanelTab(): Promise<SidepanelTabId> {
   const stored = await chrome.storage.local.get(ACTIVE_SIDEPANEL_TAB_KEY);
   const value = stored[ACTIVE_SIDEPANEL_TAB_KEY];
-  return isPersistedSidepanelTabId(value) ? value : 'work-items';
+  return normalizePersistedSidepanelTabId(value) ?? 'work-items';
 }
 
 export async function saveActiveSidepanelTab(
@@ -193,7 +193,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isPersistedSidepanelTabId(
   value: unknown
 ): value is PersistedSidepanelTabId {
-  return value === 'work-items' || value === 'create-task';
+  return value === 'work-items' || value === 'work-item';
+}
+
+function normalizePersistedSidepanelTabId(
+  value: unknown
+): PersistedSidepanelTabId | null {
+  if (value === 'create-task') {
+    return 'work-item';
+  }
+
+  return isPersistedSidepanelTabId(value) ? value : null;
 }
 
 function isStringArray(value: unknown): value is string[] {

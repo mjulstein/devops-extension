@@ -131,7 +131,7 @@ npm test
 2. Open the extension side panel.
 3. Configure only `Assigned to` (organization/project are read from the active Azure DevOps URL).
 4. Click **Fetch work items**.
-5. To create child tasks, open a Bug or PBI work item in the active tab, type a title in **Task title**, and press **Enter** repeatedly to build a list of created tasks.
+5. Open the **Active item** tab to create child tasks, then open a Bug or PBI work item in the active tab, type a title in **Task title**, and press **Enter** repeatedly to build a list of created tasks.
 
 The extension queries Azure DevOps using the current browser session and displays matching work items in the side panel.
 

@@ -148,7 +148,7 @@ button:disabled {
   font-size: 12px;
 }
 
-.create-task-form {
+.work-item-form {
   display: grid;
   gap: 8px;
 }
@@ -181,18 +181,52 @@ button:disabled {
 }
 
 .tab-row {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  align-items: stretch;
   gap: 6px;
   margin-bottom: 12px;
 }
 
 .tab-handle {
+  flex: 1 1 0;
   margin-top: 0;
   border: 1px solid #c8c8c8;
   border-radius: 8px;
   background: #efefef;
   font-size: 12px;
+}
+
+.tab-handle-group {
+  flex: 1.2 1 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0;
+}
+
+.tab-handle-group .tab-handle-main {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-handle-pin {
+  flex: 0 0 auto;
+  border-left: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  padding: 8px 8px;
+  min-width: 40px;
+  font-size: 11px;
+}
+
+.tab-handle-settings {
+  flex: 0 0 auto;
+  width: 42px;
+  padding: 8px 0;
+  text-align: center;
 }
 
 .tab-handle.active {
@@ -308,15 +342,3 @@ button:disabled {
   text-overflow: ellipsis;
 }
 
-.active-work-item-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 6px;
-  align-items: stretch;
-}
-
-.active-work-item-pin-toggle {
-  margin: 0;
-  padding: 8px 10px;
-  font-size: 11px;
-}

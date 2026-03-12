@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { SettingsCard } from './SettingsCard';
 import { StatusCard } from './StatusCard';
-import { CreateTaskCard } from './CreateTaskCard';
+import { WorkItemCard } from './WorkItemCard';
 import { Tabs, type SidepanelTabId } from './Tabs';
 import {
   clearPinnedActiveWorkItemContext,
@@ -576,38 +576,35 @@ export function App() {
 
   return (
     <div className="wrap">
-      <div className="active-work-item-row">
-        <button
-          type="button"
-          className="active-work-item-banner"
-          title={
-            isActiveItemPinned
-              ? 'Pinned: click to open this work item'
-              : 'Click to resync from the active Azure DevOps page state'
-          }
-          onClick={() => {
-            void onActiveItemBannerClick();
-          }}
-        >
-          <span className="active-work-item-label">
-            {isActiveItemPinned
-              ? 'Active item (pinned: click to open)'
-              : 'Active item (click to resync)'}
-          </span>
-          <span className="active-work-item-title">{activeItemHeading}</span>
-        </button>
+      <button
+        type="button"
+        className="active-work-item-banner"
+        title={
+          isActiveItemPinned
+            ? 'Pinned: click to open this work item'
+            : 'Click to resync from the active Azure DevOps page state'
+        }
+        onClick={() => {
+          void onActiveItemBannerClick();
+        }}
+      >
+        <span className="active-work-item-label">
+          {isActiveItemPinned
+            ? 'Active item (pinned: click to open)'
+            : 'Active item (click to resync)'}
+        </span>
+        <span className="active-work-item-title">{activeItemHeading}</span>
+      </button>
 
-        <button
-          type="button"
-          className="active-work-item-pin-toggle"
-          onClick={() => {
-            void onTogglePinActiveItem();
-          }}
-        >
-          {isActiveItemPinned ? 'unpin' : 'pin'}
-        </button>
-      </div>
-      <Tabs activeTab={activeTab} onSelectTab={onSelectTab} />
+      <Tabs
+        activeTab={activeTab}
+        onSelectTab={onSelectTab}
+        isActiveItemPinned={isActiveItemPinned}
+        onTogglePinActiveItem={() => {
+          void onTogglePinActiveItem();
+        }}
+        activeItemTabLabel={activeItemHeading}
+      />
 
       {activeTab === 'settings' ? (
         <SettingsCard
@@ -636,8 +633,8 @@ export function App() {
         />
       ) : null}
 
-      {activeTab === 'create-task' ? (
-        <CreateTaskCard
+      {activeTab === 'work-item' ? (
+        <WorkItemCard
           taskTitle={taskTitle}
           onTaskTitleChange={setTaskTitle}
           onCreateTask={onCreateTaskFromCurrentWorkItem}
