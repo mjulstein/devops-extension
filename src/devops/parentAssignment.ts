@@ -7,14 +7,18 @@ import {
 
 export async function setParentForActiveWorkItem(
   rawUrl: string,
-  selectedParentId: number
+  selectedParentId: number,
+  targetWorkItemId?: number
 ): Promise<void> {
   if (!Number.isFinite(selectedParentId) || selectedParentId <= 0) {
     throw new Error('A valid parent work item id is required.');
   }
 
   const { organization, project } = getOrganizationAndProjectFromUrl(rawUrl);
-  const currentWorkItemId = getWorkItemIdFromUrl(rawUrl);
+  const currentWorkItemId =
+    typeof targetWorkItemId === 'number' && targetWorkItemId > 0
+      ? targetWorkItemId
+      : getWorkItemIdFromUrl(rawUrl);
 
   if (!currentWorkItemId) {
     throw new Error(

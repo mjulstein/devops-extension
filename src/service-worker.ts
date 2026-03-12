@@ -45,6 +45,7 @@ type RuntimeMessage =
       type: 'SET_ACTIVE_WORK_ITEM_PARENT';
       payload: {
         parentId: number;
+        targetWorkItemId?: number;
       };
     };
 
@@ -128,7 +129,11 @@ chrome.runtime.onMessage.addListener(
     if (message.type === 'SET_ACTIVE_WORK_ITEM_PARENT') {
       resolveRuntimeActiveWorkItemUrl(false)
         .then((url) =>
-          setParentForActiveWorkItem(url, message.payload.parentId)
+          setParentForActiveWorkItem(
+            url,
+            message.payload.parentId,
+            message.payload.targetWorkItemId
+          )
         )
         .then(() => sendResponse({ ok: true, result: null }))
         .catch((error: Error) =>

@@ -291,6 +291,13 @@ function isActiveWorkItemContext(
     typeof value.organization === 'string' &&
     typeof value.project === 'string' &&
     (typeof value.parentId === 'number' || value.parentId === null) &&
+    (isRecord(value.parent)
+      ? typeof value.parent.id === 'number' &&
+        typeof value.parent.title === 'string' &&
+        typeof value.parent.workItemType === 'string' &&
+        typeof value.parent.url === 'string'
+      : value.parent === null) &&
+    (typeof value.viewedTaskId === 'number' || value.viewedTaskId === null) &&
     typeof value.current.id === 'number' &&
     typeof value.current.title === 'string' &&
     typeof value.current.workItemType === 'string' &&

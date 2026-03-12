@@ -34,6 +34,13 @@ export async function resolveActiveWorkItemContext(
         organization,
         project,
         parentId: preferredParentId,
+        parent: {
+          id: preferredParentId,
+          title: preferredParent.title,
+          workItemType: preferredParent.workItemType,
+          url: `https://dev.azure.com/${organization}/${project}/_workitems/edit/${preferredParentId}`
+        },
+        viewedTaskId: null,
         current: {
           id: preferredParentId,
           title: preferredParent.title,
@@ -54,6 +61,8 @@ export async function resolveActiveWorkItemContext(
     organization,
     project,
     parentId: null,
+    parent: null,
+    viewedTaskId: null,
     current: {
       id: workItemId,
       title: current.title,
@@ -76,15 +85,24 @@ export async function resolveActiveWorkItemContext(
     }
 
     context.parentId = preferredParentId;
+    context.parent = {
+      id: preferredParentId,
+      title: preferredParent.title,
+      workItemType: preferredParent.workItemType,
+      url: `https://dev.azure.com/${organization}/${project}/_workitems/edit/${preferredParentId}`
+    };
     return context;
   }
 
   if (isSupportedParentType(current.workItemType)) {
     context.parentId = workItemId;
+    context.parent = context.current;
     return context;
   }
 
   if (current.workItemType.trim().toLowerCase() === 'task') {
+    context.viewedTaskId = workItemId;
+
     if (!current.parentId) {
       return context;
     }
@@ -96,6 +114,12 @@ export async function resolveActiveWorkItemContext(
     );
     if (isSupportedParentType(parent.workItemType)) {
       context.parentId = current.parentId;
+      context.parent = {
+        id: current.parentId,
+        title: parent.title,
+        workItemType: parent.workItemType,
+        url: `https://dev.azure.com/${organization}/${project}/_workitems/edit/${current.parentId}`
+      };
     }
   }
 

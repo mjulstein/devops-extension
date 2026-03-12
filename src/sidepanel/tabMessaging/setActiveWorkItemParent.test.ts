@@ -24,7 +24,19 @@ describe('setActiveWorkItemParent.test.ts', () => {
     await expect(setActiveWorkItemParent(999)).resolves.toEqual(response);
     expect(sendMessageMock).toHaveBeenCalledWith({
       type: 'SET_ACTIVE_WORK_ITEM_PARENT',
-      payload: { parentId: 999 }
+      payload: { parentId: 999, targetWorkItemId: undefined }
+    });
+  });
+
+  it('sends SET_ACTIVE_WORK_ITEM_PARENT with explicit target id', async () => {
+    const response = { ok: true, result: null };
+
+    sendMessageMock.mockResolvedValue(response);
+
+    await expect(setActiveWorkItemParent(501, 1234)).resolves.toEqual(response);
+    expect(sendMessageMock).toHaveBeenCalledWith({
+      type: 'SET_ACTIVE_WORK_ITEM_PARENT',
+      payload: { parentId: 501, targetWorkItemId: 1234 }
     });
   });
 });

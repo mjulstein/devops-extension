@@ -72,6 +72,7 @@ export function App() {
   const [activeWorkItemContext, setActiveWorkItemContext] =
     useState<ActiveWorkItemContext | null>(null);
   const [parentWorkItemId, setParentWorkItemId] = useState<number | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [childTasks, setChildTasks] = useState<ChildTaskItem[]>([]);
   const [loadingMessage, setLoadingMessage] = useState('Loading...');
   const [result, setResult] = useState<WorkItemResult | null>(null);
@@ -116,45 +117,15 @@ export function App() {
     return childTasks.filter((task) => !hidden.has(task.state));
   }, [childTasks, hiddenTaskStates]);
 
-  const suggestionGroup: ParentSuggestionGroup | null = (() => {
-    const workItemType = normalizeWorkItemType(
-      activeWorkItemContext?.current.workItemType ?? ''
-    );
+  const recentFeatureSuggestions = getSuggestionsByGroup(
+    parentSuggestions,
+    'feature'
+  );
 
-    if (workItemType === 'task') {
-      return 'parentable';
-    }
-
-    if (isParentableType(workItemType)) {
-      return 'feature';
-    }
-
-    return null;
-  })();
-
-  const suggestedParents: (ParentSuggestionItem & { isPinned: boolean })[] =
-    (() => {
-      if (!suggestionGroup) {
-        return [];
-      }
-
-      const recent = parentSuggestions.recentByGroup[suggestionGroup];
-      const pinnedIds = parentSuggestions.pinnedIdsByGroup[suggestionGroup];
-      const byId = new Map(recent.map((entry) => [entry.id, entry]));
-
-      const pinned = pinnedIds
-        .map((id) => byId.get(id))
-        .filter((entry): entry is ParentSuggestionItem => Boolean(entry))
-        .map((entry) => ({ ...entry, isPinned: true }));
-
-      const pinnedSet = new Set(pinned.map((entry) => entry.id));
-      const dynamic = recent
-        .filter((entry) => !pinnedSet.has(entry.id))
-        .slice(0, MAX_DYNAMIC_SUGGESTIONS)
-        .map((entry) => ({ ...entry, isPinned: false }));
-
-      return [...pinned, ...dynamic];
-    })();
+  const recentParentableSuggestions = getSuggestionsByGroup(
+    parentSuggestions,
+    'parentable'
+  );
 
   useEffect(() => {
     void (async () => {
@@ -231,9 +202,10 @@ export function App() {
 
       if (storedPinnedContext) {
         setActiveWorkItemContext(storedPinnedContext);
-        setParentWorkItemId(storedPinnedContext.parentId);
-        if (storedPinnedContext.parentId) {
-          await refreshChildTasks(storedPinnedContext.parentId);
+        setParentWorkItemId(storedPinnedContext.parent?.id ?? null);
+        setSelectedTaskId(storedPinnedContext.viewedTaskId ?? null);
+        if (storedPinnedContext.parent?.id) {
+          await refreshChildTasks(storedPinnedContext.parent.id);
         }
         return;
       }
@@ -409,11 +381,13 @@ export function App() {
     try {
       if (!bypassPinnedCheck && pinnedActiveWorkItemContext) {
         setActiveWorkItemContext(pinnedActiveWorkItemContext);
-        setParentWorkItemId(pinnedActiveWorkItemContext.parentId);
+        setParentWorkItemId(pinnedActiveWorkItemContext.parent?.id ?? null);
+        setSelectedTaskId(pinnedActiveWorkItemContext.viewedTaskId ?? null);
 
-        if (pinnedActiveWorkItemContext.parentId) {
-          await refreshChildTasks(pinnedActiveWorkItemContext.parentId);
+        if (pinnedActiveWorkItemContext.parent?.id) {
+          await refreshChildTasks(pinnedActiveWorkItemContext.parent.id);
         } else {
+          setSelectedTaskId(null);
           setChildTasks([]);
         }
 
@@ -433,13 +407,41 @@ export function App() {
 
         setActiveWorkItemContext(null);
         setParentWorkItemId(null);
+        setSelectedTaskId(null);
         setChildTasks([]);
         setCreateTaskStatusMessage({ kind: 'info', text: response.error });
         return;
       }
 
+      const normalizedCurrentType = normalizeWorkItemType(
+        response.result.current.workItemType
+      );
+
+      if (normalizedCurrentType === 'feature') {
+        const featureSuggestion = getSuggestionSource(response.result);
+        if (featureSuggestion) {
+          setParentSuggestions((current) =>
+            upsertSuggestionInMemory(
+              current,
+              featureSuggestion.group,
+              featureSuggestion.item
+            )
+          );
+          void upsertParentSuggestion(
+            featureSuggestion.group,
+            featureSuggestion.item
+          ).catch(() => undefined);
+        }
+
+        setCreateTaskStatusMessage({
+          kind: 'info',
+          text: 'Feature detected. Keeping current parentable work-item context.'
+        });
+        return;
+      }
+
       setActiveWorkItemContext(response.result);
-      setParentWorkItemId(response.result.parentId);
+      setParentWorkItemId(response.result.parent?.id ?? null);
 
       const suggestion = getSuggestionSource(response.result);
       if (suggestion) {
@@ -451,13 +453,17 @@ export function App() {
         );
       }
 
-      if (response.result.parentId) {
+      if (response.result.parent?.id) {
+        if (response.result.viewedTaskId) {
+          setSelectedTaskId(response.result.viewedTaskId);
+        }
         setCreateTaskStatusMessage({
           kind: 'info',
-          text: `Ready to create child tasks for #${response.result.parentId}.`
+          text: `Ready to create child tasks for #${response.result.parent.id}.`
         });
-        await refreshChildTasks(response.result.parentId);
+        await refreshChildTasks(response.result.parent.id);
       } else {
+        setSelectedTaskId(null);
         setChildTasks([]);
         setCreateTaskStatusMessage({
           kind: 'info',
@@ -478,6 +484,7 @@ export function App() {
 
       setActiveWorkItemContext(null);
       setParentWorkItemId(null);
+      setSelectedTaskId(null);
       setChildTasks([]);
       setCreateTaskStatusMessage({ kind: 'error', text: errorMessage });
     }
@@ -491,6 +498,17 @@ export function App() {
     }
 
     setChildTasks(response.result);
+    setSelectedTaskId((current) => {
+      if (!response.result.length) {
+        return null;
+      }
+
+      if (current && response.result.some((item) => item.id === current)) {
+        return current;
+      }
+
+      return response.result[0]?.id ?? null;
+    });
   }
 
   async function onCreateTaskFromCurrentWorkItem() {
@@ -523,6 +541,7 @@ export function App() {
 
       setParentWorkItemId(response.result.parentId);
       await refreshChildTasks(response.result.parentId);
+      setSelectedTaskId(response.result.id);
       setTaskTitle('');
       setCreateTaskStatusMessage({
         kind: 'success',
@@ -566,14 +585,45 @@ export function App() {
     });
   }
 
-  async function onSetSuggestedParent(parentId: number) {
+  async function onSelectTask(task: ChildTaskItem) {
+    setSelectedTaskId(task.id);
+
+    try {
+      await chrome.tabs.update({ url: task.url });
+      pushDebugLog('info', `Opened task #${task.id} in active tab.`);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      pushDebugLog(
+        'error',
+        `Task button click failed for #${task.id}: ${errorMessage}`
+      );
+      setCreateTaskStatusMessage({
+        kind: 'error',
+        text: `Could not open task #${task.id}: ${errorMessage}`
+      });
+    }
+  }
+
+  async function onSetFeatureParent(featureId: number) {
+    if (!activeWorkItemContext?.parent?.id) {
+      setCreateTaskStatusMessage({
+        kind: 'error',
+        text: 'No active bug/PBI/improvement selected for feature reparenting.'
+      });
+      return;
+    }
+
     try {
       setCreateTaskStatusMessage({
         kind: 'info',
-        text: `Setting #${parentId} as parent for the active work item...`
+        text: `Setting feature #${featureId} as parent for #${activeWorkItemContext.parent.id}...`
       });
 
-      const response = await setActiveWorkItemParent(parentId);
+      const response = await setActiveWorkItemParent(
+        featureId,
+        activeWorkItemContext.parent.id
+      );
       if (!response.ok) {
         setCreateTaskStatusMessage({ kind: 'error', text: response.error });
         return;
@@ -582,7 +632,7 @@ export function App() {
       await refreshActiveWorkItemContext();
       setCreateTaskStatusMessage({
         kind: 'success',
-        text: `Parent updated to #${parentId} for the active work item.`
+        text: `Feature parent updated to #${featureId} for #${activeWorkItemContext.parent.id}.`
       });
     } catch (error) {
       const errorMessage =
@@ -591,13 +641,47 @@ export function App() {
     }
   }
 
-  function onTogglePinSuggestedParent(parentId: number, isPinned: boolean) {
-    if (!suggestionGroup) {
+  async function onReparentSelectedTask(parentId: number) {
+    if (!selectedTaskId) {
+      setCreateTaskStatusMessage({
+        kind: 'error',
+        text: 'Select a task first before reparenting.'
+      });
       return;
     }
 
+    try {
+      setCreateTaskStatusMessage({
+        kind: 'info',
+        text: `Reparenting task #${selectedTaskId} to #${parentId}...`
+      });
+
+      const response = await setActiveWorkItemParent(parentId, selectedTaskId);
+      if (!response.ok) {
+        setCreateTaskStatusMessage({ kind: 'error', text: response.error });
+        return;
+      }
+
+      await refreshActiveWorkItemContext();
+      setSelectedTaskId(selectedTaskId);
+      setCreateTaskStatusMessage({
+        kind: 'success',
+        text: `Task #${selectedTaskId} reparented to #${parentId}.`
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      setCreateTaskStatusMessage({ kind: 'error', text: errorMessage });
+    }
+  }
+
+  function onTogglePinSuggestedParent(
+    group: ParentSuggestionGroup,
+    parentId: number,
+    isPinned: boolean
+  ) {
     setParentSuggestions((current) => {
-      const existing = current.pinnedIdsByGroup[suggestionGroup];
+      const existing = current.pinnedIdsByGroup[group];
       const nextPinned = isPinned
         ? [parentId, ...existing.filter((entry) => entry !== parentId)]
         : existing.filter((entry) => entry !== parentId);
@@ -606,12 +690,12 @@ export function App() {
         ...current,
         pinnedIdsByGroup: {
           ...current.pinnedIdsByGroup,
-          [suggestionGroup]: nextPinned
+          [group]: nextPinned
         }
       };
     });
 
-    void setParentSuggestionPinned(suggestionGroup, parentId, isPinned).catch(
+    void setParentSuggestionPinned(group, parentId, isPinned).catch(
       () => undefined
     );
   }
@@ -664,9 +748,14 @@ export function App() {
     await refreshActiveWorkItemContext(true);
   }
 
-  const activeItemHeading = activeWorkItemContext
-    ? `#${activeWorkItemContext.current.id} [${activeWorkItemContext.current.workItemType || 'Unknown'}] ${activeWorkItemContext.current.title || '(untitled)'}`
+  const activeItemHeading = activeWorkItemContext?.parent
+    ? `#${activeWorkItemContext.parent.id} [${activeWorkItemContext.parent.workItemType || 'Unknown'}] ${activeWorkItemContext.parent.title || '(untitled)'}`
     : 'No active Azure DevOps work item detected';
+
+  const activeItemTabLabel =
+    activeWorkItemContext?.viewedTaskId && activeWorkItemContext.parent
+      ? `${activeItemHeading} (task #${activeWorkItemContext.viewedTaskId})`
+      : activeItemHeading;
 
   return (
     <div className="wrap">
@@ -697,7 +786,7 @@ export function App() {
         onTogglePinActiveItem={() => {
           void onTogglePinActiveItem();
         }}
-        activeItemTabLabel={activeItemHeading}
+        activeItemTabLabel={activeItemTabLabel}
       />
 
       {activeTab === 'settings' ? (
@@ -735,14 +824,17 @@ export function App() {
           parentWorkItemId={parentWorkItemId}
           isParentDetected={Boolean(parentWorkItemId)}
           createdTasks={visibleChildTasks}
+          selectedTaskId={selectedTaskId}
+          onSelectTask={onSelectTask}
           availableTaskStates={availableTaskStates}
           hiddenTaskStates={hiddenTaskStates}
           onToggleTaskStateFilter={onToggleTaskStateFilter}
           isActionDisabled={isLoading || isCreatingTask}
           statusMessage={createTaskStatusMessage}
-          suggestedParents={suggestedParents}
-          suggestionMode={getSuggestionModeLabel(suggestionGroup)}
-          onSetSuggestedParent={onSetSuggestedParent}
+          recentFeatureSuggestions={recentFeatureSuggestions}
+          recentParentableSuggestions={recentParentableSuggestions}
+          onSetFeatureParent={onSetFeatureParent}
+          onReparentSelectedTask={onReparentSelectedTask}
           onTogglePinSuggestedParent={onTogglePinSuggestedParent}
           linkExternal={linkExternal}
         />
@@ -777,6 +869,18 @@ function getSuggestionSource(context: ActiveWorkItemContext): {
 } | null {
   const normalizedType = normalizeWorkItemType(context.current.workItemType);
 
+  if (normalizedType === 'task' && context.parent) {
+    return {
+      group: 'parentable',
+      item: {
+        id: context.parent.id,
+        title: context.parent.title,
+        workItemType: context.parent.workItemType,
+        url: context.parent.url
+      }
+    };
+  }
+
   if (isParentableType(normalizedType)) {
     return {
       group: 'parentable',
@@ -804,6 +908,28 @@ function getSuggestionSource(context: ActiveWorkItemContext): {
   return null;
 }
 
+function getSuggestionsByGroup(
+  store: ParentSuggestionStore,
+  group: ParentSuggestionGroup
+): (ParentSuggestionItem & { isPinned: boolean })[] {
+  const recent = store.recentByGroup[group];
+  const pinnedIds = store.pinnedIdsByGroup[group];
+  const byId = new Map(recent.map((entry) => [entry.id, entry]));
+
+  const pinned = pinnedIds
+    .map((id) => byId.get(id))
+    .filter((entry): entry is ParentSuggestionItem => Boolean(entry))
+    .map((entry) => ({ ...entry, isPinned: true }));
+
+  const pinnedSet = new Set(pinned.map((entry) => entry.id));
+  const dynamic = recent
+    .filter((entry) => !pinnedSet.has(entry.id))
+    .slice(0, MAX_DYNAMIC_SUGGESTIONS)
+    .map((entry) => ({ ...entry, isPinned: false }));
+
+  return [...pinned, ...dynamic];
+}
+
 function upsertSuggestionInMemory(
   current: ParentSuggestionStore,
   group: ParentSuggestionGroup,
@@ -829,17 +955,6 @@ function upsertSuggestionInMemory(
     }
   };
 }
-
-function getSuggestionModeLabel(
-  group: ParentSuggestionGroup | null
-): 'parentable' | 'feature' | null {
-  if (!group) {
-    return null;
-  }
-
-  return group;
-}
-
 function getStateSortWeight(state: string): number {
   const normalized = state.trim().toLowerCase();
   return normalized === 'to do' || normalized === 'todo' || normalized === 'new'

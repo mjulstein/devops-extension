@@ -12,6 +12,8 @@ interface WorkItemCardProps {
   parentWorkItemId: number | null;
   isParentDetected: boolean;
   createdTasks: ChildTaskItem[];
+  selectedTaskId: number | null;
+  onSelectTask: (task: ChildTaskItem) => Promise<void>;
   availableTaskStates: string[];
   hiddenTaskStates: string[];
   onToggleTaskStateFilter: (state: string, isChecked: boolean) => void;
@@ -20,10 +22,15 @@ interface WorkItemCardProps {
     kind: 'info' | 'success' | 'error';
     text: string;
   } | null;
-  suggestedParents: ParentSuggestionView[];
-  suggestionMode: 'parentable' | 'feature' | null;
-  onSetSuggestedParent: (parentId: number) => Promise<void>;
-  onTogglePinSuggestedParent: (parentId: number, isPinned: boolean) => void;
+  recentFeatureSuggestions: ParentSuggestionView[];
+  recentParentableSuggestions: ParentSuggestionView[];
+  onSetFeatureParent: (featureId: number) => Promise<void>;
+  onReparentSelectedTask: (parentId: number) => Promise<void>;
+  onTogglePinSuggestedParent: (
+    group: 'parentable' | 'feature',
+    parentId: number,
+    isPinned: boolean
+  ) => void;
   linkExternal: boolean;
 }
 
@@ -34,14 +41,17 @@ export function WorkItemCard({
   parentWorkItemId,
   isParentDetected,
   createdTasks,
+  selectedTaskId,
+  onSelectTask,
   availableTaskStates,
   hiddenTaskStates,
   onToggleTaskStateFilter,
   isActionDisabled,
   statusMessage,
-  suggestedParents,
-  suggestionMode,
-  onSetSuggestedParent,
+  recentFeatureSuggestions,
+  recentParentableSuggestions,
+  onSetFeatureParent,
+  onReparentSelectedTask,
   onTogglePinSuggestedParent,
   linkExternal
 }: WorkItemCardProps) {
@@ -96,53 +106,42 @@ export function WorkItemCard({
       )}
 
       <div className="parent-suggestion-list">
-        <div className="parent-suggestion-title">
-          {suggestionMode === 'feature'
-            ? 'Recent features'
-            : suggestionMode === 'parentable'
-              ? 'Recent bugs / improvements / PBIs'
-              : 'Recent parent suggestions'}
-        </div>
-
-        {suggestedParents.length ? (
-          suggestedParents.map((item) => {
-            const isSelected = parentWorkItemId === item.id;
-            return (
-              <div key={item.id} className="parent-suggestion-row">
-                <Link
-                  href={item.url}
-                  external={linkExternal}
-                  className={`parent-suggestion-link ${isSelected ? 'selected' : ''}`}
-                  title={item.title}
-                >
-                  #{item.id} [{item.workItemType}] - {item.title}
-                </Link>
-                <button
-                  type="button"
-                  className="parent-suggestion-action"
-                  onClick={() => {
-                    void onSetSuggestedParent(item.id);
-                  }}
-                >
-                  set as parent
-                </button>
-                <button
-                  type="button"
-                  className="parent-suggestion-action parent-suggestion-pin"
-                  onClick={() =>
-                    onTogglePinSuggestedParent(item.id, !item.isPinned)
-                  }
-                >
-                  {item.isPinned ? 'unpin' : 'pin'}
-                </button>
-              </div>
-            );
-          })
+        <div className="parent-suggestion-title">Recent features</div>
+        {recentFeatureSuggestions.length ? (
+          recentFeatureSuggestions.map((item) => (
+            <div key={`feature-${item.id}`} className="parent-suggestion-row">
+              <Link
+                href={item.url}
+                external={linkExternal}
+                className="parent-suggestion-link"
+                title={item.title}
+              >
+                #{item.id} [{item.workItemType}] - {item.title}
+              </Link>
+              <button
+                type="button"
+                className="parent-suggestion-action"
+                onClick={() => {
+                  void onSetFeatureParent(item.id);
+                }}
+              >
+                set feature
+              </button>
+              <button
+                type="button"
+                className="parent-suggestion-action parent-suggestion-pin"
+                onClick={() =>
+                  onTogglePinSuggestedParent('feature', item.id, !item.isPinned)
+                }
+              >
+                {item.isPinned ? 'unpin' : 'pin'}
+              </button>
+            </div>
+          ))
         ) : (
           <div className="created-task-empty">
-            {suggestionMode
-              ? 'No recent suggestions yet. Visit a matching parentable work item to populate this list.'
-              : 'Suggestions appear here when the active item is a Task, Bug, PBI, Improvement, or Feature.'}
+            No recent features yet. Visit a feature work item to populate this
+            list.
           </div>
         )}
       </div>
@@ -167,19 +166,81 @@ export function WorkItemCard({
 
       <div className="created-task-list">
         {createdTasks.length ? (
-          createdTasks.map((task) => (
-            <Link
-              key={task.id}
-              href={task.url}
-              external={linkExternal}
-              className="created-task-link"
-            >
-              #{task.id} [{task.state}] - {task.title}
-            </Link>
-          ))
+          createdTasks.map((task) => {
+            const isSelected = selectedTaskId === task.id;
+            return (
+              <button
+                key={task.id}
+                type="button"
+                className={`created-task-select ${isSelected ? 'selected' : ''}`}
+                onClick={() => {
+                  void onSelectTask(task);
+                }}
+                title={task.title}
+              >
+                #{task.id} [{task.state}] - {task.title}
+              </button>
+            );
+          })
         ) : (
           <div className="created-task-empty">
             No child tasks found for the current parent work item.
+          </div>
+        )}
+      </div>
+
+      <div className="parent-suggestion-list">
+        <div className="parent-suggestion-title">
+          {selectedTaskId
+            ? `Reparent selected task #${selectedTaskId}`
+            : 'Select a task to reparent'}
+        </div>
+
+        {recentParentableSuggestions.length ? (
+          recentParentableSuggestions.map((item) => {
+            const isCurrentParent = parentWorkItemId === item.id;
+            return (
+              <div
+                key={`parentable-${item.id}`}
+                className="parent-suggestion-row"
+              >
+                <Link
+                  href={item.url}
+                  external={linkExternal}
+                  className={`parent-suggestion-link ${isCurrentParent ? 'selected' : ''}`}
+                  title={item.title}
+                >
+                  #{item.id} [{item.workItemType}] - {item.title}
+                </Link>
+                <button
+                  type="button"
+                  className="parent-suggestion-action"
+                  disabled={!selectedTaskId}
+                  onClick={() => {
+                    void onReparentSelectedTask(item.id);
+                  }}
+                >
+                  set as parent
+                </button>
+                <button
+                  type="button"
+                  className="parent-suggestion-action parent-suggestion-pin"
+                  onClick={() =>
+                    onTogglePinSuggestedParent(
+                      'parentable',
+                      item.id,
+                      !item.isPinned
+                    )
+                  }
+                >
+                  {item.isPinned ? 'unpin' : 'pin'}
+                </button>
+              </div>
+            );
+          })
+        ) : (
+          <div className="created-task-empty">
+            No recent bugs / improvements / PBIs yet.
           </div>
         )}
       </div>
