@@ -56,7 +56,8 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - Runtime settings should stay in browser storage unless explicitly changed.
 - Local-only development configuration must not be committed.
 - Avoid hardcoding organization, project, user names, tokens, or URLs that should remain configurable.
-- Organization and project should be derived from the active Azure DevOps URL when possible; only user-specific fields (for example `assignedTo`) should be persisted in settings.
+- Prefer deriving organization/project from the last visited `dev.azure.com/{organization}/{project}` URL when settings are empty.
+- `organization`, `project`, and user-specific fields (for example `assignedTo`) may be persisted in settings as explicit overrides.
 
 ## Change Guidelines
 

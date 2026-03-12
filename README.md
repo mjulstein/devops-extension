@@ -11,7 +11,7 @@ Results are displayed in the side panel as clickable links grouped into:
 
 A dedicated **Create child tasks** section is available at the bottom of the panel.
 
-- Open a Bug or PBI work item in the active tab.
+- Open a Bug or PBI work item in Azure DevOps at least once so the extension can track it as the last visited work-item view.
 - Type a task title (required).
 - Press **Enter** (or click **Create task for #workItemId**).
 
@@ -100,9 +100,16 @@ Example structure:
 
 ```json
 {
+  "organization": "",
+  "project": "",
   "assignedTo": "<user display name>"
 }
 ```
+
+- Leave `organization` and `project` empty to auto-fill them from the last
+  visited `https://dev.azure.com/{organization}/{project}` URL.
+- If you set `organization` and/or `project` in Settings, those saved overrides
+  are used until you change them.
 
 ## Development
 
@@ -139,9 +146,9 @@ npm test
 
 1. Open any Azure DevOps page.
 2. Open the extension side panel.
-3. Configure only `Assigned to` (organization/project are read from the active Azure DevOps URL).
+3. Configure `Assigned to`. Optionally set `Organization` / `Project` overrides.
 4. Click **Fetch work items**.
-5. Open the **Active item** tab to create child tasks, then open a Bug or PBI work item in the active tab, type a title in **Task title**, and press **Enter** repeatedly to build a list of created tasks.
+5. Open the **Active item** tab to create child tasks. The tab resolves context from the last visited Azure DevOps work-item view (or the pinned item if set), so it can continue working even when a non-DevOps tab is active.
 
 The extension queries Azure DevOps using the current browser session and displays matching work items in the side panel.
 

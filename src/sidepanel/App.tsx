@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { DebugConsolePane, type DebugLogEntry } from './DebugConsolePane';
 import { SettingsCard } from './settings';
 import { WorkItemCard } from './work-item';
 import { StatusCard } from './work-items';
@@ -8,17 +9,20 @@ import {
   loadActiveSidepanelTab,
   loadCachedWorkItems,
   loadHiddenChildTaskStates,
+  loadLastVisitedDevOpsContext,
   loadParentSuggestions,
   loadPinnedActiveWorkItemContext,
   loadSettings,
   saveActiveSidepanelTab,
   saveCachedWorkItems,
   saveHiddenChildTaskStates,
+  saveLastVisitedDevOpsContext,
   savePinnedActiveWorkItemContext,
   saveSettings,
   setParentSuggestionPinned,
   upsertParentSuggestion
 } from './chromeStorage';
+import { tryCreateLastVisitedDevOpsContext } from '../devops/lastVisitedContext';
 import { defaultSettings } from './defaultSettings';
 import {
   createChildTask,
@@ -57,6 +61,7 @@ const EMPTY_PARENT_SUGGESTIONS: ParentSuggestionStore = {
 
 const MAX_DYNAMIC_SUGGESTIONS = 5;
 const MAX_IN_MEMORY_SUGGESTIONS = 40;
+const MAX_DEBUG_LOG_ENTRIES = 120;
 
 export function App() {
   const [activeTab, setActiveTab] = useState<SidepanelTabId>('work-items');
@@ -82,6 +87,20 @@ export function App() {
   const [pinnedActiveWorkItemContext, setPinnedActiveWorkItemContext] =
     useState<ActiveWorkItemContext | null>(null);
   const [linkExternal, setLinkExternal] = useState(true);
+  const [debugLogs, setDebugLogs] = useState<DebugLogEntry[]>([]);
+
+  function pushDebugLog(level: DebugLogEntry['level'], message: string): void {
+    const entry: DebugLogEntry = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      timestamp: Date.now(),
+      level,
+      message
+    };
+
+    setDebugLogs((current) =>
+      [entry, ...current].slice(0, MAX_DEBUG_LOG_ENTRIES)
+    );
+  }
 
   const isActiveItemPinned = Boolean(pinnedActiveWorkItemContext);
 
@@ -141,6 +160,7 @@ export function App() {
     void (async () => {
       const [
         storedSettings,
+        lastVisitedDevOpsContext,
         cachedResult,
         storedActiveTab,
         storedHiddenStates,
@@ -148,6 +168,7 @@ export function App() {
         storedPinnedContext
       ] = await Promise.all([
         loadSettings(),
+        loadLastVisitedDevOpsContext(),
         loadCachedWorkItems(),
         loadActiveSidepanelTab(),
         loadHiddenChildTaskStates(),
@@ -155,7 +176,40 @@ export function App() {
         loadPinnedActiveWorkItemContext()
       ]);
 
-      setSettings(storedSettings);
+      const resolvedLastVisitedContext =
+        lastVisitedDevOpsContext ?? (await loadActiveTabDevOpsContext());
+
+      pushDebugLog(
+        'info',
+        resolvedLastVisitedContext
+          ? `Resolved org/project context: ${resolvedLastVisitedContext.organization}/${resolvedLastVisitedContext.project}`
+          : 'No org/project context resolved yet from storage or active tab.'
+      );
+
+      if (!lastVisitedDevOpsContext && resolvedLastVisitedContext) {
+        void saveLastVisitedDevOpsContext(resolvedLastVisitedContext).catch(
+          () => undefined
+        );
+      }
+
+      const hydratedSettings = {
+        ...storedSettings,
+        organization:
+          storedSettings.organization.trim() ||
+          (resolvedLastVisitedContext?.organization ?? ''),
+        project:
+          storedSettings.project.trim() ||
+          (resolvedLastVisitedContext?.project ?? '')
+      };
+
+      setSettings(hydratedSettings);
+
+      if (
+        hydratedSettings.organization !== storedSettings.organization ||
+        hydratedSettings.project !== storedSettings.project
+      ) {
+        void saveSettings(hydratedSettings).catch(() => undefined);
+      }
       setActiveTab(storedActiveTab);
       setHiddenTaskStates(storedHiddenStates);
       setParentSuggestions(storedParentSuggestions);
@@ -163,6 +217,10 @@ export function App() {
       await refreshActiveTabLinkMode();
 
       if (cachedResult) {
+        pushDebugLog(
+          'info',
+          `Loaded cached work items (${cachedResult.count}).`
+        );
         setResult(cachedResult);
         setHasFetchedOnce(true);
         setStatusMessage({
@@ -181,6 +239,7 @@ export function App() {
       }
 
       await refreshActiveWorkItemContext();
+      pushDebugLog('success', 'Side panel initialization complete.');
     })();
   }, []);
 
@@ -253,24 +312,47 @@ export function App() {
     }
   }
 
+  async function loadActiveTabDevOpsContext() {
+    try {
+      const activeTabId = await getActiveTabId();
+      const tab = await chrome.tabs.get(activeTabId);
+      return tryCreateLastVisitedDevOpsContext(tab.url ?? '');
+    } catch {
+      return null;
+    }
+  }
+
   async function onSaveSettings() {
     await saveSettings({
+      organization: settings.organization.trim(),
+      project: settings.project.trim(),
       assignedTo: settings.assignedTo.trim()
     });
+    pushDebugLog(
+      'success',
+      `Saved settings for ${settings.organization.trim() || '(auto org)'}/${settings.project.trim() || '(auto project)'}.`
+    );
     setStatusMessage({ kind: 'success', text: 'Settings saved.' });
   }
 
   function onReloadExtension() {
+    pushDebugLog('info', 'Manual extension reload triggered.');
     setHasFetchedOnce(false);
     setStatusMessage({
       kind: 'info',
-      text: 'Extension reloading. Refresh the active Azure DevOps tab before fetching again.'
+      text: 'Extension reloading. Re-open the side panel when it is ready.'
     });
     chrome.runtime.reload();
   }
 
   async function onFetchWorkItems() {
+    const startedAt = Date.now();
+
     try {
+      pushDebugLog(
+        'info',
+        `Fetch requested (org=${settings.organization.trim() || '(auto)'}, project=${settings.project.trim() || '(auto)'}, assignedTo=${settings.assignedTo.trim() || '(empty)'}).`
+      );
       setIsLoading(true);
       setLoadingMessage('Fetching work items...');
       setHasFetchedOnce(true);
@@ -279,6 +361,10 @@ export function App() {
       const response = await fetchWorkItems(settings);
 
       if (!response.ok) {
+        pushDebugLog(
+          'error',
+          `Fetch failed in ${Date.now() - startedAt}ms: ${response.error}`
+        );
         setStatusMessage({
           kind: 'error',
           text: result
@@ -289,6 +375,10 @@ export function App() {
       }
 
       setResult(response.result);
+      pushDebugLog(
+        'success',
+        `Fetch succeeded in ${Date.now() - startedAt}ms with ${response.result.count} work items.`
+      );
       setStatusMessage({
         kind: 'success',
         text: `Fetched ${response.result.count} work item(s).`
@@ -297,6 +387,10 @@ export function App() {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
+      pushDebugLog(
+        'error',
+        `Fetch exception in ${Date.now() - startedAt}ms: ${errorMessage}`
+      );
       setStatusMessage({
         kind: 'error',
         text: result
@@ -653,6 +747,13 @@ export function App() {
           linkExternal={linkExternal}
         />
       ) : null}
+
+      <DebugConsolePane
+        entries={debugLogs}
+        onClear={() => {
+          setDebugLogs([]);
+        }}
+      />
     </div>
   );
 }

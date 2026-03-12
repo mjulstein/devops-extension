@@ -1,16 +1,10 @@
-import type { Settings } from '@/types';
 import { resolveActiveWorkItemContext } from './devops/activeParentContext';
 import { fetchChildTasksForActiveParent } from './devops/childTasks';
 import { createChildTaskFromActivePage } from './devops/taskCreation';
-import { fetchWorkItems } from './devops/workItems';
 import { setParentForActiveWorkItem } from './devops/parentAssignment';
 import { detectActiveWorkItemId } from './devops/activeWorkItemDom';
 
 type RuntimeMessage =
-  | {
-      type: 'FETCH_WORK_ITEMS';
-      payload: Settings;
-    }
   | {
       type: 'GET_ACTIVE_WORK_ITEM_CONTEXT';
       payload?: {
@@ -39,15 +33,6 @@ type RuntimeMessage =
 
 chrome.runtime.onMessage.addListener(
   (message: RuntimeMessage, _sender, sendResponse) => {
-    if (message.type === 'FETCH_WORK_ITEMS') {
-      fetchWorkItems(message.payload)
-        .then((result) => sendResponse({ ok: true, result }))
-        .catch((error: Error) =>
-          sendResponse({ ok: false, error: error.message })
-        );
-      return true;
-    }
-
     if (message.type === 'GET_ACTIVE_WORK_ITEM_CONTEXT') {
       const detectedWorkItemId = detectActiveWorkItemId(
         Boolean(message.payload?.forceResync)

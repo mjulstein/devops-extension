@@ -342,3 +342,70 @@ button:disabled {
   text-overflow: ellipsis;
 }
 
+.debug-console {
+  margin-top: 8px;
+  margin-bottom: 0;
+  padding: 10px;
+}
+
+.debug-console h3 {
+  margin: 0;
+  font-size: 12px;
+}
+
+.debug-console-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.debug-console-clear {
+  margin-top: 0;
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.debug-console-list {
+  display: grid;
+  gap: 6px;
+  max-height: 140px;
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid #d4d4d4;
+  border-radius: 8px;
+  background: #fcfcfc;
+}
+
+.debug-console-entry {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.debug-console-time {
+  color: #666;
+  white-space: nowrap;
+}
+
+.debug-console-message {
+  color: #222;
+  overflow-wrap: anywhere;
+}
+
+.debug-console-entry.success .debug-console-message {
+  color: #136b35;
+}
+
+.debug-console-entry.error .debug-console-message {
+  color: #8b1b1b;
+}
+
+.debug-console-empty {
+  font-size: 11px;
+  color: #666;
+}
+

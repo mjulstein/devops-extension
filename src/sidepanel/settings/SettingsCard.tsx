@@ -18,8 +18,34 @@ export function SettingsCard({
   return (
     <section className="card">
       <p>
-        Organization and project are read from the active Azure DevOps tab URL.
+        Organization/project auto-fill from the last visited dev.azure.com
+        project URL when empty. You can override them here and saved values stay
+        until you change them.
       </p>
+
+      <label>
+        Organization
+        <input
+          type="text"
+          placeholder="my-organization"
+          value={settings.organization}
+          onChange={(event) =>
+            onChange({ ...settings, organization: event.target.value })
+          }
+        />
+      </label>
+
+      <label>
+        Project
+        <input
+          type="text"
+          placeholder="my-project"
+          value={settings.project}
+          onChange={(event) =>
+            onChange({ ...settings, project: event.target.value })
+          }
+        />
+      </label>
 
       <label>
         Assigned to
@@ -37,9 +63,7 @@ export function SettingsCard({
         <button onClick={() => void onSave()} disabled={isLoading}>
           Save settings
         </button>
-        <button onClick={onReloadExtension} disabled={isLoading}>
-          Reload extension
-        </button>
+        <button onClick={onReloadExtension}>Reload extension</button>
       </div>
     </section>
   );

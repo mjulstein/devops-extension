@@ -1,16 +1,26 @@
 import type { Settings, WorkItem, WorkItemResult } from '@/types';
-import { getOrganizationAndProjectFromUrl } from './urlContext';
+
+export interface WorkItemsContext {
+  organization: string;
+  project: string;
+}
 
 export async function fetchWorkItems(
-  settings: Settings
+  settings: Settings,
+  context: WorkItemsContext
 ): Promise<WorkItemResult> {
   const assignedTo = settings.assignedTo.trim();
-  const { organization, project } = getOrganizationAndProjectFromUrl(
-    window.location.href
-  );
+  const organization = context.organization.trim();
+  const project = context.project.trim();
 
   if (!assignedTo) {
     throw new Error('Missing assignedTo in settings.');
+  }
+
+  if (!organization || !project) {
+    throw new Error(
+      'Missing organization/project context for work-item fetch.'
+    );
   }
 
   const today = new Date();

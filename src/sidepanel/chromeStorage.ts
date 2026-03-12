@@ -9,6 +9,11 @@ import type {
   WorkItemResult
 } from '@/types';
 import type { SidepanelTabId } from './Tabs';
+import {
+  LAST_VISITED_DEVOPS_CONTEXT_KEY,
+  parseLastVisitedDevOpsContext,
+  type LastVisitedDevOpsContext
+} from '../devops/lastVisitedContext';
 
 const CACHED_WORK_ITEMS_KEY = 'cachedWorkItems';
 const ACTIVE_SIDEPANEL_TAB_KEY = 'activeSidepanelTab';
@@ -37,6 +42,21 @@ export async function loadSettings(): Promise<Settings> {
 
 export async function saveSettings(settings: Settings): Promise<void> {
   await chrome.storage.local.set(settings);
+}
+
+export async function loadLastVisitedDevOpsContext(): Promise<LastVisitedDevOpsContext | null> {
+  const stored = await chrome.storage.local.get(
+    LAST_VISITED_DEVOPS_CONTEXT_KEY
+  );
+  return parseLastVisitedDevOpsContext(stored[LAST_VISITED_DEVOPS_CONTEXT_KEY]);
+}
+
+export async function saveLastVisitedDevOpsContext(
+  context: LastVisitedDevOpsContext
+): Promise<void> {
+  await chrome.storage.local.set({
+    [LAST_VISITED_DEVOPS_CONTEXT_KEY]: context
+  });
 }
 
 export async function loadCachedWorkItems(): Promise<WorkItemResult | null> {
