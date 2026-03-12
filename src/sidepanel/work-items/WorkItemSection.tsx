@@ -1,5 +1,5 @@
 import type { WorkItem } from '@/types';
-import { Link } from './Link';
+import { Link } from '../Link';
 
 interface WorkItemSectionProps {
   title: string;

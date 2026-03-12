@@ -1,5 +1,5 @@
 import type { ChildTaskItem, ParentSuggestionItem } from '@/types';
-import { Link } from './Link';
+import { Link } from '../Link';
 
 interface ParentSuggestionView extends ParentSuggestionItem {
   isPinned: boolean;

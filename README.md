@@ -40,6 +40,16 @@ devops-extension/
 │  │  └─ ...
 │  ├─ sidepanel/
 │  │  ├─ App.tsx
+│  │  ├─ work-items/
+│  │  │  ├─ index.ts
+│  │  │  ├─ StatusCard.tsx
+│  │  │  └─ WorkItemSection.tsx
+│  │  ├─ work-item/
+│  │  │  ├─ index.ts
+│  │  │  └─ WorkItemCard.tsx
+│  │  ├─ settings/
+│  │  │  ├─ index.ts
+│  │  │  └─ SettingsCard.tsx
 │  │  ├─ tabMessaging/
 │  │  │  ├─ index.ts
 │  │  │  ├─ getActiveTabId.ts

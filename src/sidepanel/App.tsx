@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { SettingsCard } from './SettingsCard';
-import { StatusCard } from './StatusCard';
-import { WorkItemCard } from './WorkItemCard';
+import { SettingsCard } from './settings';
+import { WorkItemCard } from './work-item';
+import { StatusCard } from './work-items';
 import { Tabs, type SidepanelTabId } from './Tabs';
 import {
   clearPinnedActiveWorkItemContext,
