@@ -153,6 +153,29 @@ button:disabled {
   gap: 8px;
 }
 
+.work-item-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: start;
+}
+
+.work-item-input-row input {
+  margin-top: 6px;
+}
+
+.work-item-submit-small {
+  margin-top: 6px;
+  padding: 8px 10px;
+  min-width: 34px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.work-item-parent-hint {
+  margin-top: 0;
+}
+
 .created-task-list {
   margin-top: 10px;
   display: grid;

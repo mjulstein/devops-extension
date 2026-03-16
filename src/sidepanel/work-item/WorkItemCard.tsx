@@ -1,3 +1,4 @@
+import { useRef, type FormEvent } from 'react';
 import type { ChildTaskItem, ParentSuggestionItem } from '@/types';
 import { Link } from '../Link';
 
@@ -55,34 +56,18 @@ export function WorkItemCard({
   onTogglePinSuggestedParent,
   linkExternal
 }: WorkItemCardProps) {
-  const buttonLabel = parentWorkItemId
-    ? `create task for #${parentWorkItemId}`
-    : 'create task for #workitemId';
+  const taskInputRef = useRef<HTMLInputElement | null>(null);
+
+  async function onSubmitCreateTask(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await onCreateTask();
+    globalThis.setTimeout(() => {
+      taskInputRef.current?.focus();
+    }, 0);
+  }
 
   return (
     <section className="card">
-      <form
-        className="work-item-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void onCreateTask();
-        }}
-      >
-        <label>
-          Task title
-          <input
-            type="text"
-            value={taskTitle}
-            onChange={(event) => onTaskTitleChange(event.target.value)}
-            placeholder="Type task name and press Enter"
-            disabled={isActionDisabled}
-          />
-        </label>
-        <button type="submit" disabled={isActionDisabled}>
-          {buttonLabel}
-        </button>
-      </form>
-
       {statusMessage ? (
         <div className={`status-message status-${statusMessage.kind}`}>
           {statusMessage.text}
@@ -145,6 +130,38 @@ export function WorkItemCard({
           </div>
         )}
       </div>
+
+      <form
+        className="work-item-form"
+        onSubmit={(event) => {
+          void onSubmitCreateTask(event);
+        }}
+      >
+        <label>
+          Task title
+          <div className="work-item-input-row">
+            <input
+              ref={taskInputRef}
+              type="text"
+              value={taskTitle}
+              onChange={(event) => onTaskTitleChange(event.target.value)}
+              placeholder="Type task name and press Enter"
+              disabled={isActionDisabled}
+            />
+            <button
+              type="submit"
+              disabled={isActionDisabled}
+              className="work-item-submit-small"
+              title="Create task"
+            >
+              +
+            </button>
+          </div>
+        </label>
+        <div className="current-parent work-item-parent-hint">
+          Enter creates a task under #{parentWorkItemId ?? 'workitemId'}.
+        </div>
+      </form>
 
       <div className="state-filter-row">
         {availableTaskStates.map((state) => {
