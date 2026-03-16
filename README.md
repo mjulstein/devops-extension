@@ -29,46 +29,21 @@ A raw JSON response is also available in a collapsible section for debugging.
 - Prettier formatting with lint warnings via `prettier/prettier`
 - Vitest 4 for unit tests (`*.test.ts` / `*.test.tsx`) with globals enabled
 
+## Documentation Map
+
+- [`AGENTS.md`](./AGENTS.md) — agent/contributor workflow and documentation rules
+- [`src`](./src/README.md) — extension entry points plus links to the source subdirectory docs
+- [`src/devops`](./src/devops/README.md) — Azure DevOps-specific selectors, parsing, context, and REST logic
+- [`src/sidepanel`](./src/sidepanel/README.md) — side panel shell, storage helpers, and UI module docs
+- [`types`](./types/README.md) — shared type definitions used through the `@/types` alias
+
 ## Project Structure
 
-```text
-devops-extension/
-├─ src/
-│  ├─ devops/
-│  │  ├─ activeWorkItemDom.ts
-│  │  ├─ workItems.ts
-│  │  └─ ...
-│  ├─ sidepanel/
-│  │  ├─ App.tsx
-│  │  ├─ work-items/
-│  │  │  ├─ index.ts
-│  │  │  ├─ StatusCard.tsx
-│  │  │  └─ WorkItemSection.tsx
-│  │  ├─ work-item/
-│  │  │  ├─ index.ts
-│  │  │  └─ WorkItemCard.tsx
-│  │  ├─ settings/
-│  │  │  ├─ index.ts
-│  │  │  └─ SettingsCard.tsx
-│  │  ├─ tabMessaging/
-│  │  │  ├─ index.ts
-│  │  │  ├─ getActiveTabId.ts
-│  │  │  ├─ getActiveTabId.test.ts
-│  │  │  └─ ...
-│  │  └─ ...
-│  ├─ content-script.ts
-│  ├─ service-worker.ts
-│  └─ manifest.json
-├─ types/
-│  ├─ index.ts
-│  ├─ Settings.ts
-│  ├─ WorkItem.ts
-│  └─ ...
-├─ dist/
-├─ package.json
-├─ tsconfig.json
-└─ vite.config.ts
-```
+Use the linked directory `README.md` files for structure details instead of expanding the full tree in this document.
+
+- [`src`](./src/README.md) — runtime entry points and links to `src/devops/` and `src/sidepanel/`
+- [`types`](./types/README.md) — shared type shapes
+- `dist/` — generated unpacked extension output created by `npm run build`
 
 `src/content-script.ts` is intentionally kept as a generic runtime message bridge. Azure DevOps-specific DOM parsing, URL/context detection, and API logic live in `src/devops/` modules.
 

@@ -1,3 +1,5 @@
+[root](./README.md) / AGENTS.md
+
 # AGENTS.md
 
 ## Purpose
@@ -14,6 +16,10 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 
 - `README.md` is the human-facing project overview.
 - `AGENTS.md` is the agent-facing execution guide.
+- Markdown documentation should include a breadcrumb path link line at the top that points back to the repository root `README.md` and the current document path when practical (for example, `[root](./README.md) / AGENTS.md`). The root `README.md` itself is the exception and should not include a breadcrumb to itself.
+- In breadcrumb text and navigation labels, treat directory `README.md` files as implied like an index page: show `src`, `src/devops`, or `types`, not `src/README.md`.
+- Prefer repo-relative Markdown links for document navigation instead of plain path text when referencing other Markdown files.
+- Source directories should include a local `README.md` that explains the directory purpose, summarizes the same-level files, and links to child directory docs instead of duplicating nested details inline.
 - When project behavior, setup, configuration, or file structure changes, update `README.md` and `AGENTS.md` together in the same change whenever possible.
 - If there is a mismatch, prefer aligning both files rather than updating only one.
 
@@ -74,6 +80,8 @@ When making changes:
 4. If implementation conventions or agent instructions change, review `AGENTS.md`.
 5. If either document becomes inaccurate because of the change, update both.
 6. For file moves/renames, use `git mv` to keep file history and diffs clean.
+7. When adding, moving, or restructuring Markdown documents, update their breadcrumb path links in the same change.
+8. When adding a meaningful source directory, add or update its local `README.md` and keep parent directory docs linking to that child directory doc instead of expanding nested file lists inline.
 
 ## Validation Checklist
 
@@ -98,6 +106,7 @@ Any pull request or change that modifies one of the following should check and u
 - extension permissions
 - user workflow
 - agent/contributor workflow
+- markdown document navigation and breadcrumb conventions
 
 ## Non-Goals
 
