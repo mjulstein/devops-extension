@@ -23,6 +23,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - Preserve the current architecture unless a change request requires restructuring.
 - Keep the extension usable with the existing authenticated Azure DevOps session.
 - Keep `src/content-script.ts` as a generic runtime message bridge; place Azure DevOps-specific selectors, parsing, and API/domain logic under `src/devops/` modules.
+- Preserve the current service-worker/side-panel context flow: `src/service-worker.ts` records the last visited Azure DevOps org/project and work-item URLs in `chrome.storage.local`, and `src/sidepanel/App.tsx` can pin an active work-item context so work-item actions still work when the active tab is not Azure DevOps.
 - Do not add secrets, tokens, or committed local configuration.
 - Side panel React component files should use `PascalCase.tsx`.
 - Utility/function modules should use `camelCase.ts`.
@@ -36,16 +37,19 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - `src/service-worker.ts` — extension startup/background behavior
 - `src/content-script.ts` — generic runtime message router between side panel and domain modules
 - `src/devops/*` — Azure DevOps-specific DOM detection, URL/context parsing, REST/WIQL, and task/parent operations
+- `src/devops/{activeParentContext,lastVisitedContext}.ts` — active work-item context resolution plus persisted last-visited org/project and work-item references used by the service worker fallback flow
 - `src/devops/workItems.ts` — work-item query and transformation logic
 - `src/sidepanel.html` — side panel HTML entry
 - `src/sidepanel.tsx` — React side panel entry
 - `src/sidepanel.css` — side panel styling
+- `src/sidepanel/{App,Tabs,Link,DebugConsolePane}.tsx` — side panel state shell, tab chrome, link navigation helper, and in-panel debug log viewer
 - `src/sidepanel/work-items/*` — work-items tab components (`StatusCard`, `WorkItemSection`) with `index.ts` entry export
 - `src/sidepanel/work-item/*` — work-item tab components (`WorkItemCard`) with `index.ts` entry export
 - `src/sidepanel/settings/*` — settings tab components (`SettingsCard`) with `index.ts` entry export
-- `src/sidepanel/{chromeStorage,defaultSettings,types}.ts` — side panel utility modules
+- `src/sidepanel/{chromeStorage,defaultSettings}.ts` — side panel storage/defaults helpers
 - `src/sidepanel/tabMessaging/index.ts` + `src/sidepanel/tabMessaging/*.ts` — side panel tab messaging barrel + function modules
-- `src/sidepanel/tabMessaging/*.test.ts` / `*.test.tsx` — Vitest unit tests (globals enabled)
+- `src/devops/*.test.ts` + `src/sidepanel/tabMessaging/*.test.ts` / `*.test.tsx` — Vitest unit tests (globals enabled)
+- `types/*.ts` — shared extension types imported via the `@/types` alias
 - `vite.config.ts` — Vite multi-entry build config for extension output
 - `dist/` — generated unpacked extension files (build output)
 - `README.md` — user/developer documentation
@@ -54,6 +58,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 ## Configuration Rules
 
 - Runtime settings should stay in browser storage unless explicitly changed.
+- Persisted side-panel state in `src/sidepanel/chromeStorage.ts` (for example cached work items, hidden child-task state filters, parent suggestions, active tab, and pinned active work-item context) should remain browser-local and backwards-compatible when storage shapes or keys change.
 - Local-only development configuration must not be committed.
 - Avoid hardcoding organization, project, user names, tokens, or URLs that should remain configurable.
 - Prefer deriving organization/project from the last visited `dev.azure.com/{organization}/{project}` URL when settings are empty.
