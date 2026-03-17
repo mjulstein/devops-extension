@@ -73,6 +73,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - Local-only development configuration must not be committed.
 - Avoid hardcoding organization, project, user names, tokens, or URLs that should remain configurable.
 - Prefer deriving organization/project from the last visited `dev.azure.com/{organization}/{project}` URL when settings are empty.
+- Treat an empty `assignedTo` setting as the current signed-in Azure DevOps user (`@me`) when querying work items; explicit saved values remain overrides.
 - `organization`, `project`, and user-specific fields (for example `assignedTo`) may be persisted in settings as explicit overrides.
 
 ## Change Guidelines

@@ -51,13 +51,18 @@ export function SettingsCard({
         Assigned to
         <input
           type="text"
-          placeholder="John Doe"
+          placeholder="@me (leave blank to use current user)"
           value={settings.assignedTo}
           onChange={(event) =>
             onChange({ ...settings, assignedTo: event.target.value })
           }
         />
       </label>
+
+      <p>
+        Leave Assigned to empty to use the current signed-in Azure DevOps user
+        (@me).
+      </p>
 
       <div className="button-row">
         <button onClick={() => void onSave()} disabled={isLoading}>

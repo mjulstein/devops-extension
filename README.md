@@ -97,6 +97,8 @@ Example structure:
 
 - Leave `organization` and `project` empty to auto-fill them from the last
   visited `https://dev.azure.com/{organization}/{project}` URL.
+- Leave `assignedTo` empty to query work items for the current signed-in Azure
+  DevOps user (`@me`).
 - If you set `organization` and/or `project` in Settings, those saved overrides
   are used until you change them.
 
@@ -135,7 +137,8 @@ npm test
 
 1. Open any Azure DevOps page.
 2. Open the extension side panel.
-3. Configure `Assigned to`. Optionally set `Organization` / `Project` overrides.
+3. Optionally set `Assigned to`, `Organization`, and `Project` overrides. Leave
+   `Assigned to` empty to use `@me`.
 4. Click **Fetch work items**.
 5. Open the **Active item** tab to create child tasks. The tab resolves context from the last visited Azure DevOps work-item view (or the pinned item if set), so it can continue working even when a non-DevOps tab is active.
 

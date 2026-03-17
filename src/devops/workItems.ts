@@ -13,10 +13,6 @@ export async function fetchWorkItems(
   const organization = context.organization.trim();
   const project = context.project.trim();
 
-  if (!assignedTo) {
-    throw new Error('Missing assignedTo in settings.');
-  }
-
   if (!organization || !project) {
     throw new Error(
       'Missing organization/project context for work-item fetch.'
@@ -27,6 +23,7 @@ export async function fetchWorkItems(
   const weekAgo = new Date(today);
   weekAgo.setDate(today.getDate() - 7);
   const weekAgoString = formatDateForWiql(weekAgo);
+  const assignedToClause = buildAssignedToClause(assignedTo);
 
   const wiql = `
     SELECT
@@ -34,7 +31,7 @@ export async function fetchWorkItems(
     FROM WorkItems
     WHERE
       [System.TeamProject] = @project
-      AND [System.AssignedTo] = '${escapeWiqlString(assignedTo)}'
+      AND [System.AssignedTo] = ${assignedToClause}
       AND (
         [System.State] IN ('To Do', 'In Progress')
         OR (
@@ -156,6 +153,14 @@ function formatDateForWiql(date: Date): string {
 
 function escapeWiqlString(value: string): string {
   return value.replace(/'/g, "''");
+}
+
+function buildAssignedToClause(assignedTo: string): string {
+  if (!assignedTo) {
+    return '@Me';
+  }
+
+  return `'${escapeWiqlString(assignedTo)}'`;
 }
 
 function normalizeAssignedTo(value: unknown): string {

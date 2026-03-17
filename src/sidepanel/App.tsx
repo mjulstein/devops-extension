@@ -323,7 +323,7 @@ export function App() {
     try {
       pushDebugLog(
         'info',
-        `Fetch requested (org=${settings.organization.trim() || '(auto)'}, project=${settings.project.trim() || '(auto)'}, assignedTo=${settings.assignedTo.trim() || '(empty)'}).`
+        `Fetch requested (org=${settings.organization.trim() || '(auto)'}, project=${settings.project.trim() || '(auto)'}, assignedTo=${settings.assignedTo.trim() || '@me'}).`
       );
       setIsLoading(true);
       setLoadingMessage('Fetching work items...');
