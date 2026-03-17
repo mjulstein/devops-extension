@@ -32,15 +32,29 @@ A raw JSON response is also available in a collapsible section for debugging.
 ## Documentation Map
 
 - [`AGENTS.md`](./AGENTS.md) — agent/contributor workflow and documentation rules
+- [`.specify`](./.specify/README.md) — local Spec Kit memory and planning templates
+- [`specs`](./specs/README.md) — promoted feature specs and the idea-to-spec workflow
+- [`specs/ideas`](./specs/ideas/README.md) — incubator for rough feature ideas before they become numbered specs
 - [`src`](./src/README.md) — extension entry points plus links to the source subdirectory docs
 - [`src/devops`](./src/devops/README.md) — Azure DevOps-specific selectors, parsing, context, and REST logic
 - [`src/sidepanel`](./src/sidepanel/README.md) — side panel shell, storage helpers, and UI module docs
 - [`types`](./types/README.md) — shared type definitions used through the `@/types` alias
 
+## Spec Kit Workspace
+
+This repository now includes a lightweight Spec Kit scaffold for planning future work before implementation.
+
+- Use [`specs/ideas`](./specs/ideas/README.md) as the incubator for rough feature notes, open questions, and candidate workflows.
+- Promote an idea into a numbered directory such as `specs/001-feature-name/` when scope, acceptance scenarios, and sequencing are clear enough to plan.
+- Use the templates under [`.specify/templates`](./.specify/templates/README.md) for new ideas, promoted specs, implementation plans, and task breakdowns.
+- Project-level planning constraints live in [`.specify/memory/constitution.md`](./.specify/memory/constitution.md).
+
 ## Project Structure
 
 Use the linked directory `README.md` files for structure details instead of expanding the full tree in this document.
 
+- [`.specify`](./.specify/README.md) — Spec Kit project memory and markdown templates
+- [`specs`](./specs/README.md) — promoted specs plus the ideas incubator
 - [`src`](./src/README.md) — runtime entry points and links to `src/devops/` and `src/sidepanel/`
 - [`types`](./types/README.md) — shared type shapes
 - `dist/` — generated unpacked extension output created by `npm run build`

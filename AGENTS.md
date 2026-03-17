@@ -16,11 +16,13 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 
 - `README.md` is the human-facing project overview.
 - `AGENTS.md` is the agent-facing execution guide.
+- `.specify/memory/constitution.md` is the planning constitution for future spec work.
+- `specs/` holds promoted feature specs, and `specs/ideas/` is the incubator for rough feature ideas before they are promoted.
 - Markdown documentation should include a breadcrumb path link line at the top that points back to the repository root `README.md` and the current document path when practical (for example, `[root](./README.md) / AGENTS.md`). The root `README.md` itself is the exception and should not include a breadcrumb to itself.
 - In breadcrumb text and navigation labels, treat directory `README.md` files as implied like an index page: show `src`, `src/devops`, or `types`, not `src/README.md`.
 - Prefer repo-relative Markdown links for document navigation instead of plain path text when referencing other Markdown files.
 - Source directories should include a local `README.md` that explains the directory purpose, summarizes the same-level files, and links to child directory docs instead of duplicating nested details inline.
-- When project behavior, setup, configuration, or file structure changes, update `README.md` and `AGENTS.md` together in the same change whenever possible.
+- When project behavior, setup, configuration, file structure, or planning workflow changes, update `README.md`, `AGENTS.md`, and the relevant `.specify` / `specs` docs together in the same change whenever possible.
 - If there is a mismatch, prefer aligning both files rather than updating only one.
 
 ## Working Agreement for Agents
@@ -30,6 +32,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - Keep the extension usable with the existing authenticated Azure DevOps session.
 - Keep `src/content-script.ts` as a generic runtime message bridge; place Azure DevOps-specific selectors, parsing, and API/domain logic under `src/devops/` modules.
 - Preserve the current service-worker/side-panel context flow: `src/service-worker.ts` records the last visited Azure DevOps org/project and work-item URLs in `chrome.storage.local`, and `src/sidepanel/App.tsx` can pin an active work-item context so work-item actions still work when the active tab is not Azure DevOps.
+- Keep exploratory feature notes in `specs/ideas/` until goals, acceptance criteria, and sequencing are clear enough for a numbered feature spec.
 - Do not add secrets, tokens, or committed local configuration.
 - Side panel React component files should use `PascalCase.tsx`.
 - Utility/function modules should use `camelCase.ts`.
@@ -39,6 +42,8 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 
 ## Repository Map
 
+- `.specify/README.md` + `.specify/{memory,templates}/*` — local Spec Kit memory and markdown templates for future planning work
+- `specs/README.md` + `specs/ideas/README.md` — promoted feature spec workspace plus the rough-idea incubator
 - `src/manifest.json` — extension manifest template copied to build output
 - `src/service-worker.ts` — extension startup/background behavior
 - `src/content-script.ts` — generic runtime message router between side panel and domain modules
@@ -82,6 +87,7 @@ When making changes:
 6. For file moves/renames, use `git mv` to keep file history and diffs clean.
 7. When adding, moving, or restructuring Markdown documents, update their breadcrumb path links in the same change.
 8. When adding a meaningful source directory, add or update its local `README.md` and keep parent directory docs linking to that child directory doc instead of expanding nested file lists inline.
+9. When a planned feature changes scope or sequencing, update the relevant idea/spec artifacts in `specs/` before or with the implementation change.
 
 ## Validation Checklist
 
@@ -107,6 +113,7 @@ Any pull request or change that modifies one of the following should check and u
 - user workflow
 - agent/contributor workflow
 - markdown document navigation and breadcrumb conventions
+- spec planning workflow or idea-to-spec promotion rules
 
 ## Non-Goals
 
