@@ -1,4 +1,4 @@
-import type { Settings } from '@/types';
+import type { FetchWorkItemsRequest, Settings } from '@/types';
 import {
   LAST_VISITED_DEVOPS_CONTEXT_KEY,
   LAST_VISITED_WORK_ITEM_REF_KEY,
@@ -20,7 +20,7 @@ type RuntimeMessage =
     }
   | {
       type: 'FETCH_WORK_ITEMS';
-      payload: Settings;
+      payload: FetchWorkItemsRequest;
     }
   | {
       type: 'GET_ACTIVE_WORK_ITEM_CONTEXT';
@@ -146,7 +146,7 @@ chrome.runtime.onMessage.addListener(
       return;
     }
 
-    resolveWorkItemsContext(message.payload)
+    resolveWorkItemsContext(message.payload.settings)
       .then((context) => fetchWorkItems(message.payload, context))
       .then((result) => sendResponse({ ok: true, result }))
       .catch((error: Error) =>

@@ -1,4 +1,9 @@
-import type { Settings, WorkItem, WorkItemResult } from '@/types';
+import type {
+  FetchWorkItemsRequest,
+  WorkItem,
+  WorkItemParentSummary,
+  WorkItemResult
+} from '@/types';
 
 export interface WorkItemsContext {
   organization: string;
@@ -6,12 +11,14 @@ export interface WorkItemsContext {
 }
 
 export async function fetchWorkItems(
-  settings: Settings,
+  request: FetchWorkItemsRequest,
   context: WorkItemsContext
 ): Promise<WorkItemResult> {
-  const assignedTo = settings.assignedTo.trim();
+  const assignedTo = request.settings.assignedTo.trim();
   const organization = context.organization.trim();
   const project = context.project.trim();
+  const closedDateRange = normalizeClosedDateRange(request.closedDateRange);
+  const scope = request.scope;
 
   if (!organization || !project) {
     throw new Error(
@@ -19,29 +26,104 @@ export async function fetchWorkItems(
     );
   }
 
-  const today = new Date();
-  const weekAgo = new Date(today);
-  weekAgo.setDate(today.getDate() - 7);
-  const weekAgoString = formatDateForWiql(weekAgo);
   const assignedToClause = buildAssignedToClause(assignedTo);
+  const openItemsPromise =
+    scope === 'all'
+      ? fetchOpenItems(organization, project, assignedToClause)
+      : Promise.resolve([]);
+  const closedItemsPromise = fetchClosedItems(
+    organization,
+    project,
+    assignedToClause,
+    closedDateRange.start,
+    closedDateRange.end
+  );
 
-  const wiql = `
-    SELECT
-      [System.Id]
-    FROM WorkItems
-    WHERE
-      [System.TeamProject] = @project
-      AND [System.AssignedTo] = ${assignedToClause}
-      AND (
-        [System.State] IN ('To Do', 'In Progress')
-        OR (
-          [System.State] IN ('Done', 'Closed')
-          AND [Microsoft.VSTS.Common.ClosedDate] >= '${weekAgoString}'
-        )
-      )
-    ORDER BY [Microsoft.VSTS.Common.ClosedDate] DESC
-  `;
+  const [openItems, closedItems] = await Promise.all([
+    openItemsPromise,
+    closedItemsPromise
+  ]);
 
+  return {
+    count: openItems.length + closedItems.length,
+    openItems,
+    closedItems,
+    closedDateRange: {
+      start: formatDateForInput(closedDateRange.start),
+      end: formatDateForInput(closedDateRange.end)
+    }
+  };
+}
+
+async function fetchOpenItems(
+  organization: string,
+  project: string,
+  assignedToClause: string
+): Promise<WorkItem[]> {
+  const openIds = await queryWorkItemIds(
+    organization,
+    project,
+    `
+      SELECT
+        [System.Id]
+      FROM WorkItems
+      WHERE
+        [System.TeamProject] = @project
+        AND [System.AssignedTo] = ${assignedToClause}
+        AND [System.State] IN ('To Do', 'In Progress')
+      ORDER BY [System.ChangedDate] DESC
+    `
+  );
+
+  const openItems = await fetchWorkItemDetails(openIds, organization, project);
+
+  return enrichParents(openItems, organization, project).then((items) =>
+    items.filter((item) => item.closedDate === null).sort(compareOpenItems)
+  );
+}
+
+async function fetchClosedItems(
+  organization: string,
+  project: string,
+  assignedToClause: string,
+  rangeStart: Date,
+  rangeEnd: Date
+): Promise<WorkItem[]> {
+  const closedRangeStart = formatDateForWiql(rangeStart);
+  const closedRangeEndExclusive = formatDateForWiql(addDays(rangeEnd, 1));
+  const closedIds = await queryWorkItemIds(
+    organization,
+    project,
+    `
+      SELECT
+        [System.Id]
+      FROM WorkItems
+      WHERE
+        [System.TeamProject] = @project
+        AND [System.AssignedTo] = ${assignedToClause}
+        AND [System.State] IN ('Done', 'Closed')
+        AND [Microsoft.VSTS.Common.ClosedDate] >= '${closedRangeStart}'
+        AND [Microsoft.VSTS.Common.ClosedDate] < '${closedRangeEndExclusive}'
+      ORDER BY [Microsoft.VSTS.Common.ClosedDate] DESC
+    `
+  );
+
+  const closedItems = await fetchWorkItemDetails(
+    closedIds,
+    organization,
+    project
+  );
+
+  return enrichParents(closedItems, organization, project).then((items) =>
+    items.filter((item) => item.closedDate !== null).sort(compareClosedItems)
+  );
+}
+
+async function queryWorkItemIds(
+  organization: string,
+  project: string,
+  wiql: string
+): Promise<number[]> {
   const wiqlUrl = `https://dev.azure.com/${encodeURIComponent(organization)}/${encodeURIComponent(project)}/_apis/wit/wiql?api-version=7.0`;
 
   const wiqlResponse = await fetch(wiqlUrl, {
@@ -62,25 +144,18 @@ export async function fetchWorkItems(
   }
 
   const wiqlData: unknown = await wiqlResponse.json();
-  const ids = extractWorkItemIdsFromWiql(wiqlData);
+  return extractWorkItemIdsFromWiql(wiqlData);
+}
 
+async function fetchWorkItemDetails(
+  ids: number[],
+  organization: string,
+  project: string,
+  fields = WORK_ITEM_FIELDS
+): Promise<WorkItem[]> {
   if (!ids.length) {
-    return {
-      count: 0,
-      openItems: [],
-      closedItems: []
-    };
+    return [];
   }
-
-  const fields = [
-    'System.Id',
-    'System.WorkItemType',
-    'System.Title',
-    'System.State',
-    'System.AssignedTo',
-    'System.Parent',
-    'Microsoft.VSTS.Common.ClosedDate'
-  ];
 
   const idChunks = chunkArray(ids, 50);
   const allItems: WorkItem[] = [];
@@ -118,20 +193,49 @@ export async function fetchWorkItems(
     }
   }
 
-  const openItems = allItems.filter((item) => item.closedDate === null);
-  const closedItems = allItems
-    .filter((item) => item.closedDate !== null)
-    .sort(
-      (left, right) =>
-        getClosedDateTimestamp(right.closedDate) -
-        getClosedDateTimestamp(left.closedDate)
-    );
+  return allItems;
+}
 
-  return {
-    count: allItems.length,
-    openItems,
-    closedItems
-  };
+async function enrichParents(
+  items: WorkItem[],
+  organization: string,
+  project: string
+): Promise<WorkItem[]> {
+  const parentIds = Array.from(
+    new Set(
+      items
+        .map((item) => item.parentId)
+        .filter((parentId): parentId is number => typeof parentId === 'number')
+    )
+  );
+
+  if (!parentIds.length) {
+    return items;
+  }
+
+  const parentItems = await fetchWorkItemDetails(
+    parentIds,
+    organization,
+    project,
+    PARENT_FIELDS
+  );
+  const parentMap = new Map<number, WorkItemParentSummary>(
+    parentItems.map((item) => [
+      item.id,
+      {
+        id: item.id,
+        title: item.title,
+        workItemType: item.workItemType,
+        url: item.url
+      }
+    ])
+  );
+
+  return items.map((item) => ({
+    ...item,
+    parent:
+      item.parentId !== null ? (parentMap.get(item.parentId) ?? null) : null
+  }));
 }
 
 function chunkArray<T>(items: T[], size: number): T[][] {
@@ -149,6 +253,10 @@ function formatDateForWiql(date: Date): string {
   const mm = String(date.getMonth() + 1).padStart(2, '0');
   const dd = String(date.getDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
+}
+
+function formatDateForInput(date: Date): string {
+  return formatDateForWiql(date);
 }
 
 function escapeWiqlString(value: string): string {
@@ -196,6 +304,77 @@ function getClosedDateTimestamp(value: string | null): number {
 
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
+function compareOpenItems(left: WorkItem, right: WorkItem): number {
+  return (
+    getOpenStateSortWeight(left.state) - getOpenStateSortWeight(right.state)
+  );
+}
+
+function compareClosedItems(left: WorkItem, right: WorkItem): number {
+  return (
+    getClosedDateTimestamp(right.closedDate) -
+      getClosedDateTimestamp(left.closedDate) || right.id - left.id
+  );
+}
+
+function getOpenStateSortWeight(state: string): number {
+  const normalized = state.trim().toLowerCase();
+
+  if (normalized === 'to do') {
+    return 0;
+  }
+
+  if (normalized === 'in progress') {
+    return 1;
+  }
+
+  return 2;
+}
+
+function normalizeClosedDateRange(
+  range: FetchWorkItemsRequest['closedDateRange']
+) {
+  const start = parseDateInputValue(range.start);
+  const end = parseDateInputValue(range.end);
+
+  if (!start || !end || start.getTime() > end.getTime()) {
+    throw new Error(
+      'Closed date range is invalid. Choose a valid start and end date.'
+    );
+  }
+
+  return { start, end };
+}
+
+function parseDateInputValue(value: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null;
+  }
+
+  const [yearString, monthString, dayString] = value.split('-');
+  const year = Number(yearString);
+  const month = Number(monthString);
+  const day = Number(dayString);
+  const date = new Date(year, month - 1, day);
+
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return date;
+}
+
+function addDays(date: Date, days: number): Date {
+  const copy = new Date(date);
+  copy.setDate(copy.getDate() + days);
+  return copy;
 }
 
 function extractWorkItemIdsFromWiql(data: unknown): number[] {
@@ -267,6 +446,7 @@ function toWorkItem(
     state,
     assignedTo,
     parentId,
+    parent: null,
     closedDate,
     url
   };
@@ -275,3 +455,15 @@ function toWorkItem(
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
+
+const WORK_ITEM_FIELDS = [
+  'System.Id',
+  'System.WorkItemType',
+  'System.Title',
+  'System.State',
+  'System.AssignedTo',
+  'System.Parent',
+  'Microsoft.VSTS.Common.ClosedDate'
+];
+
+const PARENT_FIELDS = ['System.Id', 'System.WorkItemType', 'System.Title'];

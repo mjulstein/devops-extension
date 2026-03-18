@@ -8,6 +8,8 @@ This directory is the incubator for new features before they become promoted spe
 
 Keep ideas in Markdown only. Prefer one file per concept and use [`.specify/templates/idea-template.md`](../../.specify/templates/idea-template.md) as the starting point.
 
+- [`separate-open-closed-work-item-results.md`](./separate-open-closed-work-item-results.md) — explores stronger open/closed result typing and future independent refresh behavior for the Work items tab.
+
 ## Rules
 
 - Treat idea files as exploratory notes, not committed implementation scope.

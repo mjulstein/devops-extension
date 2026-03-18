@@ -1,11 +1,11 @@
-import type { Settings, WorkItemResult } from '@/types';
+import type { FetchWorkItemsRequest, WorkItemResult } from '@/types';
 import type { RuntimeResponse } from './runtimeResponse';
 
 const PING_SERVICE_WORKER_TIMEOUT_MS = 3000;
 const FETCH_WORK_ITEMS_TIMEOUT_MS = 45000;
 
 export async function fetchWorkItems(
-  settings: Settings
+  request: FetchWorkItemsRequest
 ): Promise<RuntimeResponse<WorkItemResult>> {
   await withTimeout(
     chrome.runtime.sendMessage({ type: 'PING_SERVICE_WORKER' }),
@@ -16,7 +16,7 @@ export async function fetchWorkItems(
   return withTimeout(
     chrome.runtime.sendMessage({
       type: 'FETCH_WORK_ITEMS',
-      payload: settings
+      payload: request
     }),
     FETCH_WORK_ITEMS_TIMEOUT_MS,
     'Timed out while waiting for work-item fetch response from service worker.'

@@ -1,6 +1,11 @@
 import { defaultSettings } from './defaultSettings';
+import {
+  createDefaultClosedDateRange,
+  isValidClosedDateRange
+} from './workItemsDateRange';
 import type {
   ActiveWorkItemContext,
+  ClosedDateRange,
   ParentSuggestionGroup,
   ParentSuggestionItem,
   ParentSuggestionStore,
@@ -20,6 +25,8 @@ const ACTIVE_SIDEPANEL_TAB_KEY = 'activeSidepanelTab';
 const HIDDEN_CHILD_TASK_STATES_KEY = 'hiddenChildTaskStates';
 const PARENT_SUGGESTIONS_KEY = 'parentSuggestions';
 const PINNED_ACTIVE_WORK_ITEM_CONTEXT_KEY = 'pinnedActiveWorkItemContext';
+const WORK_ITEMS_CLOSED_DATE_RANGE_KEY = 'workItemsClosedDateRange';
+const SHOW_WORK_ITEM_PARENT_DETAILS_KEY = 'showWorkItemParentDetails';
 // Keep enough entries to support recency ordering while only rendering a small subset.
 const MAX_STORED_RECENT_SUGGESTIONS = 40;
 
@@ -62,13 +69,43 @@ export async function saveLastVisitedDevOpsContext(
 export async function loadCachedWorkItems(): Promise<WorkItemResult | null> {
   const stored = await chrome.storage.local.get(CACHED_WORK_ITEMS_KEY);
   const cached = stored[CACHED_WORK_ITEMS_KEY];
-  return isWorkItemResult(cached) ? cached : null;
+  return normalizeWorkItemResult(cached);
 }
 
 export async function saveCachedWorkItems(
   result: WorkItemResult
 ): Promise<void> {
   await chrome.storage.local.set({ [CACHED_WORK_ITEMS_KEY]: result });
+}
+
+export async function loadWorkItemsClosedDateRange(): Promise<ClosedDateRange> {
+  const stored = await chrome.storage.local.get(
+    WORK_ITEMS_CLOSED_DATE_RANGE_KEY
+  );
+  return normalizeClosedDateRange(stored[WORK_ITEMS_CLOSED_DATE_RANGE_KEY]);
+}
+
+export async function saveWorkItemsClosedDateRange(
+  range: ClosedDateRange
+): Promise<void> {
+  await chrome.storage.local.set({ [WORK_ITEMS_CLOSED_DATE_RANGE_KEY]: range });
+}
+
+export async function loadShowWorkItemParentDetails(): Promise<boolean> {
+  const stored = await chrome.storage.local.get(
+    SHOW_WORK_ITEM_PARENT_DETAILS_KEY
+  );
+  return typeof stored[SHOW_WORK_ITEM_PARENT_DETAILS_KEY] === 'boolean'
+    ? stored[SHOW_WORK_ITEM_PARENT_DETAILS_KEY]
+    : false;
+}
+
+export async function saveShowWorkItemParentDetails(
+  value: boolean
+): Promise<void> {
+  await chrome.storage.local.set({
+    [SHOW_WORK_ITEM_PARENT_DETAILS_KEY]: value
+  });
 }
 
 export async function loadActiveSidepanelTab(): Promise<SidepanelTabId> {
@@ -175,35 +212,106 @@ export async function clearPinnedActiveWorkItemContext(): Promise<void> {
   await chrome.storage.local.remove(PINNED_ACTIVE_WORK_ITEM_CONTEXT_KEY);
 }
 
-function isWorkItemResult(value: unknown): value is WorkItemResult {
+function normalizeWorkItemResult(value: unknown): WorkItemResult | null {
   if (!isRecord(value)) {
-    return false;
+    return null;
   }
 
-  return (
-    typeof value.count === 'number' &&
-    Array.isArray(value.openItems) &&
-    Array.isArray(value.closedItems) &&
-    value.openItems.every(isWorkItem) &&
-    value.closedItems.every(isWorkItem)
+  if (!Array.isArray(value.openItems) || !Array.isArray(value.closedItems)) {
+    return null;
+  }
+
+  const openItems = value.openItems.map(normalizeWorkItem);
+  const closedItems = value.closedItems.map(normalizeWorkItem);
+
+  if (openItems.includes(null) || closedItems.includes(null)) {
+    return null;
+  }
+
+  const normalizedOpenItems = openItems.filter(
+    (item): item is WorkItem => item !== null
   );
+  const normalizedClosedItems = closedItems.filter(
+    (item): item is WorkItem => item !== null
+  );
+
+  return {
+    count:
+      typeof value.count === 'number'
+        ? value.count
+        : normalizedOpenItems.length + normalizedClosedItems.length,
+    openItems: normalizedOpenItems,
+    closedItems: normalizedClosedItems,
+    closedDateRange: normalizeClosedDateRange(value.closedDateRange)
+  };
 }
 
-function isWorkItem(value: unknown): value is WorkItem {
+function normalizeWorkItem(value: unknown): WorkItem | null {
   if (!isRecord(value)) {
-    return false;
+    return null;
   }
 
-  return (
-    typeof value.id === 'number' &&
-    typeof value.workItemType === 'string' &&
+  if (
+    typeof value.id !== 'number' ||
+    typeof value.workItemType !== 'string' ||
+    typeof value.title !== 'string' ||
+    typeof value.state !== 'string' ||
+    typeof value.assignedTo !== 'string' ||
+    (typeof value.parentId !== 'number' && value.parentId !== null) ||
+    (typeof value.closedDate !== 'string' && value.closedDate !== null) ||
+    typeof value.url !== 'string'
+  ) {
+    return null;
+  }
+
+  return {
+    id: value.id,
+    workItemType: value.workItemType,
+    title: value.title,
+    state: value.state,
+    assignedTo: value.assignedTo,
+    parentId: value.parentId,
+    parent: normalizeWorkItemParent(value.parent),
+    closedDate: value.closedDate,
+    url: value.url
+  };
+}
+
+function normalizeWorkItemParent(value: unknown): WorkItem['parent'] {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  return typeof value.id === 'number' &&
     typeof value.title === 'string' &&
-    typeof value.state === 'string' &&
-    typeof value.assignedTo === 'string' &&
-    (typeof value.parentId === 'number' || value.parentId === null) &&
-    (typeof value.closedDate === 'string' || value.closedDate === null) &&
+    typeof value.workItemType === 'string' &&
     typeof value.url === 'string'
-  );
+    ? {
+        id: value.id,
+        title: value.title,
+        workItemType: value.workItemType,
+        url: value.url
+      }
+    : null;
+}
+
+function normalizeClosedDateRange(value: unknown): ClosedDateRange {
+  if (
+    isRecord(value) &&
+    typeof value.start === 'string' &&
+    typeof value.end === 'string'
+  ) {
+    const range = {
+      start: value.start,
+      end: value.end
+    };
+
+    if (isValidClosedDateRange(range)) {
+      return range;
+    }
+  }
+
+  return createDefaultClosedDateRange();
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

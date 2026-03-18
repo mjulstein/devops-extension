@@ -16,5 +16,5 @@ This directory contains Azure DevOps-specific logic. Keep `src/content-script.ts
 - `typeGuards.ts` — small shared guards/helpers for Azure DevOps API responses.
 - `urlContext.ts` — derives organization, project, and work-item ids from Azure DevOps URLs.
 - `workItemDetails.ts` — fetches work-item metadata used for parent resolution, validation, and task creation defaults.
-- `workItems.ts` — runs the assigned-to WIQL query and transforms work-item results for the side panel.
+- `workItems.ts` — runs separate open/closed assigned-to WIQL queries, applies the selected closed-date range, and transforms work-item results with optional parent summaries for the side panel.
 

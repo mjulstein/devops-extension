@@ -49,18 +49,19 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - `src/content-script.ts` — generic runtime message router between side panel and domain modules
 - `src/devops/*` — Azure DevOps-specific DOM detection, URL/context parsing, REST/WIQL, and task/parent operations
 - `src/devops/{activeParentContext,lastVisitedContext}.ts` — active work-item context resolution plus persisted last-visited org/project and work-item references used by the service worker fallback flow
-- `src/devops/workItems.ts` — work-item query and transformation logic
+- `src/devops/workItems.ts` — separate open/closed work-item query and transformation logic, including closed-date range filtering and parent-summary enrichment
 - `src/sidepanel.html` — side panel HTML entry
 - `src/sidepanel.tsx` — React side panel entry
 - `src/sidepanel.css` — side panel styling
 - `src/sidepanel/{App,Tabs,Link,DebugConsolePane}.tsx` — side panel state shell, tab chrome, link navigation helper, and in-panel debug log viewer
+- `src/sidepanel/workItemsDateRange.ts` — default closed-date range and validation helpers for the Work items tab
 - `src/sidepanel/work-items/*` — work-items tab components (`StatusCard`, `WorkItemSection`) with `index.ts` entry export
 - `src/sidepanel/work-item/*` — work-item tab components (`WorkItemCard`) with `index.ts` entry export
 - `src/sidepanel/settings/*` — settings tab components (`SettingsCard`) with `index.ts` entry export
-- `src/sidepanel/{chromeStorage,defaultSettings}.ts` — side panel storage/defaults helpers
+- `src/sidepanel/{chromeStorage,defaultSettings}.ts` — side panel storage/defaults helpers, including cached work-items results plus browser-local closed-date range and parent-detail toggle state
 - `src/sidepanel/tabMessaging/index.ts` + `src/sidepanel/tabMessaging/*.ts` — side panel tab messaging barrel + function modules
 - `src/devops/*.test.ts` + `src/sidepanel/tabMessaging/*.test.ts` / `*.test.tsx` — Vitest unit tests (globals enabled)
-- `types/*.ts` — shared extension types imported via the `@/types` alias
+- `types/*.ts` — shared extension types imported via the `@/types` alias, including the `WorkItemsQuery` request/range types
 - `vite.config.ts` — Vite multi-entry build config for extension output
 - `dist/` — generated unpacked extension files (build output)
 - `README.md` — user/developer documentation
@@ -69,7 +70,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 ## Configuration Rules
 
 - Runtime settings should stay in browser storage unless explicitly changed.
-- Persisted side-panel state in `src/sidepanel/chromeStorage.ts` (for example cached work items, hidden child-task state filters, parent suggestions, active tab, and pinned active work-item context) should remain browser-local and backwards-compatible when storage shapes or keys change.
+- Persisted side-panel state in `src/sidepanel/chromeStorage.ts` (for example cached work items, closed-date range and parent-detail toggle preferences, hidden child-task state filters, parent suggestions, active tab, and pinned active work-item context) should remain browser-local and backwards-compatible when storage shapes or keys change.
 - Local-only development configuration must not be committed.
 - Avoid hardcoding organization, project, user names, tokens, or URLs that should remain configurable.
 - Prefer deriving organization/project from the last visited `dev.azure.com/{organization}/{project}` URL when settings are empty.

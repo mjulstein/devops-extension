@@ -7,7 +7,9 @@ The extension runs inside the browser and uses the currently authenticated Azure
 Results are displayed in the side panel as clickable links grouped into:
 
 - **TODO**: active work items assigned to the configured user
-- **Closed last week**: work items assigned to the user that were completed within the last 7 days
+- **Closed**: work items assigned to the user that were completed within the selected closed-date range (default: today back through 7 days ago), grouped by closed date
+
+The Work items tab keeps its closed-date range and optional “show task parent details” toggle in browser-local storage. Changing the date range automatically refreshes the closed section, and each closed-date group includes a one-day refetch action.
 
 A dedicated **Create child tasks** section is available at the bottom of the panel.
 
@@ -83,6 +85,8 @@ Load `dist/` as the unpacked extension directory in Edge.
 
 The extension stores runtime settings in browser storage.
 
+The Work items tab also stores its closed-date range filter and parent-detail visibility toggle in browser-local storage so the tab reopens with the same view preferences.
+
 In the side panel **Settings** card, use **Reload extension** during development to apply updates quickly. You can still reload manually from `edge://extensions` if needed.
 
 Example structure:
@@ -140,7 +144,10 @@ npm test
 3. Optionally set `Assigned to`, `Organization`, and `Project` overrides. Leave
    `Assigned to` empty to use `@me`.
 4. Click **Fetch work items**.
-5. Open the **Active item** tab to create child tasks. The tab resolves context from the last visited Azure DevOps work-item view (or the pinned item if set), so it can continue working even when a non-DevOps tab is active.
+5. Adjust the closed-date range inputs to refresh closed items for a specific window, or use **Reset to default** to restore the default today-to-7-days-ago range.
+6. Optionally enable **Show task parent details** to display each task's parent summary inline.
+7. Use the per-day refetch button beside any closed-date heading to reload only that day.
+8. Open the **Active item** tab to create child tasks. The tab resolves context from the last visited Azure DevOps work-item view (or the pinned item if set), so it can continue working even when a non-DevOps tab is active.
 
 The extension queries Azure DevOps using the current browser session and displays matching work items in the side panel.
 

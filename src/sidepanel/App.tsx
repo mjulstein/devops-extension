@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { DebugConsolePane, type DebugLogEntry } from './DebugConsolePane';
 import { SettingsCard } from './settings';
 import { WorkItemCard } from './work-item';
@@ -12,18 +12,27 @@ import {
   loadLastVisitedDevOpsContext,
   loadParentSuggestions,
   loadPinnedActiveWorkItemContext,
+  loadShowWorkItemParentDetails,
   loadSettings,
+  loadWorkItemsClosedDateRange,
   saveActiveSidepanelTab,
   saveCachedWorkItems,
   saveHiddenChildTaskStates,
   saveLastVisitedDevOpsContext,
   savePinnedActiveWorkItemContext,
+  saveShowWorkItemParentDetails,
   saveSettings,
+  saveWorkItemsClosedDateRange,
   setParentSuggestionPinned,
   upsertParentSuggestion
 } from './chromeStorage';
 import { tryCreateLastVisitedDevOpsContext } from '../devops/lastVisitedContext';
 import { defaultSettings } from './defaultSettings';
+import {
+  areClosedDateRangesEqual,
+  createDefaultClosedDateRange,
+  isValidClosedDateRange
+} from './workItemsDateRange';
 import {
   createChildTask,
   fetchChildTasksForCurrentParent,
@@ -36,10 +45,13 @@ import {
 import type {
   ActiveWorkItemContext,
   ChildTaskItem,
+  ClosedDateRange,
   ParentSuggestionGroup,
   ParentSuggestionItem,
   ParentSuggestionStore,
   Settings,
+  WorkItem,
+  WorkItemsFetchScope,
   WorkItemResult
 } from '@/types';
 
@@ -83,12 +95,18 @@ export function App() {
     useState<StatusMessage | null>(null);
   const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
   const [hiddenTaskStates, setHiddenTaskStates] = useState<string[]>([]);
+  const [closedDateRange, setClosedDateRange] = useState<ClosedDateRange>(() =>
+    createDefaultClosedDateRange()
+  );
+  const [showWorkItemParentDetails, setShowWorkItemParentDetails] =
+    useState(false);
   const [parentSuggestions, setParentSuggestions] =
     useState<ParentSuggestionStore>(EMPTY_PARENT_SUGGESTIONS);
   const [pinnedActiveWorkItemContext, setPinnedActiveWorkItemContext] =
     useState<ActiveWorkItemContext | null>(null);
   const [linkExternal, setLinkExternal] = useState(true);
   const [debugLogs, setDebugLogs] = useState<DebugLogEntry[]>([]);
+  const workItemsFetchSequenceRef = useRef(0);
 
   function pushDebugLog(level: DebugLogEntry['level'], message: string): void {
     const entry: DebugLogEntry = {
@@ -136,7 +154,9 @@ export function App() {
         storedActiveTab,
         storedHiddenStates,
         storedParentSuggestions,
-        storedPinnedContext
+        storedPinnedContext,
+        storedClosedDateRange,
+        storedShowWorkItemParentDetails
       ] = await Promise.all([
         loadSettings(),
         loadLastVisitedDevOpsContext(),
@@ -144,7 +164,9 @@ export function App() {
         loadActiveSidepanelTab(),
         loadHiddenChildTaskStates(),
         loadParentSuggestions(),
-        loadPinnedActiveWorkItemContext()
+        loadPinnedActiveWorkItemContext(),
+        loadWorkItemsClosedDateRange(),
+        loadShowWorkItemParentDetails()
       ]);
 
       const resolvedLastVisitedContext =
@@ -183,6 +205,8 @@ export function App() {
       }
       setActiveTab(storedActiveTab);
       setHiddenTaskStates(storedHiddenStates);
+      setClosedDateRange(storedClosedDateRange);
+      setShowWorkItemParentDetails(storedShowWorkItemParentDetails);
       setParentSuggestions(storedParentSuggestions);
       setPinnedActiveWorkItemContext(storedPinnedContext);
       await refreshActiveTabLinkMode();
@@ -295,11 +319,7 @@ export function App() {
   }
 
   async function onSaveSettings() {
-    await saveSettings({
-      organization: settings.organization.trim(),
-      project: settings.project.trim(),
-      assignedTo: settings.assignedTo.trim()
-    });
+    await saveSettings(getTrimmedSettingsFromState(settings));
     pushDebugLog(
       'success',
       `Saved settings for ${settings.organization.trim() || '(auto org)'}/${settings.project.trim() || '(auto project)'}.`
@@ -317,20 +337,45 @@ export function App() {
     chrome.runtime.reload();
   }
 
-  async function onFetchWorkItems() {
+  async function onFetchWorkItems(options?: {
+    closedDateRange?: ClosedDateRange;
+    source?: string;
+    scope?: WorkItemsFetchScope;
+    refetchedClosedDay?: string;
+  }) {
     const startedAt = Date.now();
+    const fetchSequence = ++workItemsFetchSequenceRef.current;
+    const effectiveClosedDateRange =
+      options?.closedDateRange ?? closedDateRange;
+    const fetchSource = options?.source ?? 'manual';
+    const scope = options?.scope ?? 'all';
+    const refetchedClosedDay = options?.refetchedClosedDay ?? null;
 
     try {
       pushDebugLog(
         'info',
-        `Fetch requested (org=${settings.organization.trim() || '(auto)'}, project=${settings.project.trim() || '(auto)'}, assignedTo=${settings.assignedTo.trim() || '@me'}).`
+        `Fetch requested via ${fetchSource} [${scope}] (org=${settings.organization.trim() || '(auto)'}, project=${settings.project.trim() || '(auto)'}, assignedTo=${settings.assignedTo.trim() || '@me'}, closed=${effectiveClosedDateRange.start}..${effectiveClosedDateRange.end}).`
       );
       setIsLoading(true);
-      setLoadingMessage('Fetching work items...');
+      setLoadingMessage(
+        scope === 'all'
+          ? 'Fetching work items...'
+          : refetchedClosedDay
+            ? `Refreshing closed items for ${refetchedClosedDay}...`
+            : 'Refreshing closed items...'
+      );
       setHasFetchedOnce(true);
       setStatusMessage(null);
 
-      const response = await fetchWorkItems(settings);
+      const response = await fetchWorkItems({
+        settings: getTrimmedSettingsFromState(settings),
+        closedDateRange: effectiveClosedDateRange,
+        scope
+      });
+
+      if (fetchSequence !== workItemsFetchSequenceRef.current) {
+        return;
+      }
 
       if (!response.ok) {
         pushDebugLog(
@@ -346,17 +391,43 @@ export function App() {
         return;
       }
 
-      setResult(response.result);
+      const nextResult =
+        scope === 'all'
+          ? response.result
+          : mergeClosedItemsIntoResult(
+              result,
+              response.result.closedItems,
+              closedDateRange,
+              refetchedClosedDay
+            );
+
+      setResult(nextResult);
+
+      if (scope === 'all') {
+        setClosedDateRange(response.result.closedDateRange);
+      }
+
       pushDebugLog(
         'success',
-        `Fetch succeeded in ${Date.now() - startedAt}ms with ${response.result.count} work items.`
+        scope === 'all'
+          ? `Fetch succeeded in ${Date.now() - startedAt}ms with ${nextResult.count} work items.`
+          : `Closed-items refresh succeeded in ${Date.now() - startedAt}ms with ${response.result.closedItems.length} closed work items.`
       );
       setStatusMessage({
         kind: 'success',
-        text: `Fetched ${response.result.count} work item(s).`
+        text:
+          scope === 'all'
+            ? `Fetched ${nextResult.count} work item(s).`
+            : refetchedClosedDay
+              ? `Refetched closed work items for ${formatClosedDayLabel(refetchedClosedDay)}.`
+              : `Updated closed work items for ${effectiveClosedDateRange.start} through ${effectiveClosedDateRange.end}.`
       });
-      void saveCachedWorkItems(response.result).catch(() => undefined);
+      void saveCachedWorkItems(nextResult).catch(() => undefined);
     } catch (error) {
+      if (fetchSequence !== workItemsFetchSequenceRef.current) {
+        return;
+      }
+
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       pushDebugLog(
@@ -370,8 +441,68 @@ export function App() {
           : errorMessage
       });
     } finally {
-      setIsLoading(false);
+      if (fetchSequence === workItemsFetchSequenceRef.current) {
+        setIsLoading(false);
+      }
     }
+  }
+
+  async function onClosedDateRangeChange(
+    key: keyof ClosedDateRange,
+    value: string
+  ) {
+    const nextRange = {
+      ...closedDateRange,
+      [key]: value
+    };
+
+    setClosedDateRange(nextRange);
+
+    if (!isValidClosedDateRange(nextRange)) {
+      setStatusMessage({
+        kind: 'info',
+        text: 'Choose a valid closed date range to refresh closed items.'
+      });
+      return;
+    }
+
+    await saveWorkItemsClosedDateRange(nextRange);
+    await onFetchWorkItems({
+      closedDateRange: nextRange,
+      source: 'closed-date-range change',
+      scope: 'closed'
+    });
+  }
+
+  async function onResetClosedDateRange() {
+    const nextRange = createDefaultClosedDateRange();
+    setClosedDateRange(nextRange);
+    setStatusMessage(null);
+    await saveWorkItemsClosedDateRange(nextRange);
+
+    await onFetchWorkItems({
+      closedDateRange: nextRange,
+      source: areClosedDateRangesEqual(nextRange, closedDateRange)
+        ? 'closed-date-range reset refetch'
+        : 'closed-date-range reset',
+      scope: 'closed'
+    });
+  }
+
+  async function onRefetchClosedDay(date: string) {
+    setStatusMessage(null);
+    await onFetchWorkItems({
+      closedDateRange: { start: date, end: date },
+      source: `closed-day refetch ${date}`,
+      scope: 'closed',
+      refetchedClosedDay: date
+    });
+  }
+
+  async function onToggleShowWorkItemParentDetails() {
+    const nextValue = !showWorkItemParentDetails;
+    setShowWorkItemParentDetails(nextValue);
+    await saveShowWorkItemParentDetails(nextValue);
   }
 
   async function refreshActiveWorkItemContext(
@@ -804,6 +935,8 @@ export function App() {
           loadingMessage={loadingMessage}
           isLoading={isLoading}
           result={result}
+          closedDateRange={closedDateRange}
+          showWorkItemParentDetails={showWorkItemParentDetails}
           statusMessage={statusMessage}
           preFetchHint={
             hasFetchedOnce
@@ -811,6 +944,10 @@ export function App() {
               : 'Panel reloaded. Click Fetch work items to load the latest data.'
           }
           onFetchWorkItems={onFetchWorkItems}
+          onClosedDateRangeChange={onClosedDateRangeChange}
+          onResetClosedDateRange={onResetClosedDateRange}
+          onRefetchClosedDay={onRefetchClosedDay}
+          onToggleShowWorkItemParentDetails={onToggleShowWorkItemParentDetails}
           isActionDisabled={isLoading || isCreatingTask}
           linkExternal={linkExternal}
         />
@@ -848,6 +985,90 @@ export function App() {
       />
     </div>
   );
+}
+
+function getTrimmedSettingsFromState(settings: Settings): Settings {
+  return {
+    organization: settings.organization.trim(),
+    project: settings.project.trim(),
+    assignedTo: settings.assignedTo.trim()
+  };
+}
+
+function mergeClosedItemsIntoResult(
+  current: WorkItemResult | null,
+  nextClosedItems: WorkItem[],
+  selectedClosedDateRange: ClosedDateRange,
+  refetchedClosedDay: string | null
+): WorkItemResult {
+  const openItems = current?.openItems ?? [];
+  const closedItems = refetchedClosedDay
+    ? replaceClosedItemsForDay(
+        current?.closedItems ?? [],
+        refetchedClosedDay,
+        nextClosedItems
+      )
+    : nextClosedItems;
+
+  return {
+    count: openItems.length + closedItems.length,
+    openItems,
+    closedItems,
+    closedDateRange: selectedClosedDateRange
+  };
+}
+
+function replaceClosedItemsForDay(
+  currentItems: WorkItem[],
+  day: string,
+  replacementItems: WorkItem[]
+): WorkItem[] {
+  const targetDayKey = normalizeClosedDayKey(day);
+  const retainedItems = currentItems.filter(
+    (item) => normalizeClosedDayKey(item.closedDate) !== targetDayKey
+  );
+
+  return [...retainedItems, ...replacementItems].sort(
+    compareClosedItemsForView
+  );
+}
+
+function normalizeClosedDayKey(value: string | null): string {
+  if (!value) {
+    return 'unknown';
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function formatClosedDayLabel(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
+}
+
+function compareClosedItemsForView(left: WorkItem, right: WorkItem): number {
+  return (
+    getClosedItemTimestamp(right.closedDate) -
+      getClosedItemTimestamp(left.closedDate) || right.id - left.id
+  );
+}
+
+function getClosedItemTimestamp(value: string | null): number {
+  if (!value) {
+    return 0;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
 }
 
 function normalizeWorkItemType(value: string): string {

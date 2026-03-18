@@ -12,7 +12,7 @@ This directory contains small messaging helpers that the side panel uses to talk
 - `getActiveTabId.ts` / `getActiveTabId.test.ts` — resolves the active browser tab id and tests that helper.
 - `isAzureDevOpsUrl.ts` — identifies Azure DevOps URLs for navigation/link behavior.
 - `isActiveTabAzureDevOps.ts` / `isActiveTabAzureDevOps.test.ts` — checks whether the current active tab is an Azure DevOps page.
-- `fetchWorkItems.ts` / `fetchWorkItems.test.ts` — requests work-item fetches from the service worker with timeout handling.
+- `fetchWorkItems.ts` / `fetchWorkItems.test.ts` — requests work-item fetches from the service worker with timeout handling, passing settings plus the selected closed-date range.
 - `getActiveWorkItemContext.ts` / `getActiveWorkItemContext.test.ts` — requests the active work-item context from the service worker.
 - `createChildTask.ts` / `createChildTask.test.ts` — requests child-task creation for the current or selected parent.
 - `fetchChildTasksForCurrentParent.ts` / `fetchChildTasksForCurrentParent.test.ts` — requests child-task lists for the resolved or selected parent.

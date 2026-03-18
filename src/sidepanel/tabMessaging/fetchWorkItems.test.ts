@@ -1,5 +1,5 @@
 import { fetchWorkItems } from './fetchWorkItems';
-import type { Settings } from '@/types';
+import type { FetchWorkItemsRequest } from '@/types';
 
 const sendMessageMock = vi.fn();
 
@@ -19,27 +19,39 @@ describe('fetchWorkItems.test.ts', () => {
   });
 
   it('sends FETCH_WORK_ITEMS to runtime', async () => {
-    const settings: Settings = {
-      organization: '',
-      project: '',
-      assignedTo: 'User Name'
+    const request: FetchWorkItemsRequest = {
+      settings: {
+        organization: '',
+        project: '',
+        assignedTo: 'User Name'
+      },
+      closedDateRange: {
+        start: '2026-03-10',
+        end: '2026-03-17'
+      },
+      scope: 'all'
     };
     const response = {
       ok: true,
-      result: { count: 0, openItems: [], closedItems: [] }
+      result: {
+        count: 0,
+        openItems: [],
+        closedItems: [],
+        closedDateRange: request.closedDateRange
+      }
     };
 
     sendMessageMock
       .mockResolvedValueOnce({ ok: true, result: 'pong' })
       .mockResolvedValueOnce(response);
 
-    await expect(fetchWorkItems(settings)).resolves.toEqual(response);
+    await expect(fetchWorkItems(request)).resolves.toEqual(response);
     expect(sendMessageMock).toHaveBeenNthCalledWith(1, {
       type: 'PING_SERVICE_WORKER'
     });
     expect(sendMessageMock).toHaveBeenNthCalledWith(2, {
       type: 'FETCH_WORK_ITEMS',
-      payload: settings
+      payload: request
     });
   });
 
@@ -49,7 +61,18 @@ describe('fetchWorkItems.test.ts', () => {
       .mockRejectedValueOnce(new Error('runtime unavailable'));
 
     await expect(
-      fetchWorkItems({ organization: '', project: '', assignedTo: 'User Name' })
+      fetchWorkItems({
+        settings: {
+          organization: '',
+          project: '',
+          assignedTo: 'User Name'
+        },
+        closedDateRange: {
+          start: '2026-03-10',
+          end: '2026-03-17'
+        },
+        scope: 'all'
+      })
     ).rejects.toThrow('runtime unavailable');
   });
 
@@ -60,16 +83,28 @@ describe('fetchWorkItems.test.ts', () => {
       .mockImplementationOnce(() => new Promise(() => undefined));
 
     const promise = fetchWorkItems({
-      organization: '',
-      project: '',
-      assignedTo: 'User Name'
+      settings: {
+        organization: '',
+        project: '',
+        assignedTo: 'User Name'
+      },
+      closedDateRange: {
+        start: '2026-03-10',
+        end: '2026-03-17'
+      },
+      scope: 'all'
     });
-
-    const expectation = expect(promise).rejects.toThrow(
-      'Timed out while waiting for work-item fetch response from service worker.'
+    const settled = promise.then(
+      () => null,
+      (error: unknown) =>
+        error instanceof Error ? error : new Error(String(error))
     );
 
     await vi.advanceTimersByTimeAsync(45001);
-    await expectation;
+    await expect(settled).resolves.toBeInstanceOf(Error);
+    await expect(settled).resolves.toMatchObject({
+      message:
+        'Timed out while waiting for work-item fetch response from service worker.'
+    });
   });
 });

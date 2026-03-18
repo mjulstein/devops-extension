@@ -12,6 +12,7 @@ This directory contains shared TypeScript types imported through the `@/types` a
 - `CreatedChildTask.ts` — return type for child-task creation results.
 - `ParentSuggestion.ts` — recent and pinned parent-suggestion types used by side-panel storage and UI.
 - `Settings.ts` — persisted extension settings shape.
-- `WorkItem.ts` — normalized work-item shape used by fetched results.
-- `WorkItemResult.ts` — grouped open/closed work-item fetch result shape.
+- `WorkItem.ts` — normalized work-item shape used by fetched results, including optional parent summaries for task rows.
+- `WorkItemResult.ts` — grouped open/closed work-item fetch result shape plus the closed-date range metadata used by the Work items tab.
+- `WorkItemsQuery.ts` — shared work-items fetch request and closed-date range types passed between the side panel and service worker.
 
