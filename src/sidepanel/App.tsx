@@ -31,6 +31,7 @@ import { defaultSettings } from './defaultSettings';
 import {
   areClosedDateRangesEqual,
   createDefaultClosedDateRange,
+  isTodayDateInputValue,
   isValidClosedDateRange
 } from './workItemsDateRange';
 import {
@@ -98,6 +99,8 @@ export function App() {
   const [closedDateRange, setClosedDateRange] = useState<ClosedDateRange>(() =>
     createDefaultClosedDateRange()
   );
+  const [isClosedEndTodayShortcut, setIsClosedEndTodayShortcut] =
+    useState(true);
   const [showWorkItemParentDetails, setShowWorkItemParentDetails] =
     useState(false);
   const [parentSuggestions, setParentSuggestions] =
@@ -206,6 +209,9 @@ export function App() {
       setActiveTab(storedActiveTab);
       setHiddenTaskStates(storedHiddenStates);
       setClosedDateRange(storedClosedDateRange);
+      setIsClosedEndTodayShortcut(
+        isTodayDateInputValue(storedClosedDateRange.end)
+      );
       setShowWorkItemParentDetails(storedShowWorkItemParentDetails);
       setParentSuggestions(storedParentSuggestions);
       setPinnedActiveWorkItemContext(storedPinnedContext);
@@ -405,6 +411,9 @@ export function App() {
 
       if (scope === 'all') {
         setClosedDateRange(response.result.closedDateRange);
+        setIsClosedEndTodayShortcut(
+          isTodayDateInputValue(response.result.closedDateRange.end)
+        );
       }
 
       pushDebugLog(
@@ -458,6 +467,10 @@ export function App() {
 
     setClosedDateRange(nextRange);
 
+    if (key === 'end') {
+      setIsClosedEndTodayShortcut(isTodayDateInputValue(value));
+    }
+
     if (!isValidClosedDateRange(nextRange)) {
       setStatusMessage({
         kind: 'info',
@@ -477,6 +490,7 @@ export function App() {
   async function onResetClosedDateRange() {
     const nextRange = createDefaultClosedDateRange();
     setClosedDateRange(nextRange);
+    setIsClosedEndTodayShortcut(true);
     setStatusMessage(null);
     await saveWorkItemsClosedDateRange(nextRange);
 
@@ -497,6 +511,10 @@ export function App() {
       scope: 'closed',
       refetchedClosedDay: date
     });
+  }
+
+  function onEnableCustomClosedEndDate() {
+    setIsClosedEndTodayShortcut(false);
   }
 
   async function onToggleShowWorkItemParentDetails() {
@@ -936,6 +954,7 @@ export function App() {
           isLoading={isLoading}
           result={result}
           closedDateRange={closedDateRange}
+          isClosedEndTodayShortcut={isClosedEndTodayShortcut}
           showWorkItemParentDetails={showWorkItemParentDetails}
           statusMessage={statusMessage}
           preFetchHint={
@@ -945,6 +964,7 @@ export function App() {
           }
           onFetchWorkItems={onFetchWorkItems}
           onClosedDateRangeChange={onClosedDateRangeChange}
+          onEnableCustomClosedEndDate={onEnableCustomClosedEndDate}
           onResetClosedDateRange={onResetClosedDateRange}
           onRefetchClosedDay={onRefetchClosedDay}
           onToggleShowWorkItemParentDetails={onToggleShowWorkItemParentDetails}

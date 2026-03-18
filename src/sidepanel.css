@@ -116,7 +116,7 @@ button:disabled {
 
 .work-items-date-range {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 8px;
   align-items: center;
 }
@@ -127,6 +127,12 @@ button:disabled {
 
 .work-items-date-field input {
   margin-top: 0;
+}
+
+.work-items-today-button {
+  width: 100%;
+  margin-top: 0;
+  text-transform: lowercase;
 }
 
 .checkbox-toggle {
@@ -148,6 +154,12 @@ button:disabled {
 .work-items-reset-button {
   margin-top: 0;
   white-space: nowrap;
+}
+
+.work-items-date-separator {
+  color: #666;
+  font-size: 14px;
+  line-height: 1;
 }
 
 .work-item-closed-groups {

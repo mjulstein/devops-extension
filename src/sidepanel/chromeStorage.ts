@@ -1,7 +1,7 @@
 import { defaultSettings } from './defaultSettings';
 import {
-  createDefaultClosedDateRange,
-  isValidClosedDateRange
+  applyClosedDateRangeOverrides,
+  createClosedDateRangeOverrides
 } from './workItemsDateRange';
 import type {
   ActiveWorkItemContext,
@@ -82,13 +82,24 @@ export async function loadWorkItemsClosedDateRange(): Promise<ClosedDateRange> {
   const stored = await chrome.storage.local.get(
     WORK_ITEMS_CLOSED_DATE_RANGE_KEY
   );
-  return normalizeClosedDateRange(stored[WORK_ITEMS_CLOSED_DATE_RANGE_KEY]);
+  return applyClosedDateRangeOverrides(
+    stored[WORK_ITEMS_CLOSED_DATE_RANGE_KEY]
+  );
 }
 
 export async function saveWorkItemsClosedDateRange(
   range: ClosedDateRange
 ): Promise<void> {
-  await chrome.storage.local.set({ [WORK_ITEMS_CLOSED_DATE_RANGE_KEY]: range });
+  const overrides = createClosedDateRangeOverrides(range);
+
+  if (!overrides) {
+    await chrome.storage.local.remove(WORK_ITEMS_CLOSED_DATE_RANGE_KEY);
+    return;
+  }
+
+  await chrome.storage.local.set({
+    [WORK_ITEMS_CLOSED_DATE_RANGE_KEY]: overrides
+  });
 }
 
 export async function loadShowWorkItemParentDetails(): Promise<boolean> {
@@ -296,22 +307,7 @@ function normalizeWorkItemParent(value: unknown): WorkItem['parent'] {
 }
 
 function normalizeClosedDateRange(value: unknown): ClosedDateRange {
-  if (
-    isRecord(value) &&
-    typeof value.start === 'string' &&
-    typeof value.end === 'string'
-  ) {
-    const range = {
-      start: value.start,
-      end: value.end
-    };
-
-    if (isValidClosedDateRange(range)) {
-      return range;
-    }
-  }
-
-  return createDefaultClosedDateRange();
+  return applyClosedDateRangeOverrides(value);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

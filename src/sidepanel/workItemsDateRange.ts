@@ -2,6 +2,11 @@ import type { ClosedDateRange } from '@/types';
 
 const DEFAULT_CLOSED_RANGE_DAYS = 7;
 
+interface ClosedDateRangeOverrides {
+  start?: string;
+  end?: string;
+}
+
 export function createDefaultClosedDateRange(
   today = new Date()
 ): ClosedDateRange {
@@ -27,6 +32,53 @@ export function areClosedDateRangesEqual(
   right: ClosedDateRange
 ): boolean {
   return left.start === right.start && left.end === right.end;
+}
+
+export function getTodayDateInputValue(today = new Date()): string {
+  return toDateInputValue(today);
+}
+
+export function isTodayDateInputValue(
+  value: string,
+  today = new Date()
+): boolean {
+  return value === getTodayDateInputValue(today);
+}
+
+export function createClosedDateRangeOverrides(
+  range: ClosedDateRange,
+  today = new Date()
+): ClosedDateRangeOverrides | null {
+  const defaults = createDefaultClosedDateRange(today);
+  const overrides: ClosedDateRangeOverrides = {};
+
+  if (range.start !== defaults.start) {
+    overrides.start = range.start;
+  }
+
+  if (range.end !== defaults.end) {
+    overrides.end = range.end;
+  }
+
+  return Object.keys(overrides).length ? overrides : null;
+}
+
+export function applyClosedDateRangeOverrides(
+  value: unknown,
+  today = new Date()
+): ClosedDateRange {
+  const defaults = createDefaultClosedDateRange(today);
+
+  if (!isRecord(value)) {
+    return defaults;
+  }
+
+  const range = {
+    start: typeof value.start === 'string' ? value.start : defaults.start,
+    end: typeof value.end === 'string' ? value.end : defaults.end
+  };
+
+  return isValidClosedDateRange(range) ? range : defaults;
 }
 
 function toDateInputValue(date: Date): string {
@@ -57,4 +109,8 @@ function parseDateInputValue(value: string): Date | null {
   }
 
   return date;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }

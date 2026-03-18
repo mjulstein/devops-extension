@@ -6,6 +6,7 @@ interface StatusCardProps {
   isLoading: boolean;
   result: WorkItemResult | null;
   closedDateRange: ClosedDateRange;
+  isClosedEndTodayShortcut: boolean;
   showWorkItemParentDetails: boolean;
   statusMessage: {
     kind: 'info' | 'success' | 'error';
@@ -17,6 +18,7 @@ interface StatusCardProps {
     key: keyof ClosedDateRange,
     value: string
   ) => Promise<void>;
+  onEnableCustomClosedEndDate: () => void;
   onResetClosedDateRange: () => Promise<void>;
   onRefetchClosedDay: (date: string) => Promise<void>;
   onToggleShowWorkItemParentDetails: () => Promise<void>;
@@ -29,11 +31,13 @@ export function StatusCard({
   isLoading,
   result,
   closedDateRange,
+  isClosedEndTodayShortcut,
   showWorkItemParentDetails,
   statusMessage,
   preFetchHint,
   onFetchWorkItems,
   onClosedDateRangeChange,
+  onEnableCustomClosedEndDate,
   onResetClosedDateRange,
   onRefetchClosedDay,
   onToggleShowWorkItemParentDetails,
@@ -91,6 +95,17 @@ export function StatusCard({
 
           <div className="work-items-controls work-items-controls-compact">
             <div className="work-items-date-range">
+              <button
+                type="button"
+                className="work-items-reset-button"
+                onClick={() => {
+                  void onResetClosedDateRange();
+                }}
+                disabled={isActionDisabled}
+              >
+                Reset
+              </button>
+
               <div className="work-items-date-field">
                 <input
                   type="date"
@@ -104,29 +119,34 @@ export function StatusCard({
                 />
               </div>
 
-              <div className="work-items-date-field">
-                <input
-                  type="date"
-                  value={closedDateRange.end}
-                  aria-label="Closed to"
-                  title="Closed to"
-                  disabled={isActionDisabled}
-                  onChange={(event) =>
-                    void onClosedDateRangeChange('end', event.target.value)
-                  }
-                />
-              </div>
+              <span className="work-items-date-separator" aria-hidden="true">
+                -
+              </span>
 
-              <button
-                type="button"
-                className="work-items-reset-button"
-                onClick={() => {
-                  void onResetClosedDateRange();
-                }}
-                disabled={isActionDisabled}
-              >
-                Reset
-              </button>
+              <div className="work-items-date-field">
+                {isClosedEndTodayShortcut ? (
+                  <button
+                    type="button"
+                    className="work-items-today-button"
+                    title="Using today. Click to choose a custom date."
+                    disabled={isActionDisabled}
+                    onClick={onEnableCustomClosedEndDate}
+                  >
+                    today
+                  </button>
+                ) : (
+                  <input
+                    type="date"
+                    value={closedDateRange.end}
+                    aria-label="Closed through"
+                    title="Closed through"
+                    disabled={isActionDisabled}
+                    onChange={(event) =>
+                      void onClosedDateRangeChange('end', event.target.value)
+                    }
+                  />
+                )}
+              </div>
             </div>
           </div>
 
