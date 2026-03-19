@@ -47,9 +47,30 @@
   border-left: 0;
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
-  padding: 8px 8px;
-  min-width: 40px;
+  padding: 0.5rem;
+  min-width: auto;
   font-size: 11px;
+}
+
+.pinButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.pinButtonPinned {
+  color: #0a5bd3;
+}
+
+.pinButtonUnpinned {
+  color: #6a6a6a;
+}
+
+.pinIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  display: block;
 }
 
 .tabHandleSettings {
