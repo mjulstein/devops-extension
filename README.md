@@ -66,6 +66,7 @@ Use the linked directory `README.md` files for structure details instead of expa
 ## Naming Conventions
 
 - React components use `PascalCase.tsx`.
+- Side panel component styles live beside their components in `ComponentName.module.css` files and are imported as `import classes from './ComponentName.module.css';`.
 - Function/utility modules use `camelCase.ts`.
 
 ## Build Output
@@ -77,7 +78,7 @@ Use the linked directory `README.md` files for structure details instead of expa
 - `content-script.js`
 - `sidepanel.html`
 - `sidepanel.js`
-- `sidepanel.css`
+- emitted CSS assets generated from the side panel's colocated CSS module imports
 
 Load `dist/` as the unpacked extension directory in Edge.
 

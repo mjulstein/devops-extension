@@ -1,0 +1,122 @@
+.card {
+  background: #f7f7f7;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.buttonRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.button {
+  padding: 8px 12px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.checkboxToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 0;
+  font-size: 13px;
+}
+
+.workItemsParentToggle {
+  margin-top: 0;
+}
+
+.checkboxInput {
+  width: auto;
+  margin: 0;
+}
+
+.loading {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #fff4cc;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.hidden {
+  display: none;
+}
+
+.statusMessage {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.statusInfo {
+  background: #e8f1ff;
+}
+
+.statusWarning {
+  background: #fff4cc;
+}
+
+.statusSuccess {
+  background: #e8f8ee;
+}
+
+.statusError {
+  background: #fdeaea;
+}
+
+.workItemsControls {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.workItemsControlsCompact {
+  margin-top: 0;
+}
+
+.workItemsDateRange {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.workItemsDateField {
+  min-width: 0;
+}
+
+.dateInput {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 0;
+  padding: 8px 10px;
+}
+
+.workItemsTodayButton {
+  width: 100%;
+  margin-top: 0;
+  text-transform: lowercase;
+}
+
+.workItemsResetButton {
+  margin-top: 0;
+  white-space: nowrap;
+}
+
+.workItemsDateSeparator {
+  color: #666;
+  font-size: 14px;
+  line-height: 1;
+}
+

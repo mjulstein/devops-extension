@@ -1,4 +1,5 @@
 import type { Settings } from '@/types';
+import classes from './SettingsCard.module.css';
 
 interface SettingsCardProps {
   settings: Settings;
@@ -16,16 +17,17 @@ export function SettingsCard({
   isLoading
 }: SettingsCardProps) {
   return (
-    <section className="card">
-      <p>
+    <section className={classes.card}>
+      <p className={classes.description}>
         Organization/project auto-fill from the last visited dev.azure.com
         project URL when empty. You can override them here and saved values stay
         until you change them.
       </p>
 
-      <label>
+      <label className={classes.fieldLabel}>
         Organization
         <input
+          className={classes.textInput}
           type="text"
           placeholder="my-organization"
           value={settings.organization}
@@ -35,9 +37,10 @@ export function SettingsCard({
         />
       </label>
 
-      <label>
+      <label className={classes.fieldLabel}>
         Project
         <input
+          className={classes.textInput}
           type="text"
           placeholder="my-project"
           value={settings.project}
@@ -47,9 +50,10 @@ export function SettingsCard({
         />
       </label>
 
-      <label>
+      <label className={classes.fieldLabel}>
         Assigned to
         <input
+          className={classes.textInput}
           type="text"
           placeholder="@me (leave blank to use current user)"
           value={settings.assignedTo}
@@ -59,16 +63,22 @@ export function SettingsCard({
         />
       </label>
 
-      <p>
+      <p className={classes.description}>
         Leave Assigned to empty to use the current signed-in Azure DevOps user
         (@me).
       </p>
 
-      <div className="button-row">
-        <button onClick={() => void onSave()} disabled={isLoading}>
+      <div className={classes.buttonRow}>
+        <button
+          className={classes.button}
+          onClick={() => void onSave()}
+          disabled={isLoading}
+        >
           Save settings
         </button>
-        <button onClick={onReloadExtension}>Reload extension</button>
+        <button className={classes.button} onClick={onReloadExtension}>
+          Reload extension
+        </button>
       </div>
     </section>
   );

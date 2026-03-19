@@ -4,6 +4,7 @@ import { SettingsCard } from './settings';
 import { WorkItemCard } from './work-item';
 import { StatusCard } from './work-items';
 import { Tabs, type SidepanelTabId } from './Tabs';
+import classes from './App.module.css';
 import {
   clearPinnedActiveWorkItemContext,
   loadActiveSidepanelTab,
@@ -907,10 +908,10 @@ export function App() {
       : activeItemHeading;
 
   return (
-    <div className="wrap">
+    <div className={classes.wrap}>
       <button
         type="button"
-        className="active-work-item-banner"
+        className={classes.activeWorkItemBanner}
         title={
           isActiveItemPinned
             ? 'Pinned: click to open this work item'
@@ -920,12 +921,12 @@ export function App() {
           void onActiveItemBannerClick();
         }}
       >
-        <span className="active-work-item-label">
+        <span className={classes.activeWorkItemLabel}>
           {isActiveItemPinned
             ? 'Active item (pinned: click to open)'
             : 'Active item (click to resync)'}
         </span>
-        <span className="active-work-item-title">{activeItemHeading}</span>
+        <span className={classes.activeWorkItemTitle}>{activeItemHeading}</span>
       </button>
 
       <Tabs

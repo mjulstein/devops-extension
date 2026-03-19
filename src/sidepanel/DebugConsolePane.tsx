@@ -1,3 +1,6 @@
+import clsx from 'clsx';
+import classes from './DebugConsolePane.module.css';
+
 export interface DebugLogEntry {
   id: string;
   timestamp: number;
@@ -12,12 +15,12 @@ interface DebugConsolePaneProps {
 
 export function DebugConsolePane({ entries, onClear }: DebugConsolePaneProps) {
   return (
-    <section className="card debug-console">
-      <div className="debug-console-header">
-        <h3>Developer console</h3>
+    <section className={clsx(classes.card, classes.debugConsole)}>
+      <div className={classes.debugConsoleHeader}>
+        <h3 className={classes.heading}>Developer console</h3>
         <button
           type="button"
-          className="debug-console-clear"
+          className={classes.debugConsoleClear}
           onClick={onClear}
           disabled={!entries.length}
         >
@@ -25,21 +28,26 @@ export function DebugConsolePane({ entries, onClear }: DebugConsolePaneProps) {
         </button>
       </div>
 
-      <div className="debug-console-list" role="log" aria-live="polite">
+      <div className={classes.debugConsoleList} role="log" aria-live="polite">
         {entries.length ? (
           entries.map((entry) => (
-            <div
-              key={entry.id}
-              className={`debug-console-entry ${entry.level}`}
-            >
-              <span className="debug-console-time">
+            <div key={entry.id} className={classes.debugConsoleEntry}>
+              <span className={classes.debugConsoleTime}>
                 {formatTimestamp(entry.timestamp)}
               </span>
-              <span className="debug-console-message">{entry.message}</span>
+              <span
+                className={clsx(
+                  classes.debugConsoleMessage,
+                  entry.level === 'success' && classes.successMessage,
+                  entry.level === 'error' && classes.errorMessage
+                )}
+              >
+                {entry.message}
+              </span>
             </div>
           ))
         ) : (
-          <div className="debug-console-empty">No logs yet.</div>
+          <div className={classes.debugConsoleEmpty}>No logs yet.</div>
         )}
       </div>
     </section>

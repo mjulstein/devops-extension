@@ -7,5 +7,5 @@ This directory contains the Active item tab UI.
 ## Files in this directory
 
 - `index.ts` — barrel export for the active-item card component.
-- `WorkItemCard.tsx` — renders child-task creation, task selection, task-state filters, recent parent suggestions, and reparenting actions.
+- `WorkItemCard.tsx` + `WorkItemCard.module.css` — renders child-task creation, task selection, task-state filters, recent parent suggestions, and reparenting actions.
 

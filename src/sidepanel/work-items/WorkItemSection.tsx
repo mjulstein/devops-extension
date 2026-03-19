@@ -1,4 +1,6 @@
+import clsx from 'clsx';
 import type { WorkItem } from '@/types';
+import classes from './WorkItemSection.module.css';
 import { Link } from '../Link';
 
 interface WorkItemSectionProps {
@@ -30,15 +32,15 @@ export function WorkItemSection({
       {items.length === 0 ? (
         <p>{emptyText}</p>
       ) : groupByClosedDate ? (
-        <div className="work-item-closed-groups">
+        <div className={classes.workItemClosedGroups}>
           {groupClosedItems(items).map((group) => (
-            <section key={group.key} className="work-item-closed-group">
-              <div className="work-item-group-heading">
+            <section key={group.key} className={classes.workItemClosedGroup}>
+              <div className={classes.workItemGroupHeading}>
                 <span>{group.label}</span>
                 {onRefetchClosedDay ? (
                   <button
                     type="button"
-                    className="work-item-group-refetch"
+                    className={classes.workItemGroupRefetch}
                     title={`Refetch closed items for ${group.label}`}
                     onClick={() => {
                       void onRefetchClosedDay(group.key);
@@ -49,7 +51,7 @@ export function WorkItemSection({
                 ) : null}
               </div>
 
-              <div className="work-item-grid" role="list">
+              <div className={classes.workItemGrid} role="list">
                 {group.items.map((item) =>
                   renderWorkItemRow(item, {
                     showState,
@@ -62,7 +64,7 @@ export function WorkItemSection({
           ))}
         </div>
       ) : (
-        <div className="work-item-grid" role="list">
+        <div className={classes.workItemGrid} role="list">
           {items.map((item) =>
             renderWorkItemRow(item, {
               showState,
@@ -89,51 +91,60 @@ function renderWorkItemRow(
   return (
     <div
       key={item.id}
-      className={`work-item-grid-row ${options.showState ? 'with-state' : 'without-state'}`}
+      className={clsx(
+        classes.workItemGridRow,
+        options.showState ? classes.withState : classes.withoutState
+      )}
       role="listitem"
     >
       <Link
-        className="work-item-id"
+        className={classes.workItemId}
         href={item.url}
         external={options.linkExternal}
       >
         {item.id}
       </Link>
-      <span className="work-item-type" title={item.workItemType}>
+      <span className={classes.workItemType} title={item.workItemType}>
         {item.workItemType}
       </span>
-      <div className="work-item-main">
+      <div className={classes.workItemMain}>
         <span
-          className={`work-item-title ${emphasizeCompleted ? 'work-item-title-emphasis' : ''}`}
+          className={clsx(
+            classes.workItemTitle,
+            emphasizeCompleted && classes.workItemTitleEmphasis
+          )}
           title={item.title}
         >
           {item.title}
         </span>
 
         {options.showParentDetails && item.parent ? (
-          <div className="work-item-parent-detail">
-            <span className="work-item-parent-label">Parent:</span>{' '}
+          <div className={classes.workItemParentDetail}>
+            <span className={classes.workItemParentLabel}>Parent:</span>{' '}
             <span
-              className="work-item-parent-type"
+              className={classes.workItemParentType}
               title={item.parent.workItemType}
             >
               {item.parent.workItemType}
             </span>{' '}
             <Link
-              className="work-item-parent-link"
+              className={classes.workItemParentLink}
               href={item.parent.url}
               external={options.linkExternal}
             >
               #{item.parent.id}
             </Link>{' '}
-            <span className="work-item-parent-title" title={item.parent.title}>
+            <span
+              className={classes.workItemParentTitle}
+              title={item.parent.title}
+            >
               {item.parent.title}
             </span>
           </div>
         ) : null}
       </div>
       {options.showState ? (
-        <span className="work-item-state" title={item.state}>
+        <span className={classes.workItemState} title={item.state}>
           {item.state}
         </span>
       ) : null}

@@ -1,6 +1,8 @@
+import clsx from 'clsx';
 import { useRef, type FormEvent } from 'react';
 import type { ChildTaskItem, ParentSuggestionItem } from '@/types';
 import { Link } from '../Link';
+import classes from './WorkItemCard.module.css';
 
 interface ParentSuggestionView extends ParentSuggestionItem {
   isPinned: boolean;
@@ -66,46 +68,60 @@ export function WorkItemCard({
     }, 0);
   }
 
+  const statusKindClassNames = {
+    info: classes.statusInfo,
+    success: classes.statusSuccess,
+    error: classes.statusError
+  } as const;
+
   return (
-    <section className="card">
+    <section className={classes.card}>
       {statusMessage ? (
-        <div className={`status-message status-${statusMessage.kind}`}>
+        <div
+          className={clsx(
+            classes.statusMessage,
+            statusKindClassNames[statusMessage.kind]
+          )}
+        >
           {statusMessage.text}
         </div>
       ) : (
-        <div className="status-message status-info">
+        <div className={clsx(classes.statusMessage, classes.statusInfo)}>
           Open a Bug, PBI, Improvement, or a child Task page, then press Enter
           to create task children for its parent.
         </div>
       )}
 
       {parentWorkItemId ? (
-        <div className="current-parent">
+        <div className={classes.currentParent}>
           Current parent: #{parentWorkItemId}{' '}
           {isParentDetected
             ? '(detected from active work item)'
             : '(selected from suggestions)'}
         </div>
       ) : (
-        <div className="current-parent">Current parent: not set</div>
+        <div className={classes.currentParent}>Current parent: not set</div>
       )}
 
-      <div className="parent-suggestion-list">
-        <div className="parent-suggestion-title">Recent features</div>
+      <div className={classes.parentSuggestionList}>
+        <div className={classes.parentSuggestionTitle}>Recent features</div>
         {recentFeatureSuggestions.length ? (
           recentFeatureSuggestions.map((item) => (
-            <div key={`feature-${item.id}`} className="parent-suggestion-row">
+            <div
+              key={`feature-${item.id}`}
+              className={classes.parentSuggestionRow}
+            >
               <Link
                 href={item.url}
                 external={linkExternal}
-                className="parent-suggestion-link"
+                className={classes.parentSuggestionLink}
                 title={item.title}
               >
                 #{item.id} [{item.workItemType}] - {item.title}
               </Link>
               <button
                 type="button"
-                className="parent-suggestion-action"
+                className={classes.parentSuggestionAction}
                 onClick={() => {
                   void onSetFeatureParent(item.id);
                 }}
@@ -114,7 +130,10 @@ export function WorkItemCard({
               </button>
               <button
                 type="button"
-                className="parent-suggestion-action parent-suggestion-pin"
+                className={clsx(
+                  classes.parentSuggestionAction,
+                  classes.parentSuggestionPin
+                )}
                 onClick={() =>
                   onTogglePinSuggestedParent('feature', item.id, !item.isPinned)
                 }
@@ -124,7 +143,7 @@ export function WorkItemCard({
             </div>
           ))
         ) : (
-          <div className="created-task-empty">
+          <div className={classes.createdTaskEmpty}>
             No recent features yet. Visit a feature work item to populate this
             list.
           </div>
@@ -132,15 +151,16 @@ export function WorkItemCard({
       </div>
 
       <form
-        className="work-item-form"
+        className={classes.workItemForm}
         onSubmit={(event) => {
           void onSubmitCreateTask(event);
         }}
       >
-        <label>
+        <label className={classes.fieldLabel}>
           Task title
-          <div className="work-item-input-row">
+          <div className={classes.workItemInputRow}>
             <input
+              className={classes.textInput}
               ref={taskInputRef}
               type="text"
               value={taskTitle}
@@ -151,24 +171,31 @@ export function WorkItemCard({
             <button
               type="submit"
               disabled={isActionDisabled}
-              className="work-item-submit-small"
+              className={classes.workItemSubmitSmall}
               title="Create task"
             >
               +
             </button>
           </div>
         </label>
-        <div className="current-parent work-item-parent-hint">
+        <div
+          className={clsx(classes.currentParent, classes.workItemParentHint)}
+        >
           Enter creates a task under #{parentWorkItemId ?? 'workitemId'}.
         </div>
       </form>
 
-      <div className="state-filter-row">
+      <div className={classes.stateFilterRow}>
         {availableTaskStates.map((state) => {
           const isChecked = !hiddenTaskStates.includes(state);
           return (
-            <label key={state} className="state-filter-item" title={state}>
+            <label
+              key={state}
+              className={classes.stateFilterItem}
+              title={state}
+            >
               <input
+                className={classes.checkboxInput}
                 type="checkbox"
                 checked={isChecked}
                 onChange={(event) =>
@@ -181,7 +208,7 @@ export function WorkItemCard({
         })}
       </div>
 
-      <div className="created-task-list">
+      <div className={classes.createdTaskList}>
         {createdTasks.length ? (
           createdTasks.map((task) => {
             const isSelected = selectedTaskId === task.id;
@@ -189,7 +216,10 @@ export function WorkItemCard({
               <button
                 key={task.id}
                 type="button"
-                className={`created-task-select ${isSelected ? 'selected' : ''}`}
+                className={clsx(
+                  classes.createdTaskSelect,
+                  isSelected && classes.createdTaskSelectSelected
+                )}
                 onClick={() => {
                   void onSelectTask(task);
                 }}
@@ -200,14 +230,14 @@ export function WorkItemCard({
             );
           })
         ) : (
-          <div className="created-task-empty">
+          <div className={classes.createdTaskEmpty}>
             No child tasks found for the current parent work item.
           </div>
         )}
       </div>
 
-      <div className="parent-suggestion-list">
-        <div className="parent-suggestion-title">
+      <div className={classes.parentSuggestionList}>
+        <div className={classes.parentSuggestionTitle}>
           {selectedTaskId
             ? `Reparent selected task #${selectedTaskId}`
             : 'Select a task to reparent'}
@@ -219,19 +249,22 @@ export function WorkItemCard({
             return (
               <div
                 key={`parentable-${item.id}`}
-                className="parent-suggestion-row"
+                className={classes.parentSuggestionRow}
               >
                 <Link
                   href={item.url}
                   external={linkExternal}
-                  className={`parent-suggestion-link ${isCurrentParent ? 'selected' : ''}`}
+                  className={clsx(
+                    classes.parentSuggestionLink,
+                    isCurrentParent && classes.parentSuggestionLinkSelected
+                  )}
                   title={item.title}
                 >
                   #{item.id} [{item.workItemType}] - {item.title}
                 </Link>
                 <button
                   type="button"
-                  className="parent-suggestion-action"
+                  className={classes.parentSuggestionAction}
                   disabled={!selectedTaskId}
                   onClick={() => {
                     void onReparentSelectedTask(item.id);
@@ -241,7 +274,10 @@ export function WorkItemCard({
                 </button>
                 <button
                   type="button"
-                  className="parent-suggestion-action parent-suggestion-pin"
+                  className={clsx(
+                    classes.parentSuggestionAction,
+                    classes.parentSuggestionPin
+                  )}
                   onClick={() =>
                     onTogglePinSuggestedParent(
                       'parentable',
@@ -256,7 +292,7 @@ export function WorkItemCard({
             );
           })
         ) : (
-          <div className="created-task-empty">
+          <div className={classes.createdTaskEmpty}>
             No recent bugs / improvements / PBIs yet.
           </div>
         )}

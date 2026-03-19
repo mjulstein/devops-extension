@@ -1,3 +1,6 @@
+import clsx from 'clsx';
+import classes from './Tabs.module.css';
+
 export type SidepanelTabId = 'settings' | 'work-items' | 'work-item';
 
 interface TabsProps {
@@ -16,22 +19,27 @@ export function Tabs({
   activeItemTabLabel
 }: TabsProps) {
   return (
-    <nav className="tab-row" aria-label="Side panel sections">
+    <nav className={classes.tabRow} aria-label="Side panel sections">
       <button
         type="button"
-        className={`tab-handle ${activeTab === 'work-items' ? 'active' : ''}`}
+        className={clsx(
+          classes.tabHandle,
+          activeTab === 'work-items' && classes.active
+        )}
         aria-pressed={activeTab === 'work-items'}
         onClick={() => onSelectTab('work-items')}
       >
         Work items
       </button>
 
-      <div
-        className={`tab-handle-group ${activeTab === 'work-item' ? 'active' : ''}`}
-      >
+      <div className={classes.tabHandleGroup}>
         <button
           type="button"
-          className={`tab-handle tab-handle-main ${activeTab === 'work-item' ? 'active' : ''}`}
+          className={clsx(
+            classes.tabHandle,
+            classes.tabHandleMain,
+            activeTab === 'work-item' && classes.active
+          )}
           aria-pressed={activeTab === 'work-item'}
           title={activeItemTabLabel}
           onClick={() => onSelectTab('work-item')}
@@ -40,7 +48,7 @@ export function Tabs({
         </button>
         <button
           type="button"
-          className="tab-handle tab-handle-pin"
+          className={clsx(classes.tabHandle, classes.tabHandlePin)}
           aria-label={
             isActiveItemPinned
               ? 'Unpin active work item'
@@ -59,7 +67,11 @@ export function Tabs({
 
       <button
         type="button"
-        className={`tab-handle tab-handle-settings ${activeTab === 'settings' ? 'active' : ''}`}
+        className={clsx(
+          classes.tabHandle,
+          classes.tabHandleSettings,
+          activeTab === 'settings' && classes.active
+        )}
         aria-pressed={activeTab === 'settings'}
         aria-label="Settings"
         title="Settings"

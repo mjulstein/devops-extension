@@ -1,0 +1,43 @@
+.card {
+  background: #f7f7f7;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.description {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.fieldLabel {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.textInput {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 6px;
+  padding: 8px 10px;
+}
+
+.buttonRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.button {
+  padding: 8px 12px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+

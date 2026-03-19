@@ -1,0 +1,80 @@
+.card {
+  background: #f7f7f7;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.debugConsole {
+  margin-top: 8px;
+  margin-bottom: 0;
+  padding: 10px;
+}
+
+.heading {
+  margin: 0;
+  font-size: 12px;
+}
+
+.debugConsoleHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.debugConsoleClear {
+  margin-top: 0;
+  padding: 4px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.debugConsoleClear:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.debugConsoleList {
+  display: grid;
+  gap: 6px;
+  max-height: 140px;
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid #d4d4d4;
+  border-radius: 8px;
+  background: #fcfcfc;
+}
+
+.debugConsoleEntry {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.debugConsoleTime {
+  color: #666;
+  white-space: nowrap;
+}
+
+.debugConsoleMessage {
+  color: #222;
+  overflow-wrap: anywhere;
+}
+
+.successMessage {
+  color: #136b35;
+}
+
+.errorMessage {
+  color: #8b1b1b;
+}
+
+.debugConsoleEmpty {
+  font-size: 11px;
+  color: #666;
+}
+

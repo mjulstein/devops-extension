@@ -8,13 +8,15 @@ Keep this document focused on files that live directly in `src/sidepanel/`. Use 
 
 ## Files in this directory
 
-- `App.tsx` — top-level side panel state container that hydrates settings/storage, manages tabs, drives work-item actions, and renders the panel sections, including closed-date range refreshes for the Work items tab.
+- `App.tsx` + `App.module.css` — top-level side panel state container and shell/banner styling that hydrate settings/storage, manage tabs, drive work-item actions, and render the panel sections, including closed-date range refreshes for the Work items tab.
 - `chromeStorage.ts` — browser-local storage helpers for settings-adjacent side-panel state such as cached results, closed-date range and parent-detail work-item preferences, active tab, hidden task states, parent suggestions, and pinned active context.
-- `DebugConsolePane.tsx` — in-panel developer log viewer used by `App.tsx`.
+- `DebugConsolePane.tsx` + `DebugConsolePane.module.css` — in-panel developer log viewer used by `App.tsx`.
 - `defaultSettings.ts` — default empty settings values used when storage has not been hydrated yet.
 - `Link.tsx` — navigation helper that opens Azure DevOps links in the active tab when appropriate.
-- `Tabs.tsx` — tab chrome for the Work items, Active item, and Settings sections, including the pin toggle.
+- `Tabs.tsx` + `Tabs.module.css` — tab chrome for the Work items, Active item, and Settings sections, including the pin toggle.
 - `workItemsDateRange.ts` — default/validation helpers for the Work items tab closed-date range inputs.
+
+The side panel uses colocated CSS modules for component styling. TypeScript support for `*.module.css` imports is declared in `src/css-modules.d.ts`, and shared Vite ambient types live in `src/vite-env.d.ts`.
 
 ## Subdirectories
 

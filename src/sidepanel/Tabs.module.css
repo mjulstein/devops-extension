@@ -1,0 +1,62 @@
+.tabRow {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.tabHandle {
+  flex: 1 1 0;
+  margin-top: 0;
+  padding: 8px 12px;
+  border: 1px solid #c8c8c8;
+  border-radius: 8px;
+  background: #efefef;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tabHandle:focus-visible {
+  outline: 2px solid #4d88ff;
+  outline-offset: 1px;
+}
+
+.tabHandleGroup {
+  flex: 1.2 1 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0;
+}
+
+.tabHandleMain {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tabHandlePin {
+  flex: 0 0 auto;
+  border-left: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  padding: 8px 8px;
+  min-width: 40px;
+  font-size: 11px;
+}
+
+.tabHandleSettings {
+  flex: 0 0 auto;
+  width: 42px;
+  padding: 8px 0;
+  text-align: center;
+}
+
+.active {
+  background: #e8f1ff;
+  border-color: #9bb8e7;
+  font-weight: 600;
+}
+

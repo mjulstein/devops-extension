@@ -35,6 +35,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - Keep exploratory feature notes in `specs/ideas/` until goals, acceptance criteria, and sequencing are clear enough for a numbered feature spec.
 - Do not add secrets, tokens, or committed local configuration.
 - Side panel React component files should use `PascalCase.tsx`.
+- Side panel React component styles should live beside their components in `ComponentName.module.css` files and be imported as `import classes from './ComponentName.module.css';`; when an element needs multiple classes, use `clsx` to compose them in JSX.
 - Utility/function modules should use `camelCase.ts`.
 - When moving or renaming tracked files, use `git mv` so history is preserved; do not create a new file and delete the old file as a substitute for a move.
 - Run `npm run lint`, `npm test`, and `npm run build` after non-trivial changes.
@@ -52,12 +53,11 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - `src/devops/workItems.ts` — separate open/closed work-item query and transformation logic, including closed-date range filtering and parent-summary enrichment
 - `src/sidepanel.html` — side panel HTML entry
 - `src/sidepanel.tsx` — React side panel entry
-- `src/sidepanel.css` — side panel styling
-- `src/sidepanel/{App,Tabs,Link,DebugConsolePane}.tsx` — side panel state shell, tab chrome, link navigation helper, and in-panel debug log viewer
+- `src/sidepanel/{App,Tabs,Link,DebugConsolePane}.tsx` + matching `*.module.css` files — side panel state shell, tab chrome, link navigation helper, and in-panel debug log viewer
 - `src/sidepanel/workItemsDateRange.ts` — default closed-date range and validation helpers for the Work items tab
-- `src/sidepanel/work-items/*` — work-items tab components (`StatusCard`, `WorkItemSection`) with `index.ts` entry export
-- `src/sidepanel/work-item/*` — work-item tab components (`WorkItemCard`) with `index.ts` entry export
-- `src/sidepanel/settings/*` — settings tab components (`SettingsCard`) with `index.ts` entry export
+- `src/sidepanel/work-items/*` — work-items tab components (`StatusCard`, `WorkItemSection`) with colocated `*.module.css` files and `index.ts` entry export
+- `src/sidepanel/work-item/*` — work-item tab components (`WorkItemCard`) with colocated `*.module.css` files and `index.ts` entry export
+- `src/sidepanel/settings/*` — settings tab components (`SettingsCard`) with colocated `*.module.css` files and `index.ts` entry export
 - `src/sidepanel/{chromeStorage,defaultSettings}.ts` — side panel storage/defaults helpers, including cached work-items results plus browser-local closed-date range and parent-detail toggle state
 - `src/sidepanel/tabMessaging/index.ts` + `src/sidepanel/tabMessaging/*.ts` — side panel tab messaging barrel + function modules
 - `src/devops/*.test.ts` + `src/sidepanel/tabMessaging/*.test.ts` / `*.test.tsx` — Vitest unit tests (globals enabled)
