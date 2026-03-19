@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { useRef, type FormEvent } from 'react';
+import { useId, useRef, useState, type FormEvent } from 'react';
 import type { ChildTaskItem, ParentSuggestionItem } from '@/types';
 import { Link } from '../Link';
 import classes from './WorkItemCard.module.css';
@@ -59,6 +59,9 @@ export function WorkItemCard({
   linkExternal
 }: WorkItemCardProps) {
   const taskInputRef = useRef<HTMLInputElement | null>(null);
+  const [isRecentFeaturesCollapsed, setIsRecentFeaturesCollapsed] =
+    useState(false);
+  const recentFeaturesSectionId = useId();
 
   async function onSubmitCreateTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -75,260 +78,296 @@ export function WorkItemCard({
   } as const;
 
   return (
-    <section className={classes.card}>
-      {statusMessage ? (
-        <div
-          className={clsx(
-            classes.statusMessage,
-            statusKindClassNames[statusMessage.kind]
-          )}
+    <>
+      <section className={clsx(classes.card, classes.recentFeaturesCard)}>
+        <div className={classes.cardHeader}>
+          <div className={classes.parentSuggestionTitle}>Recent features</div>
+          <button
+            type="button"
+            className={classes.sectionToggle}
+            aria-label={
+              isRecentFeaturesCollapsed
+                ? 'Expand recent features'
+                : 'Collapse recent features'
+            }
+            aria-expanded={!isRecentFeaturesCollapsed}
+            aria-controls={recentFeaturesSectionId}
+            title={
+              isRecentFeaturesCollapsed
+                ? 'Expand recent features'
+                : 'Collapse recent features'
+            }
+            onClick={() => {
+              setIsRecentFeaturesCollapsed((current) => !current);
+            }}
+          >
+            <span aria-hidden="true">
+              {isRecentFeaturesCollapsed ? '▸' : '▾'}
+            </span>
+          </button>
+        </div>
+
+        {!isRecentFeaturesCollapsed ? (
+          <div
+            id={recentFeaturesSectionId}
+            className={classes.parentSuggestionList}
+          >
+            {recentFeatureSuggestions.length ? (
+              recentFeatureSuggestions.map((item) => (
+                <div
+                  key={`feature-${item.id}`}
+                  className={classes.parentSuggestionRow}
+                >
+                  <Link
+                    href={item.url}
+                    external={linkExternal}
+                    className={classes.parentSuggestionLink}
+                    title={item.title}
+                  >
+                    #{item.id} [{item.workItemType}] - {item.title}
+                  </Link>
+                  <button
+                    type="button"
+                    className={classes.parentSuggestionAction}
+                    onClick={() => {
+                      void onSetFeatureParent(item.id);
+                    }}
+                  >
+                    set feature
+                  </button>
+                  <button
+                    type="button"
+                    className={clsx(
+                      classes.parentSuggestionAction,
+                      classes.parentSuggestionPin,
+                      classes.pinButton,
+                      item.isPinned
+                        ? classes.pinButtonPinned
+                        : classes.pinButtonUnpinned
+                    )}
+                    aria-label={
+                      item.isPinned
+                        ? `Unpin feature #${item.id}`
+                        : `Pin feature #${item.id}`
+                    }
+                    title={
+                      item.isPinned
+                        ? `Unpin feature #${item.id}`
+                        : `Pin feature #${item.id}`
+                    }
+                    onClick={() =>
+                      onTogglePinSuggestedParent(
+                        'feature',
+                        item.id,
+                        !item.isPinned
+                      )
+                    }
+                  >
+                    <PinIcon
+                      isPinned={item.isPinned}
+                      className={classes.pinIcon}
+                    />
+                  </button>
+                </div>
+              ))
+            ) : (
+              <div className={classes.createdTaskEmpty}>
+                No recent features yet. Visit a feature work item to populate
+                this list.
+              </div>
+            )}
+          </div>
+        ) : null}
+      </section>
+
+      <section className={clsx(classes.card, classes.taskCard)}>
+        {statusMessage ? (
+          <div
+            className={clsx(
+              classes.statusMessage,
+              statusKindClassNames[statusMessage.kind]
+            )}
+          >
+            {statusMessage.text}
+          </div>
+        ) : (
+          <div className={clsx(classes.statusMessage, classes.statusInfo)}>
+            Open a Bug, PBI, Improvement, or a child Task page, then press Enter
+            to create task children for its parent.
+          </div>
+        )}
+
+        <form
+          className={classes.workItemForm}
+          onSubmit={(event) => {
+            void onSubmitCreateTask(event);
+          }}
         >
-          {statusMessage.text}
-        </div>
-      ) : (
-        <div className={clsx(classes.statusMessage, classes.statusInfo)}>
-          Open a Bug, PBI, Improvement, or a child Task page, then press Enter
-          to create task children for its parent.
-        </div>
-      )}
-
-      {parentWorkItemId ? (
-        <div className={classes.currentParent}>
-          Current parent: #{parentWorkItemId}{' '}
-          {isParentDetected
-            ? '(detected from active work item)'
-            : '(selected from suggestions)'}
-        </div>
-      ) : (
-        <div className={classes.currentParent}>Current parent: not set</div>
-      )}
-
-      <div className={classes.parentSuggestionList}>
-        <div className={classes.parentSuggestionTitle}>Recent features</div>
-        {recentFeatureSuggestions.length ? (
-          recentFeatureSuggestions.map((item) => (
-            <div
-              key={`feature-${item.id}`}
-              className={classes.parentSuggestionRow}
-            >
-              <Link
-                href={item.url}
-                external={linkExternal}
-                className={classes.parentSuggestionLink}
-                title={item.title}
-              >
-                #{item.id} [{item.workItemType}] - {item.title}
-              </Link>
+          <label className={classes.fieldLabel}>
+            Task title
+            <div className={classes.workItemInputRow}>
+              <input
+                className={classes.textInput}
+                ref={taskInputRef}
+                type="text"
+                value={taskTitle}
+                onChange={(event) => onTaskTitleChange(event.target.value)}
+                placeholder="Type task name and press Enter"
+                disabled={isActionDisabled}
+              />
               <button
-                type="button"
-                className={classes.parentSuggestionAction}
-                onClick={() => {
-                  void onSetFeatureParent(item.id);
-                }}
+                type="submit"
+                disabled={isActionDisabled}
+                className={classes.workItemSubmitSmall}
+                title="Create task"
               >
-                set feature
-              </button>
-              <button
-                type="button"
-                className={clsx(
-                  classes.parentSuggestionAction,
-                  classes.parentSuggestionPin,
-                  classes.pinButton,
-                  item.isPinned
-                    ? classes.pinButtonPinned
-                    : classes.pinButtonUnpinned
-                )}
-                aria-label={
-                  item.isPinned
-                    ? `Unpin feature #${item.id}`
-                    : `Pin feature #${item.id}`
-                }
-                title={
-                  item.isPinned
-                    ? `Unpin feature #${item.id}`
-                    : `Pin feature #${item.id}`
-                }
-                onClick={() =>
-                  onTogglePinSuggestedParent('feature', item.id, !item.isPinned)
-                }
-              >
-                <PinIcon isPinned={item.isPinned} className={classes.pinIcon} />
+                +
               </button>
             </div>
-          ))
-        ) : (
-          <div className={classes.createdTaskEmpty}>
-            No recent features yet. Visit a feature work item to populate this
-            list.
+          </label>
+          <div
+            className={clsx(classes.currentParent, classes.workItemParentHint)}
+          >
+            Enter creates a task under #{parentWorkItemId ?? 'workitemId'}.
+            {parentWorkItemId
+              ? isParentDetected
+                ? ' Using the active work item parent.'
+                : ' Using the selected suggestion as the parent.'
+              : ''}
           </div>
-        )}
-      </div>
+        </form>
 
-      <form
-        className={classes.workItemForm}
-        onSubmit={(event) => {
-          void onSubmitCreateTask(event);
-        }}
-      >
-        <label className={classes.fieldLabel}>
-          Task title
-          <div className={classes.workItemInputRow}>
-            <input
-              className={classes.textInput}
-              ref={taskInputRef}
-              type="text"
-              value={taskTitle}
-              onChange={(event) => onTaskTitleChange(event.target.value)}
-              placeholder="Type task name and press Enter"
-              disabled={isActionDisabled}
-            />
-            <button
-              type="submit"
-              disabled={isActionDisabled}
-              className={classes.workItemSubmitSmall}
-              title="Create task"
-            >
-              +
-            </button>
-          </div>
-        </label>
-        <div
-          className={clsx(classes.currentParent, classes.workItemParentHint)}
-        >
-          Enter creates a task under #{parentWorkItemId ?? 'workitemId'}.
-        </div>
-      </form>
-
-      <div className={classes.stateFilterRow}>
-        {availableTaskStates.map((state) => {
-          const isChecked = !hiddenTaskStates.includes(state);
-          return (
-            <label
-              key={state}
-              className={classes.stateFilterItem}
-              title={state}
-            >
-              <input
-                className={classes.checkboxInput}
-                type="checkbox"
-                checked={isChecked}
-                onChange={(event) =>
-                  onToggleTaskStateFilter(state, event.target.checked)
-                }
-              />
-              <span>{abbreviateState(state)}</span>
-            </label>
-          );
-        })}
-      </div>
-
-      <div className={classes.createdTaskList}>
-        {createdTasks.length ? (
-          createdTasks.map((task) => {
-            const isSelected = selectedTaskId === task.id;
+        <div className={classes.stateFilterRow}>
+          {availableTaskStates.map((state) => {
+            const isChecked = !hiddenTaskStates.includes(state);
             return (
-              <button
-                key={task.id}
-                type="button"
-                className={clsx(
-                  classes.createdTaskSelect,
-                  isSelected && classes.createdTaskSelectSelected
-                )}
-                onClick={() => {
-                  void onSelectTask(task);
-                }}
-                title={task.title}
+              <label
+                key={state}
+                className={classes.stateFilterItem}
+                title={state}
               >
-                #{task.id} [{task.state}] - {task.title}
-              </button>
+                <input
+                  className={classes.checkboxInput}
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={(event) =>
+                    onToggleTaskStateFilter(state, event.target.checked)
+                  }
+                />
+                <span>{abbreviateState(state)}</span>
+              </label>
             );
-          })
-        ) : (
-          <div className={classes.createdTaskEmpty}>
-            No child tasks found for the current parent work item.
-          </div>
-        )}
-      </div>
-
-      <div className={classes.parentSuggestionList}>
-        <div className={classes.parentSuggestionTitle}>
-          {selectedTaskId
-            ? `Reparent selected task #${selectedTaskId}`
-            : 'Select a task to reparent'}
+          })}
         </div>
 
-        {recentParentableSuggestions.length ? (
-          recentParentableSuggestions.map((item) => {
-            const isCurrentParent = parentWorkItemId === item.id;
-            return (
-              <div
-                key={`parentable-${item.id}`}
-                className={classes.parentSuggestionRow}
-              >
-                <Link
-                  href={item.url}
-                  external={linkExternal}
-                  className={clsx(
-                    classes.parentSuggestionLink,
-                    isCurrentParent && classes.parentSuggestionLinkSelected
-                  )}
-                  title={item.title}
-                >
-                  #{item.id} [{item.workItemType}] - {item.title}
-                </Link>
+        <div className={classes.createdTaskList}>
+          {createdTasks.length ? (
+            createdTasks.map((task) => {
+              const isSelected = selectedTaskId === task.id;
+              return (
                 <button
+                  key={task.id}
                   type="button"
-                  className={classes.parentSuggestionAction}
-                  disabled={!selectedTaskId}
+                  className={clsx(
+                    classes.createdTaskSelect,
+                    isSelected && classes.createdTaskSelectSelected
+                  )}
                   onClick={() => {
-                    void onReparentSelectedTask(item.id);
+                    void onSelectTask(task);
                   }}
+                  title={task.title}
                 >
-                  set as parent
+                  #{task.id} [{task.state}] - {task.title}
                 </button>
-                <button
-                  type="button"
-                  className={clsx(
-                    classes.parentSuggestionAction,
-                    classes.parentSuggestionPin,
-                    classes.pinButton,
-                    item.isPinned
-                      ? classes.pinButtonPinned
-                      : classes.pinButtonUnpinned
-                  )}
-                  aria-label={
-                    item.isPinned
-                      ? `Unpin suggestion #${item.id}`
-                      : `Pin suggestion #${item.id}`
-                  }
-                  title={
-                    item.isPinned
-                      ? `Unpin suggestion #${item.id}`
-                      : `Pin suggestion #${item.id}`
-                  }
-                  onClick={() =>
-                    onTogglePinSuggestedParent(
-                      'parentable',
-                      item.id,
-                      !item.isPinned
-                    )
-                  }
-                >
-                  <PinIcon
-                    isPinned={item.isPinned}
-                    className={classes.pinIcon}
-                  />
-                </button>
-              </div>
-            );
-          })
-        ) : (
-          <div className={classes.createdTaskEmpty}>
-            No recent bugs / improvements / PBIs yet.
+              );
+            })
+          ) : (
+            <div className={classes.createdTaskEmpty}>
+              No child tasks found for the current parent work item.
+            </div>
+          )}
+        </div>
+
+        <div className={classes.parentSuggestionList}>
+          <div className={classes.parentSuggestionTitle}>
+            {selectedTaskId
+              ? `Reparent selected task #${selectedTaskId}`
+              : 'Select a task to reparent'}
           </div>
-        )}
-      </div>
-    </section>
+
+          {recentParentableSuggestions.length ? (
+            recentParentableSuggestions.map((item) => {
+              const isCurrentParent = parentWorkItemId === item.id;
+              return (
+                <div
+                  key={`parentable-${item.id}`}
+                  className={classes.parentSuggestionRow}
+                >
+                  <Link
+                    href={item.url}
+                    external={linkExternal}
+                    className={clsx(
+                      classes.parentSuggestionLink,
+                      isCurrentParent && classes.parentSuggestionLinkSelected
+                    )}
+                    title={item.title}
+                  >
+                    #{item.id} [{item.workItemType}] - {item.title}
+                  </Link>
+                  <button
+                    type="button"
+                    className={classes.parentSuggestionAction}
+                    disabled={!selectedTaskId}
+                    onClick={() => {
+                      void onReparentSelectedTask(item.id);
+                    }}
+                  >
+                    set as parent
+                  </button>
+                  <button
+                    type="button"
+                    className={clsx(
+                      classes.parentSuggestionAction,
+                      classes.parentSuggestionPin,
+                      classes.pinButton,
+                      item.isPinned
+                        ? classes.pinButtonPinned
+                        : classes.pinButtonUnpinned
+                    )}
+                    aria-label={
+                      item.isPinned
+                        ? `Unpin suggestion #${item.id}`
+                        : `Pin suggestion #${item.id}`
+                    }
+                    title={
+                      item.isPinned
+                        ? `Unpin suggestion #${item.id}`
+                        : `Pin suggestion #${item.id}`
+                    }
+                    onClick={() =>
+                      onTogglePinSuggestedParent(
+                        'parentable',
+                        item.id,
+                        !item.isPinned
+                      )
+                    }
+                  >
+                    <PinIcon
+                      isPinned={item.isPinned}
+                      className={classes.pinIcon}
+                    />
+                  </button>
+                </div>
+              );
+            })
+          ) : (
+            <div className={classes.createdTaskEmpty}>
+              No recent bugs / improvements / PBIs yet.
+            </div>
+          )}
+        </div>
+      </section>
+    </>
   );
 }
 
