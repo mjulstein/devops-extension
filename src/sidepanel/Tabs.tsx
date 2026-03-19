@@ -24,6 +24,7 @@ export function Tabs({
         type="button"
         className={clsx(
           classes.tabHandle,
+          classes.workItemsTabHandle,
           activeTab === 'work-items' && classes.active
         )}
         aria-pressed={activeTab === 'work-items'}

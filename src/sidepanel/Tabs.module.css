@@ -16,6 +16,11 @@
   cursor: pointer;
 }
 
+.workItemsTabHandle {
+  flex: 0 0 auto;
+  padding-inline: 0.5rem;
+}
+
 .tabHandle:focus-visible {
   outline: 2px solid #4d88ff;
   outline-offset: 1px;
