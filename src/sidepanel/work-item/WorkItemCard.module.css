@@ -5,39 +5,10 @@
   margin-bottom: 16px;
 }
 
-.recentFeaturesCard {
-  padding-bottom: 12px;
-}
-
 .taskCard {
   margin-bottom: 0;
 }
 
-.cardHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.sectionToggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  padding: 0;
-  border: 1px solid #cfd7e6;
-  border-radius: 6px;
-  background: #fff;
-  color: #485977;
-  cursor: pointer;
-}
-
-.sectionToggle:focus-visible {
-  outline: 2px solid #4d88ff;
-  outline-offset: 1px;
-}
 
 .statusMessage {
   margin-top: 12px;

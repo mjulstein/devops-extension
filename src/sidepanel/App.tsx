@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DebugConsolePane, type DebugLogEntry } from './DebugConsolePane';
 import { SettingsCard } from './settings';
-import { WorkItemCard } from './work-item';
+import { RecentFeaturesCard, WorkItemCard } from './work-item';
 import { StatusCard } from './work-items';
 import { Tabs, type SidepanelTabId } from './Tabs';
 import classes from './App.module.css';
@@ -13,6 +13,7 @@ import {
   loadLastVisitedDevOpsContext,
   loadParentSuggestions,
   loadPinnedActiveWorkItemContext,
+  loadRecentFeaturesCollapsed,
   loadShowWorkItemParentDetails,
   loadSettings,
   loadWorkItemsClosedDateRange,
@@ -21,6 +22,7 @@ import {
   saveHiddenChildTaskStates,
   saveLastVisitedDevOpsContext,
   savePinnedActiveWorkItemContext,
+  saveRecentFeaturesCollapsed,
   saveShowWorkItemParentDetails,
   saveSettings,
   saveWorkItemsClosedDateRange,
@@ -108,6 +110,8 @@ export function App() {
     useState<ParentSuggestionStore>(EMPTY_PARENT_SUGGESTIONS);
   const [pinnedActiveWorkItemContext, setPinnedActiveWorkItemContext] =
     useState<ActiveWorkItemContext | null>(null);
+  const [isRecentFeaturesCollapsed, setIsRecentFeaturesCollapsed] =
+    useState(false);
   const [linkExternal, setLinkExternal] = useState(true);
   const [debugLogs, setDebugLogs] = useState<DebugLogEntry[]>([]);
   const workItemsFetchSequenceRef = useRef(0);
@@ -160,7 +164,8 @@ export function App() {
         storedParentSuggestions,
         storedPinnedContext,
         storedClosedDateRange,
-        storedShowWorkItemParentDetails
+        storedShowWorkItemParentDetails,
+        storedRecentFeaturesCollapsed
       ] = await Promise.all([
         loadSettings(),
         loadLastVisitedDevOpsContext(),
@@ -170,7 +175,8 @@ export function App() {
         loadParentSuggestions(),
         loadPinnedActiveWorkItemContext(),
         loadWorkItemsClosedDateRange(),
-        loadShowWorkItemParentDetails()
+        loadShowWorkItemParentDetails(),
+        loadRecentFeaturesCollapsed()
       ]);
 
       const resolvedLastVisitedContext =
@@ -216,6 +222,7 @@ export function App() {
       setShowWorkItemParentDetails(storedShowWorkItemParentDetails);
       setParentSuggestions(storedParentSuggestions);
       setPinnedActiveWorkItemContext(storedPinnedContext);
+      setIsRecentFeaturesCollapsed(storedRecentFeaturesCollapsed);
       await refreshActiveTabLinkMode();
 
       if (cachedResult) {
@@ -735,6 +742,14 @@ export function App() {
     });
   }
 
+  function onToggleRecentFeaturesCollapsed() {
+    setIsRecentFeaturesCollapsed((current) => {
+      const next = !current;
+      void saveRecentFeaturesCollapsed(next).catch(() => undefined);
+      return next;
+    });
+  }
+
   async function onSelectTask(task: ChildTaskItem) {
     setSelectedTaskId(task.id);
 
@@ -975,27 +990,35 @@ export function App() {
       ) : null}
 
       {activeTab === 'work-item' ? (
-        <WorkItemCard
-          taskTitle={taskTitle}
-          onTaskTitleChange={setTaskTitle}
-          onCreateTask={onCreateTaskFromCurrentWorkItem}
-          parentWorkItemId={parentWorkItemId}
-          isParentDetected={Boolean(parentWorkItemId)}
-          createdTasks={visibleChildTasks}
-          selectedTaskId={selectedTaskId}
-          onSelectTask={onSelectTask}
-          availableTaskStates={availableTaskStates}
-          hiddenTaskStates={hiddenTaskStates}
-          onToggleTaskStateFilter={onToggleTaskStateFilter}
-          isActionDisabled={isLoading || isCreatingTask}
-          statusMessage={createTaskStatusMessage}
-          recentFeatureSuggestions={recentFeatureSuggestions}
-          recentParentableSuggestions={recentParentableSuggestions}
-          onSetFeatureParent={onSetFeatureParent}
-          onReparentSelectedTask={onReparentSelectedTask}
-          onTogglePinSuggestedParent={onTogglePinSuggestedParent}
-          linkExternal={linkExternal}
-        />
+        <>
+          <RecentFeaturesCard
+            items={recentFeatureSuggestions}
+            isCollapsed={isRecentFeaturesCollapsed}
+            onToggleCollapsed={onToggleRecentFeaturesCollapsed}
+            onSetFeatureParent={onSetFeatureParent}
+            onTogglePinSuggestedParent={onTogglePinSuggestedParent}
+            linkExternal={linkExternal}
+          />
+          <WorkItemCard
+            taskTitle={taskTitle}
+            onTaskTitleChange={setTaskTitle}
+            onCreateTask={onCreateTaskFromCurrentWorkItem}
+            parentWorkItemId={parentWorkItemId}
+            isParentDetected={Boolean(parentWorkItemId)}
+            createdTasks={visibleChildTasks}
+            selectedTaskId={selectedTaskId}
+            onSelectTask={onSelectTask}
+            availableTaskStates={availableTaskStates}
+            hiddenTaskStates={hiddenTaskStates}
+            onToggleTaskStateFilter={onToggleTaskStateFilter}
+            isActionDisabled={isLoading || isCreatingTask}
+            statusMessage={createTaskStatusMessage}
+            recentParentableSuggestions={recentParentableSuggestions}
+            onReparentSelectedTask={onReparentSelectedTask}
+            onTogglePinSuggestedParent={onTogglePinSuggestedParent}
+            linkExternal={linkExternal}
+          />
+        </>
       ) : null}
 
       <DebugConsolePane

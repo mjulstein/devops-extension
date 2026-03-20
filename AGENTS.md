@@ -56,7 +56,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - `src/sidepanel/{App,Tabs,Link,DebugConsolePane}.tsx` + matching `*.module.css` files — side panel state shell, tab chrome, link navigation helper, and in-panel debug log viewer
 - `src/sidepanel/workItemsDateRange.ts` — default closed-date range and validation helpers for the Work items tab
 - `src/sidepanel/work-items/*` — work-items tab components (`StatusCard`, `WorkItemSection`) with colocated `*.module.css` files and `index.ts` entry export
-- `src/sidepanel/work-item/*` — work-item tab components (`WorkItemCard`) with colocated `*.module.css` files and `index.ts` entry export
+- `src/sidepanel/work-item/*` — work-item tab components (`RecentFeaturesCard`, `WorkItemCard`, `PinIcon`) with colocated `*.module.css` files where applicable and `index.ts` entry export
 - `src/sidepanel/settings/*` — settings tab components (`SettingsCard`) with colocated `*.module.css` files and `index.ts` entry export
 - `src/sidepanel/{chromeStorage,defaultSettings}.ts` — side panel storage/defaults helpers, including cached work-items results plus browser-local closed-date range and parent-detail toggle state
 - `src/sidepanel/tabMessaging/index.ts` + `src/sidepanel/tabMessaging/*.ts` — side panel tab messaging barrel + function modules
