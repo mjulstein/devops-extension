@@ -9,7 +9,7 @@ Keep this document focused on files that live directly in `src/sidepanel/`. Use 
 ## Files in this directory
 
 - `App.tsx` + `App.module.css` — top-level side panel state container and shell/banner styling that hydrate settings/storage, manage tabs, drive work-item actions, and render the panel sections, including closed-date range refreshes for the Work items tab.
-- `chromeStorage.ts` — browser-local storage helpers for settings-adjacent side-panel state such as cached results, closed-date range and parent-detail work-item preferences, the Recent features collapsed preference, active tab, hidden task states, parent suggestions, and pinned active context.
+- `chromeStorage.ts` — browser-local storage helpers for settings-adjacent side-panel state such as cached results, closed-date range and parent-detail work-item preferences, active tab, hidden task states, parent suggestions, and pinned active context.
 - `DebugConsolePane.tsx` + `DebugConsolePane.module.css` — in-panel developer log viewer used by `App.tsx`.
 - `defaultSettings.ts` — default empty settings values used when storage has not been hydrated yet.
 - `Link.tsx` — navigation helper that opens Azure DevOps links in the active tab when appropriate.

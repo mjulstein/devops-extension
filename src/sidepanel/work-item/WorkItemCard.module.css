@@ -191,10 +191,35 @@
   cursor: pointer;
 }
 
-.createdTaskSelectSelected {
+.createdTaskSelectTodo {
   border-color: #8aa8db;
   background: #e8f1ff;
+}
+
+.createdTaskSelectInProgress {
+  border-color: #c8b6e5;
+  background: #f2eaff;
+}
+
+.createdTaskSelectDone {
+  border-color: #9ccfa9;
+  background: #e8f8ee;
+}
+
+.createdTaskSelectBlocked {
+  border-color: #e1b479;
+  background: #fff1dd;
+}
+
+.createdTaskSelectUnknown {
+  border-color: #cfd7e6;
+  background: #f5f7fb;
+}
+
+.createdTaskSelectSelected {
+  border-color: #5e86c4;
   font-weight: 600;
+  box-shadow: inset 0 0 0 1px #5e86c4;
 }
 
 .createdTaskEmpty {
