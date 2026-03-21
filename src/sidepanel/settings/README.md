@@ -8,4 +8,3 @@ This directory contains the Settings tab UI.
 
 - `index.ts` — barrel export for the settings tab component.
 - `SettingsCard.tsx` + `SettingsCard.module.css` — renders the organization, project, and assigned-to fields plus the Save settings and Reload extension actions.
-

@@ -47,61 +47,7 @@
   gap: 6px;
 }
 
-.parentSuggestionRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 6px;
-}
-
-.parentSuggestionLink {
-  font-size: 12px;
-  color: #0a5bd3;
-  text-decoration: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.parentSuggestionLink:hover {
-  text-decoration: underline;
-}
-
-.parentSuggestionAction {
-  margin-top: 0;
-  padding: 4px 8px;
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.parentSuggestionPin {
-  padding: 0.5rem;
-  min-width: auto;
-}
-
-.pinButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-}
-
-.pinButtonPinned {
-  color: #0a5bd3;
-}
-
-.pinButtonUnpinned {
-  color: #6a6a6a;
-}
-
-.pinIcon {
-  width: 0.875rem;
-  height: 0.875rem;
-  display: block;
-}
-
 .emptyText {
   font-size: 12px;
   color: #666;
 }
-

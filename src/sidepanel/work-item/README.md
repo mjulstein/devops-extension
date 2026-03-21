@@ -7,5 +7,10 @@ This directory contains the Active item tab UI.
 ## Files in this directory
 
 - `index.ts` — barrel export for the active-item card component.
-- `WorkItemCard.tsx` + `WorkItemCard.module.css` — renders a collapsible Recent features card plus child-task creation, task selection, task-state filters, and reparenting actions.
+- `RecentFeaturesCard.tsx` + `RecentFeaturesCard.module.css` — collapsible Recent features card that composes reusable suggestion-row atoms.
+- `PinIcon.tsx` — visual pin icon shared by compact pin-toggle atoms.
+- `WorkItemCard.tsx` + `WorkItemCard.module.css` — active-item layout composition for status messaging, task creation/selection, and parent suggestion sections.
 
+## Subdirectories
+
+- [`atoms`](./atoms/README.md) — reusable task, pin, and parent-suggestion interaction atoms for the Active item tab.

@@ -8,7 +8,8 @@ Keep this document focused on files that live directly in `src/sidepanel/`. Use 
 
 ## Files in this directory
 
-- `App.tsx` + `App.module.css` — top-level side panel state container and shell/banner styling that hydrate settings/storage, manage tabs, drive work-item actions, and render the panel sections, including closed-date range refreshes for the Work items tab.
+- `App.tsx` + `App.module.css` — top-level side panel shell that composes the banner, tabs, and tab sections.
+- `useSidepanelController.ts` — side-panel orchestration hook that hydrates storage, manages tab/work-item state, and exposes handlers to the shell components.
 - `chromeStorage.ts` — browser-local storage helpers for settings-adjacent side-panel state such as cached results, closed-date range and parent-detail work-item preferences, active tab, hidden task states, parent suggestions, and pinned active context.
 - `DebugConsolePane.tsx` + `DebugConsolePane.module.css` — in-panel developer log viewer used by `App.tsx`.
 - `defaultSettings.ts` — default empty settings values used when storage has not been hydrated yet.
@@ -21,8 +22,7 @@ The side panel uses colocated CSS modules for component styling. TypeScript supp
 ## Subdirectories
 
 - [`settings`](./settings/README.md) — Settings tab components.
+- [`atoms`](./atoms/README.md) — shared shell atoms used by `App.tsx`.
 - [`tabMessaging`](./tabMessaging/README.md) — helpers that wrap runtime and tab messaging.
 - [`work-item`](./work-item/README.md) — Active item tab components.
 - [`work-items`](./work-items/README.md) — Work items tab components.
-
-

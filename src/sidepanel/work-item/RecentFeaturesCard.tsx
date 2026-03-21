@@ -1,8 +1,7 @@
 import clsx from 'clsx';
 import { useId } from 'react';
 import type { ParentSuggestionItem } from '@/types';
-import { Link } from '../Link';
-import { PinIcon } from './PinIcon';
+import { ParentSuggestionRow } from './atoms/ParentSuggestionRow';
 import classes from './RecentFeaturesCard.module.css';
 
 interface RecentFeatureSuggestionView extends ParentSuggestionItem {
@@ -57,61 +56,28 @@ export function RecentFeaturesCard({
         <div id={sectionId} className={classes.parentSuggestionList}>
           {items.length ? (
             items.map((item) => (
-              <div
+              <ParentSuggestionRow
                 key={`feature-${item.id}`}
-                className={classes.parentSuggestionRow}
-              >
-                <Link
-                  href={item.url}
-                  external={linkExternal}
-                  className={classes.parentSuggestionLink}
-                  title={item.title}
-                >
-                  #{item.id} [{item.workItemType}] - {item.title}
-                </Link>
-                <button
-                  type="button"
-                  className={classes.parentSuggestionAction}
-                  onClick={() => {
-                    void onSetFeatureParent(item.id);
-                  }}
-                >
-                  set feature
-                </button>
-                <button
-                  type="button"
-                  className={clsx(
-                    classes.parentSuggestionAction,
-                    classes.parentSuggestionPin,
-                    classes.pinButton,
-                    item.isPinned
-                      ? classes.pinButtonPinned
-                      : classes.pinButtonUnpinned
-                  )}
-                  aria-label={
-                    item.isPinned
-                      ? `Unpin feature #${item.id}`
-                      : `Pin feature #${item.id}`
-                  }
-                  title={
-                    item.isPinned
-                      ? `Unpin feature #${item.id}`
-                      : `Pin feature #${item.id}`
-                  }
-                  onClick={() =>
-                    onTogglePinSuggestedParent(
-                      'feature',
-                      item.id,
-                      !item.isPinned
-                    )
-                  }
-                >
-                  <PinIcon
-                    isPinned={item.isPinned}
-                    className={classes.pinIcon}
-                  />
-                </button>
-              </div>
+                id={item.id}
+                title={item.title}
+                url={item.url}
+                workItemType={item.workItemType}
+                isPinned={item.isPinned}
+                actionLabel="set feature"
+                onAction={() => {
+                  void onSetFeatureParent(item.id);
+                }}
+                onTogglePin={() => {
+                  onTogglePinSuggestedParent(
+                    'feature',
+                    item.id,
+                    !item.isPinned
+                  );
+                }}
+                linkExternal={linkExternal}
+                pinLabel={`Pin feature #${item.id}`}
+                unpinLabel={`Unpin feature #${item.id}`}
+              />
             ))
           ) : (
             <div className={classes.emptyText}>

@@ -67,6 +67,7 @@ Use the linked directory `README.md` files for structure details instead of expa
 
 - React components use `PascalCase.tsx`.
 - Side panel component styles live beside their components in `ComponentName.module.css` files and are imported as `import classes from './ComponentName.module.css';`.
+- Side panel sections may include local `atoms/` directories for reusable interactive concepts (for example task buttons, grouped rows, and compact control strips) plus focused `*.test.ts` / `*.test.tsx` files.
 - Function/utility modules use `camelCase.ts`.
 
 ## Build Output
@@ -86,7 +87,7 @@ Load `dist/` as the unpacked extension directory in Edge.
 
 The extension stores runtime settings in browser storage.
 
-The Work items tab also stores its closed-date range filter and parent-detail visibility toggle in browser-local storage so the tab reopens with the same view preferences.
+The Work items tab also stores its closed-date range filter and parent-detail visibility toggle in browser-local storage so the tab reopens with the same view preferences. The Active item tab stores its Recent features collapsed state in browser-local storage as well.
 
 In the side panel **Settings** card, use **Reload extension** during development to apply updates quickly. You can still reload manually from `edge://extensions` if needed.
 

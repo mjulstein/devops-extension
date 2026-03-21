@@ -27,6 +27,7 @@ const PARENT_SUGGESTIONS_KEY = 'parentSuggestions';
 const PINNED_ACTIVE_WORK_ITEM_CONTEXT_KEY = 'pinnedActiveWorkItemContext';
 const WORK_ITEMS_CLOSED_DATE_RANGE_KEY = 'workItemsClosedDateRange';
 const SHOW_WORK_ITEM_PARENT_DETAILS_KEY = 'showWorkItemParentDetails';
+const RECENT_FEATURES_COLLAPSED_KEY = 'recentFeaturesCollapsed';
 // Keep enough entries to support recency ordering while only rendering a small subset.
 const MAX_STORED_RECENT_SUGGESTIONS = 40;
 
@@ -116,6 +117,21 @@ export async function saveShowWorkItemParentDetails(
 ): Promise<void> {
   await chrome.storage.local.set({
     [SHOW_WORK_ITEM_PARENT_DETAILS_KEY]: value
+  });
+}
+
+export async function loadRecentFeaturesCollapsed(): Promise<boolean> {
+  const stored = await chrome.storage.local.get(RECENT_FEATURES_COLLAPSED_KEY);
+  return typeof stored[RECENT_FEATURES_COLLAPSED_KEY] === 'boolean'
+    ? stored[RECENT_FEATURES_COLLAPSED_KEY]
+    : false;
+}
+
+export async function saveRecentFeaturesCollapsed(
+  value: boolean
+): Promise<void> {
+  await chrome.storage.local.set({
+    [RECENT_FEATURES_COLLAPSED_KEY]: value
   });
 }
 

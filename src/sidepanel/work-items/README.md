@@ -7,6 +7,9 @@ This directory contains the Work items tab UI.
 ## Files in this directory
 
 - `index.ts` — barrel export for the main work-items status card.
-- `StatusCard.tsx` + `StatusCard.module.css` — renders the fetch action, closed-date range controls, parent-detail toggle, loading/status messages, and the open/closed work-item sections.
-- `WorkItemSection.tsx` + `WorkItemSection.module.css` — renders titled work-item lists, including grouped closed-date sections with per-day refetch actions and optional parent-detail rows.
+- `StatusCard.tsx` + `StatusCard.module.css` — Work items tab layout composition for toolbar, status notices, closed-date controls, and open/closed sections.
+- `WorkItemSection.tsx` + `WorkItemSection.module.css` — titled work-item list composition for flat and grouped work-item displays.
 
+## Subdirectories
+
+- [`atoms`](./atoms/README.md) — reusable toolbar, date-range, row, and grouped closed-date atoms for the Work items tab.

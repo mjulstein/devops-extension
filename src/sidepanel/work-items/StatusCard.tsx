@@ -1,6 +1,8 @@
 import clsx from 'clsx';
 import type { ClosedDateRange, WorkItemResult } from '@/types';
 import classes from './StatusCard.module.css';
+import { ClosedDateRangeControls } from './atoms/ClosedDateRangeControls';
+import { WorkItemsToolbar } from './atoms/WorkItemsToolbar';
 import { WorkItemSection } from './WorkItemSection';
 
 interface StatusCardProps {
@@ -54,36 +56,16 @@ export function StatusCard({
 
   return (
     <section className={classes.card}>
-      <div className={classes.buttonRow}>
-        <button
-          className={classes.button}
-          onClick={() => void onFetchWorkItems()}
-          disabled={isActionDisabled}
-        >
-          Fetch work items
-        </button>
+      <WorkItemsToolbar
+        showWorkItemParentDetails={showWorkItemParentDetails}
+        isActionDisabled={isActionDisabled}
+        onFetchWorkItems={onFetchWorkItems}
+        onToggleShowWorkItemParentDetails={onToggleShowWorkItemParentDetails}
+      />
 
-        <label
-          className={clsx(
-            classes.checkboxToggle,
-            classes.workItemsParentToggle
-          )}
-        >
-          <input
-            className={classes.checkboxInput}
-            type="checkbox"
-            checked={showWorkItemParentDetails}
-            onChange={() => {
-              void onToggleShowWorkItemParentDetails();
-            }}
-          />
-          Show task parent details
-        </label>
-      </div>
-
-      <div className={clsx(classes.loading, !isLoading && classes.hidden)}>
-        {loadingMessage}
-      </div>
+      {isLoading ? (
+        <div className={classes.loading}>{loadingMessage}</div>
+      ) : null}
 
       {preFetchHint ? (
         <div className={clsx(classes.statusMessage, classes.statusWarning)}>
@@ -115,75 +97,14 @@ export function StatusCard({
 
           <h3>Closed</h3>
 
-          <div
-            className={clsx(
-              classes.workItemsControls,
-              classes.workItemsControlsCompact
-            )}
-          >
-            <div className={classes.workItemsDateRange}>
-              <button
-                type="button"
-                className={clsx(classes.button, classes.workItemsResetButton)}
-                onClick={() => {
-                  void onResetClosedDateRange();
-                }}
-                disabled={isActionDisabled}
-              >
-                Reset
-              </button>
-
-              <div className={classes.workItemsDateField}>
-                <input
-                  className={classes.dateInput}
-                  type="date"
-                  value={closedDateRange.start}
-                  aria-label="Closed from"
-                  title="Closed from"
-                  disabled={isActionDisabled}
-                  onChange={(event) =>
-                    void onClosedDateRangeChange('start', event.target.value)
-                  }
-                />
-              </div>
-
-              <span
-                className={classes.workItemsDateSeparator}
-                aria-hidden="true"
-              >
-                -
-              </span>
-
-              <div className={classes.workItemsDateField}>
-                {isClosedEndTodayShortcut ? (
-                  <button
-                    type="button"
-                    className={clsx(
-                      classes.button,
-                      classes.workItemsTodayButton
-                    )}
-                    title="Using today. Click to choose a custom date."
-                    disabled={isActionDisabled}
-                    onClick={onEnableCustomClosedEndDate}
-                  >
-                    today
-                  </button>
-                ) : (
-                  <input
-                    className={classes.dateInput}
-                    type="date"
-                    value={closedDateRange.end}
-                    aria-label="Closed through"
-                    title="Closed through"
-                    disabled={isActionDisabled}
-                    onChange={(event) =>
-                      void onClosedDateRangeChange('end', event.target.value)
-                    }
-                  />
-                )}
-              </div>
-            </div>
-          </div>
+          <ClosedDateRangeControls
+            closedDateRange={closedDateRange}
+            isClosedEndTodayShortcut={isClosedEndTodayShortcut}
+            isActionDisabled={isActionDisabled}
+            onClosedDateRangeChange={onClosedDateRangeChange}
+            onEnableCustomClosedEndDate={onEnableCustomClosedEndDate}
+            onResetClosedDateRange={onResetClosedDateRange}
+          />
 
           <WorkItemSection
             title="Closed"

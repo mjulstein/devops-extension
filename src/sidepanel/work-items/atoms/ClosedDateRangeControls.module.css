@@ -1,0 +1,54 @@
+.controls {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.compact {
+  margin-top: 0;
+}
+
+.dateRange {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.dateField {
+  min-width: 0;
+}
+
+.button {
+  padding: 8px 12px;
+  cursor: pointer;
+  margin-top: 0;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dateInput {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 0;
+  padding: 8px 10px;
+}
+
+.todayButton {
+  width: 100%;
+  text-transform: lowercase;
+}
+
+.resetButton {
+  white-space: nowrap;
+}
+
+.dateSeparator {
+  color: #666;
+  font-size: 14px;
+  line-height: 1;
+}

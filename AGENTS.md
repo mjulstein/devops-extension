@@ -36,6 +36,8 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - Do not add secrets, tokens, or committed local configuration.
 - Side panel React component files should use `PascalCase.tsx`.
 - Side panel React component styles should live beside their components in `ComponentName.module.css` files and be imported as `import classes from './ComponentName.module.css';`; when an element needs multiple classes, use `clsx` to compose them in JSX.
+- Side panel sections may add local `atoms/` subdirectories for reusable interactive concepts and colocated `*.test.ts` / `*.test.tsx` coverage; keep section layout files focused on composition rather than repeated row/button/control behavior.
+- Prefer moving side-panel stateful orchestration into section-local hooks or controller modules (for example `useSidepanelController.ts`) so `App.tsx` and card/layout components stay thin.
 - Utility/function modules should use `camelCase.ts`.
 - When moving or renaming tracked files, use `git mv` so history is preserved; do not create a new file and delete the old file as a substitute for a move.
 - Run `npm run lint`, `npm test`, and `npm run build` after non-trivial changes.
@@ -53,10 +55,11 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - `src/devops/workItems.ts` — separate open/closed work-item query and transformation logic, including closed-date range filtering and parent-summary enrichment
 - `src/sidepanel.html` — side panel HTML entry
 - `src/sidepanel.tsx` — React side panel entry
-- `src/sidepanel/{App,Tabs,Link,DebugConsolePane}.tsx` + matching `*.module.css` files — side panel state shell, tab chrome, link navigation helper, and in-panel debug log viewer
+- `src/sidepanel/{App,Tabs,Link,DebugConsolePane}.tsx` + matching `*.module.css` files — side panel shell, tab chrome, link navigation helper, and in-panel debug log viewer
+- `src/sidepanel/{atoms,useSidepanelController}.ts*` — shared shell atoms plus the side-panel orchestration hook used by `App.tsx`
 - `src/sidepanel/workItemsDateRange.ts` — default closed-date range and validation helpers for the Work items tab
-- `src/sidepanel/work-items/*` — work-items tab components (`StatusCard`, `WorkItemSection`) with colocated `*.module.css` files and `index.ts` entry export
-- `src/sidepanel/work-item/*` — work-item tab components (`WorkItemCard`) with colocated `*.module.css` files and `index.ts` entry export
+- `src/sidepanel/work-items/*` + `src/sidepanel/work-items/atoms/*` — work-items tab layout plus smaller toolbar/date-range/row/group atoms and helper tests
+- `src/sidepanel/work-item/*` + `src/sidepanel/work-item/atoms/*` — active-item tab layout plus smaller task/suggestion/pin atoms and helper tests
 - `src/sidepanel/settings/*` — settings tab components (`SettingsCard`) with colocated `*.module.css` files and `index.ts` entry export
 - `src/sidepanel/{chromeStorage,defaultSettings}.ts` — side panel storage/defaults helpers, including cached work-items results plus browser-local closed-date range and parent-detail toggle state
 - `src/sidepanel/tabMessaging/index.ts` + `src/sidepanel/tabMessaging/*.ts` — side panel tab messaging barrel + function modules
@@ -70,7 +73,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 ## Configuration Rules
 
 - Runtime settings should stay in browser storage unless explicitly changed.
-- Persisted side-panel state in `src/sidepanel/chromeStorage.ts` (for example cached work items, closed-date range and parent-detail toggle preferences, hidden child-task state filters, parent suggestions, active tab, and pinned active work-item context) should remain browser-local and backwards-compatible when storage shapes or keys change.
+- Persisted side-panel state in `src/sidepanel/chromeStorage.ts` (for example cached work items, closed-date range and parent-detail toggle preferences, hidden child-task state filters, parent suggestions, active tab, pinned active work-item context, and collapsed recent-features state) should remain browser-local and backwards-compatible when storage shapes or keys change.
 - Local-only development configuration must not be committed.
 - Avoid hardcoding organization, project, user names, tokens, or URLs that should remain configurable.
 - Prefer deriving organization/project from the last visited `dev.azure.com/{organization}/{project}` URL when settings are empty.

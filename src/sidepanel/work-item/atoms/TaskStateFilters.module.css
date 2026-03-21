@@ -1,0 +1,19 @@
+.row {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 0;
+  font-size: 11px;
+}
+
+.checkbox {
+  margin: 0;
+  width: auto;
+}

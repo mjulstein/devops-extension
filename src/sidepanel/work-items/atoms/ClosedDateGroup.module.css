@@ -1,0 +1,27 @@
+.group {
+  display: grid;
+  gap: 6px;
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
+}
+
+.refetchButton {
+  margin-top: 0;
+  padding: 2px 6px;
+  min-width: 28px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.list {
+  display: grid;
+  gap: 6px;
+}

@@ -1,0 +1,23 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: auto;
+  padding: 0.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pinned {
+  color: #0a5bd3;
+}
+
+.unpinned {
+  color: #6a6a6a;
+}
+
+.icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  display: block;
+}

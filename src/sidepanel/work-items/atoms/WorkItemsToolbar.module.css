@@ -1,0 +1,33 @@
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.button {
+  padding: 8px 12px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.checkboxToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 0;
+  font-size: 13px;
+}
+
+.parentToggle {
+  margin-top: 0;
+}
+
+.checkboxInput {
+  width: auto;
+  margin: 0;
+}
