@@ -16,9 +16,7 @@ describe('TaskButton', () => {
         onSelectTask={vi.fn().mockResolvedValue(undefined)}
       />
     );
-
-    const visibleLabel = markup.match(/>([^<]+)<\/button>$/)?.[1];
-
+    const visibleLabel = />([^<]+)<\/button>$/.exec(markup)?.[1];
     expect(visibleLabel).toBe('#42 - Ship the atomized card layout');
     expect(markup).toContain(
       'title="#42 [Done] - Ship the atomized card layout"'
@@ -40,9 +38,7 @@ describe('TaskButton', () => {
         onSelectTask={vi.fn().mockResolvedValue(undefined)}
       />
     );
-
     expect(markup).toContain('data-state-tone="todo"');
     expect(markup).toContain('aria-label="Task #7, To Do: Keep To Do blue"');
   });
 });
-

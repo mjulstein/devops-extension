@@ -86,6 +86,9 @@ export function WorkItemCard({
       />
 
       <section className={clsx(classes.card, classes.taskCard)}>
+        <div className={classes.cardHeader}>
+          <div className={classes.title}>Task children</div>
+        </div>
         <StatusNotice
           toneClassName={
             statusMessage ? statusKindClassNames[statusMessage.kind] : null
