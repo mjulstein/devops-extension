@@ -90,7 +90,8 @@ describe('workItems.ts', () => {
       settings: {
         organization: '',
         project: '',
-        assignedTo: '   '
+        assignedTo: '   ',
+        todoStates: []
       },
       closedDateRange: {
         start: '2026-03-10',
@@ -173,6 +174,51 @@ describe('workItems.ts', () => {
     );
   });
 
+  it('includes configured TODO states in the open WIQL request', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse({ workItems: [] }))
+      .mockResolvedValueOnce(createJsonResponse({ workItems: [] }));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const request: FetchWorkItemsRequest = {
+      settings: {
+        organization: '',
+        project: '',
+        assignedTo: '',
+        todoStates: ['Ready', 'New', 'ready']
+      },
+      closedDateRange: {
+        start: '2026-03-16',
+        end: '2026-03-16'
+      },
+      scope: 'all'
+    };
+
+    await expect(
+      fetchWorkItems(request, {
+        organization: 'my-org',
+        project: 'my-project'
+      })
+    ).resolves.toEqual({
+      count: 0,
+      openItems: [],
+      closedItems: [],
+      closedDateRange: request.closedDateRange
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const [, openWiqlRequest] = fetchMock.mock.calls[0] as [
+      string,
+      RequestInit
+    ];
+
+    expect(getQueryFromRequestBody(openWiqlRequest.body)).toContain(
+      "[System.State] IN ('To Do', 'In Progress', 'Ready', 'New')"
+    );
+  });
+
   it('quotes and escapes explicit assignedTo values in both requests', async () => {
     const fetchMock = vi
       .fn()
@@ -185,7 +231,8 @@ describe('workItems.ts', () => {
       settings: {
         organization: '',
         project: '',
-        assignedTo: "O'Brien"
+        assignedTo: "O'Brien",
+        todoStates: []
       },
       closedDateRange: {
         start: '2026-03-10',
@@ -250,7 +297,8 @@ describe('workItems.ts', () => {
       settings: {
         organization: '',
         project: '',
-        assignedTo: ''
+        assignedTo: '',
+        todoStates: []
       },
       closedDateRange: {
         start: '2026-03-16',

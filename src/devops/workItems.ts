@@ -10,6 +10,8 @@ export interface WorkItemsContext {
   project: string;
 }
 
+const DEFAULT_TODO_STATES = ['To Do', 'In Progress'];
+
 export async function fetchWorkItems(
   request: FetchWorkItemsRequest,
   context: WorkItemsContext
@@ -19,6 +21,7 @@ export async function fetchWorkItems(
   const project = context.project.trim();
   const closedDateRange = normalizeClosedDateRange(request.closedDateRange);
   const scope = request.scope;
+  const todoStates = getEffectiveTodoStates(request.settings.todoStates);
 
   if (!organization || !project) {
     throw new Error(
@@ -29,7 +32,7 @@ export async function fetchWorkItems(
   const assignedToClause = buildAssignedToClause(assignedTo);
   const openItemsPromise =
     scope === 'all'
-      ? fetchOpenItems(organization, project, assignedToClause)
+      ? fetchOpenItems(organization, project, assignedToClause, todoStates)
       : Promise.resolve([]);
   const closedItemsPromise = fetchClosedItems(
     organization,
@@ -58,7 +61,8 @@ export async function fetchWorkItems(
 async function fetchOpenItems(
   organization: string,
   project: string,
-  assignedToClause: string
+  assignedToClause: string,
+  todoStates: string[]
 ): Promise<WorkItem[]> {
   const openIds = await queryWorkItemIds(
     organization,
@@ -70,7 +74,7 @@ async function fetchOpenItems(
       WHERE
         [System.TeamProject] = @project
         AND [System.AssignedTo] = ${assignedToClause}
-        AND [System.State] IN ('To Do', 'In Progress')
+        AND ${buildTodoStateClause(todoStates)}
       ORDER BY [System.ChangedDate] DESC
     `
   );
@@ -261,6 +265,35 @@ function formatDateForInput(date: Date): string {
 
 function escapeWiqlString(value: string): string {
   return value.replace(/'/g, "''");
+}
+
+function getEffectiveTodoStates(extraStates: string[]): string[] {
+  const combined = [...DEFAULT_TODO_STATES, ...extraStates];
+  const seen = new Set<string>();
+  const unique: string[] = [];
+
+  for (const entry of combined) {
+    const trimmed = entry.trim();
+    if (!trimmed) {
+      continue;
+    }
+
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    unique.push(trimmed);
+  }
+
+  return unique;
+}
+
+function buildTodoStateClause(states: string[]): string {
+  return `[System.State] IN (${states
+    .map((state) => `'${escapeWiqlString(state)}'`)
+    .join(', ')})`;
 }
 
 function buildAssignedToClause(assignedTo: string): string {

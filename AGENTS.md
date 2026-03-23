@@ -78,6 +78,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - Avoid hardcoding organization, project, user names, tokens, or URLs that should remain configurable.
 - Prefer deriving organization/project from the last visited `dev.azure.com/{organization}/{project}` URL when settings are empty.
 - Treat an empty `assignedTo` setting as the current signed-in Azure DevOps user (`@me`) when querying work items; explicit saved values remain overrides.
+- Preserve the `todoStates` array so custom Azure DevOps states stay available for the TODO section alongside the default To Do/In Progress filter.
 - `organization`, `project`, and user-specific fields (for example `assignedTo`) may be persisted in settings as explicit overrides.
 
 ## Change Guidelines

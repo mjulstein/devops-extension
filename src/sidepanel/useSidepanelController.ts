@@ -972,8 +972,28 @@ function getTrimmedSettingsFromState(settings: Settings): Settings {
   return {
     organization: settings.organization.trim(),
     project: settings.project.trim(),
-    assignedTo: settings.assignedTo.trim()
+    assignedTo: settings.assignedTo.trim(),
+    todoStates: normalizeTodoStates(settings.todoStates)
   };
+}
+
+function normalizeTodoStates(states: string[]): string[] {
+  const normalized = states.map((state) => state.trim()).filter(Boolean);
+
+  const seen = new Set<string>();
+  const unique: string[] = [];
+
+  for (const state of normalized) {
+    const key = state.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    unique.push(state);
+  }
+
+  return unique;
 }
 
 function mergeClosedItemsIntoResult(
