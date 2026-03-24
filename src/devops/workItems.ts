@@ -377,11 +377,13 @@ function getOpenStateSortWeight(state: string): number {
     return 0;
   }
 
+  // Treat 'In Progress' as the highest weight so it appears last in the TODO list.
   if (normalized === 'in progress') {
-    return 1;
+    return 2;
   }
 
-  return 2;
+  // Other open states come between To Do and In Progress.
+  return 1;
 }
 
 function normalizeClosedDateRange(
