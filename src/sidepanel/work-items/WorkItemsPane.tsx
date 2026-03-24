@@ -30,7 +30,7 @@ interface StatusCardProps {
   linkExternal: boolean;
 }
 
-export function StatusCard({
+export function WorkItemsPane({
   loadingMessage,
   isLoading,
   result,
@@ -55,37 +55,36 @@ export function StatusCard({
   } as const;
 
   return (
-    <section className={classes.card}>
-      <WorkItemsToolbar
-        showWorkItemParentDetails={showWorkItemParentDetails}
-        isActionDisabled={isActionDisabled}
-        onFetchWorkItems={onFetchWorkItems}
-        onToggleShowWorkItemParentDetails={onToggleShowWorkItemParentDetails}
-      />
+    <>
+      <section className={classes.card}>
+        <WorkItemsToolbar
+          showWorkItemParentDetails={showWorkItemParentDetails}
+          isActionDisabled={isActionDisabled}
+          onFetchWorkItems={onFetchWorkItems}
+          onToggleShowWorkItemParentDetails={onToggleShowWorkItemParentDetails}
+        />
 
-      {isLoading ? (
-        <div className={classes.loading}>{loadingMessage}</div>
-      ) : null}
+        {isLoading && <div className={classes.loading}>{loadingMessage}</div>}
 
-      {preFetchHint ? (
-        <div className={clsx(classes.statusMessage, classes.statusWarning)}>
-          {preFetchHint}
-        </div>
-      ) : null}
+        {!!preFetchHint && (
+          <div className={clsx(classes.statusMessage, classes.statusWarning)}>
+            {preFetchHint}
+          </div>
+        )}
 
-      {statusMessage ? (
-        <div
-          className={clsx(
-            classes.statusMessage,
-            statusKindClassNames[statusMessage.kind]
-          )}
-        >
-          {statusMessage.text}
-        </div>
-      ) : null}
-
-      {result ? (
-        <div>
+        {!!statusMessage && (
+          <div
+            className={clsx(
+              classes.statusMessage,
+              statusKindClassNames[statusMessage.kind]
+            )}
+          >
+            {statusMessage.text}
+          </div>
+        )}
+      </section>
+      {result && (
+        <section className={classes.card}>
           <WorkItemSection
             title="TODO"
             emptyText="No open items."
@@ -94,9 +93,11 @@ export function StatusCard({
             showParentDetails={showWorkItemParentDetails}
             linkExternal={linkExternal}
           />
+        </section>
+      )}
 
-          <h3>Closed</h3>
-
+      {result && (
+        <section className={classes.card}>
           <ClosedDateRangeControls
             closedDateRange={closedDateRange}
             isClosedEndTodayShortcut={isClosedEndTodayShortcut}
@@ -105,10 +106,8 @@ export function StatusCard({
             onEnableCustomClosedEndDate={onEnableCustomClosedEndDate}
             onResetClosedDateRange={onResetClosedDateRange}
           />
-
           <WorkItemSection
             title="Closed"
-            showTitle={false}
             emptyText="No closed items in this range."
             items={result.closedItems}
             showState={false}
@@ -117,8 +116,8 @@ export function StatusCard({
             onRefetchClosedDay={onRefetchClosedDay}
             linkExternal={linkExternal}
           />
-        </div>
-      ) : null}
-    </section>
+        </section>
+      )}
+    </>
   );
 }

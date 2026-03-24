@@ -2,7 +2,7 @@
 
 # `src/sidepanel/work-item/atoms/`
 
-This directory contains small interactive Active item tab atoms that keep `WorkItemCard.tsx` focused on layout composition.
+This directory contains small interactive Active item tab atoms that keep `WorkItemPane.tsx` focused on layout composition.
 
 ## Files in this directory
 

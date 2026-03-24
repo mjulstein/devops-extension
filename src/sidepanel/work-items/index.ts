@@ -1,1 +1,1 @@
-export { StatusCard } from './StatusCard';
+export { WorkItemsPane } from './WorkItemsPane';

@@ -10,7 +10,7 @@ interface SettingsCardProps {
   isLoading: boolean;
 }
 
-export function SettingsCard({
+export function SettingsPane({
   settings,
   onChange,
   onSave,

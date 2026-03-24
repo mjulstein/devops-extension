@@ -43,7 +43,7 @@ interface WorkItemCardProps {
   linkExternal: boolean;
 }
 
-export function WorkItemCard({
+export function WorkItemPane({
   taskTitle,
   onTaskTitleChange,
   onCreateTask,

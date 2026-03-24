@@ -1,1 +1,1 @@
-export { WorkItemCard } from './WorkItemCard';
+export { WorkItemPane } from './WorkItemPane';

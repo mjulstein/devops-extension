@@ -1,11 +1,11 @@
 import { DebugConsolePane } from './DebugConsolePane';
-import { SettingsCard } from './settings';
+import { SettingsPane } from './settings';
 import { ActiveWorkItemBanner } from './atoms/ActiveWorkItemBanner';
 import classes from './App.module.css';
 import { Tabs } from './Tabs';
 import { useSidepanelController } from './useSidepanelController';
-import { WorkItemCard } from './work-item';
-import { StatusCard } from './work-items';
+import { WorkItemPane } from './work-item';
+import { WorkItemsPane } from './work-items';
 
 export function App() {
   const controller = useSidepanelController();
@@ -31,7 +31,7 @@ export function App() {
       />
 
       {controller.activeTab === 'settings' ? (
-        <SettingsCard
+        <SettingsPane
           settings={controller.settings}
           onChange={controller.onChangeSettings}
           onSave={controller.onSaveSettings}
@@ -41,7 +41,7 @@ export function App() {
       ) : null}
 
       {controller.activeTab === 'work-items' ? (
-        <StatusCard
+        <WorkItemsPane
           loadingMessage={controller.loadingMessage}
           isLoading={controller.isLoading}
           result={controller.result}
@@ -68,7 +68,7 @@ export function App() {
       ) : null}
 
       {controller.activeTab === 'work-item' ? (
-        <WorkItemCard
+        <WorkItemPane
           taskTitle={controller.taskTitle}
           onTaskTitleChange={controller.onTaskTitleChange}
           onCreateTask={controller.onCreateTaskFromCurrentWorkItem}
