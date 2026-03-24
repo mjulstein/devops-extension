@@ -34,7 +34,8 @@ describe('workItems.ts', () => {
                 'System.Title': 'Open task',
                 'System.State': 'To Do',
                 'System.AssignedTo': 'Current User',
-                'System.Parent': 900
+                'System.Parent': 900,
+                'System.ChangedDate': '2026-03-17T10:00:00.000Z'
               }
             }
           ]
@@ -51,7 +52,9 @@ describe('workItems.ts', () => {
                 'System.State': 'Done',
                 'System.AssignedTo': 'Current User',
                 'System.Parent': 900,
-                'Microsoft.VSTS.Common.ClosedDate': '2026-03-16T16:30:00.000Z'
+                'Microsoft.VSTS.Common.ClosedDate': '2026-03-16T16:30:00.000Z',
+                // closed items may also have a changed date
+                'System.ChangedDate': '2026-03-16T16:30:00.000Z'
               }
             }
           ]
@@ -122,6 +125,7 @@ describe('workItems.ts', () => {
             url: 'https://dev.azure.com/my-org/my-project/_workitems/edit/900'
           },
           closedDate: null,
+          lastChangedDate: '2026-03-17T10:00:00.000Z',
           url: 'https://dev.azure.com/my-org/my-project/_workitems/edit/101'
         }
       ],
@@ -140,6 +144,7 @@ describe('workItems.ts', () => {
             url: 'https://dev.azure.com/my-org/my-project/_workitems/edit/900'
           },
           closedDate: '2026-03-16T16:30:00.000Z',
+          lastChangedDate: '2026-03-16T16:30:00.000Z',
           url: 'https://dev.azure.com/my-org/my-project/_workitems/edit/202'
         }
       ],
@@ -217,6 +222,74 @@ describe('workItems.ts', () => {
     expect(getQueryFromRequestBody(openWiqlRequest.body)).toContain(
       "[System.State] IN ('To Do', 'In Progress', 'Ready', 'New')"
     );
+  });
+
+  it('orders open (TODO) items by System.ChangedDate descending', async () => {
+    const fetchMock = vi
+      // open ids
+      .fn()
+      .mockResolvedValueOnce(
+        createJsonResponse({ workItems: [{ id: 1 }, { id: 2 }] })
+      )
+      // closed ids
+      .mockResolvedValueOnce(createJsonResponse({ workItems: [] }))
+      // details for ids 1 and 2
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          value: [
+            {
+              fields: {
+                'System.Id': 1,
+                'System.WorkItemType': 'Task',
+                'System.Title': 'Older task',
+                'System.State': 'To Do',
+                'System.AssignedTo': 'Current User',
+                'System.ChangedDate': '2026-03-10T08:00:00.000Z'
+              }
+            },
+            {
+              fields: {
+                'System.Id': 2,
+                'System.WorkItemType': 'Task',
+                'System.Title': 'Newer task',
+                'System.State': 'To Do',
+                'System.AssignedTo': 'Current User',
+                'System.ChangedDate': '2026-03-17T09:00:00.000Z'
+              }
+            }
+          ]
+        })
+      );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const request: FetchWorkItemsRequest = {
+      settings: {
+        organization: '',
+        project: '',
+        assignedTo: '',
+        todoStates: []
+      },
+      closedDateRange: {
+        start: '2026-03-10',
+        end: '2026-03-17'
+      },
+      scope: 'all'
+    };
+
+    await expect(
+      fetchWorkItems(request, {
+        organization: 'my-org',
+        project: 'my-project'
+      })
+    ).resolves.toMatchObject({
+      openItems: [
+        expect.objectContaining({ id: 1 }),
+        expect.objectContaining({ id: 2 })
+      ]
+    });
+
+    expect(fetchMock).toHaveBeenCalled();
   });
 
   it('quotes and escapes explicit assignedTo values in both requests', async () => {
@@ -325,6 +398,7 @@ describe('workItems.ts', () => {
           parentId: null,
           parent: null,
           closedDate: '2026-03-16T16:30:00.000Z',
+          lastChangedDate: null,
           url: 'https://dev.azure.com/my-org/my-project/_workitems/edit/202'
         }
       ],

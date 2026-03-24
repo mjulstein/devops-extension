@@ -286,6 +286,8 @@ function normalizeWorkItem(value: unknown): WorkItem | null {
     typeof value.assignedTo !== 'string' ||
     (typeof value.parentId !== 'number' && value.parentId !== null) ||
     (typeof value.closedDate !== 'string' && value.closedDate !== null) ||
+    (typeof value.lastChangedDate !== 'string' &&
+      value.lastChangedDate !== null) ||
     typeof value.url !== 'string'
   ) {
     return null;
@@ -300,6 +302,7 @@ function normalizeWorkItem(value: unknown): WorkItem | null {
     parentId: value.parentId,
     parent: normalizeWorkItemParent(value.parent),
     closedDate: value.closedDate,
+    lastChangedDate: value.lastChangedDate,
     url: value.url
   };
 }

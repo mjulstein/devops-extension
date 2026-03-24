@@ -340,9 +340,27 @@ function getClosedDateTimestamp(value: string | null): number {
 }
 
 function compareOpenItems(left: WorkItem, right: WorkItem): number {
-  return (
-    getOpenStateSortWeight(left.state) - getOpenStateSortWeight(right.state)
-  );
+  // Primary: open state sort weight (preserve grouping like To Do, In Progress)
+  const stateWeight =
+    getOpenStateSortWeight(left.state) - getOpenStateSortWeight(right.state);
+  if (stateWeight !== 0) {
+    return stateWeight;
+  }
+
+  // Secondary: last changed date ascending so the most-recently changed items end up at the bottom
+  const leftTs = left.lastChangedDate
+    ? new Date(left.lastChangedDate).getTime()
+    : 0;
+  const rightTs = right.lastChangedDate
+    ? new Date(right.lastChangedDate).getTime()
+    : 0;
+
+  if (leftTs !== rightTs) {
+    return leftTs - rightTs;
+  }
+
+  // Tertiary: deterministic by id
+  return left.id - right.id;
 }
 
 function compareClosedItems(left: WorkItem, right: WorkItem): number {
@@ -462,6 +480,7 @@ function toWorkItem(
   const assignedToRaw = fieldsUnknown['System.AssignedTo'];
   const parentIdRaw = fieldsUnknown['System.Parent'];
   const closedDateRaw = fieldsUnknown['Microsoft.VSTS.Common.ClosedDate'];
+  const changedDateRaw = fieldsUnknown['System.ChangedDate'];
 
   const workItemType =
     typeof workItemTypeRaw === 'string' ? workItemTypeRaw : '';
@@ -470,6 +489,8 @@ function toWorkItem(
   const assignedTo = normalizeAssignedTo(assignedToRaw);
   const parentId = typeof parentIdRaw === 'number' ? parentIdRaw : null;
   const closedDate = typeof closedDateRaw === 'string' ? closedDateRaw : null;
+  const lastChangedDate =
+    typeof changedDateRaw === 'string' ? changedDateRaw : null;
   const url = `https://dev.azure.com/${organization}/${project}/_workitems/edit/${id}`;
 
   return {
@@ -481,6 +502,7 @@ function toWorkItem(
     parentId,
     parent: null,
     closedDate,
+    lastChangedDate,
     url
   };
 }
@@ -496,7 +518,9 @@ const WORK_ITEM_FIELDS = [
   'System.State',
   'System.AssignedTo',
   'System.Parent',
-  'Microsoft.VSTS.Common.ClosedDate'
+  'Microsoft.VSTS.Common.ClosedDate',
+  // Include last changed date so client can sort by recent activity
+  'System.ChangedDate'
 ];
 
 const PARENT_FIELDS = ['System.Id', 'System.WorkItemType', 'System.Title'];

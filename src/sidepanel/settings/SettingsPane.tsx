@@ -124,6 +124,14 @@ export function SettingsPane({
         >
           Save settings
         </button>
+        <button
+          className={classes.button}
+          onClick={() => {
+            window.location.reload();
+          }}
+        >
+          Reload
+        </button>
         <button className={classes.button} onClick={onReloadExtension}>
           Reload extension
         </button>
