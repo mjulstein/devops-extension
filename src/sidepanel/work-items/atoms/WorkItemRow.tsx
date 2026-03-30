@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import type { WorkItem } from '@/types';
-import { Link } from '../../Link';
+import { Link } from '@/sidepanel/Link';
 import classes from './WorkItemRow.module.css';
 import { shouldEmphasizeCompletedItem } from './workItemGrouping';
 
@@ -18,6 +18,7 @@ export function WorkItemRow({
   linkExternal
 }: WorkItemRowProps) {
   const emphasizeCompleted = shouldEmphasizeCompletedItem(item);
+  const emphasizeIncompleteChildren = Boolean(item.hasIncompleteChildren);
 
   return (
     <div
@@ -37,7 +38,8 @@ export function WorkItemRow({
         <span
           className={clsx(
             classes.title,
-            emphasizeCompleted && classes.titleEmphasis
+            (emphasizeCompleted || emphasizeIncompleteChildren) &&
+              classes.titleEmphasis
           )}
           title={item.title}
         >

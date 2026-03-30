@@ -16,6 +16,8 @@ export interface WorkItem {
   closedDate: string | null;
   // ISO string of the last changed date from Azure DevOps (System.ChangedDate)
   lastChangedDate: string | null;
+  // Whether this work item has at least one incomplete child task.
+  hasIncompleteChildren?: boolean;
   url: string;
 }
 

@@ -23,7 +23,8 @@ describe('fetchWorkItems.test.ts', () => {
       settings: {
         organization: '',
         project: '',
-        assignedTo: 'User Name'
+        assignedTo: 'User Name',
+        todoStates: []
       },
       closedDateRange: {
         start: '2026-03-10',
@@ -65,7 +66,8 @@ describe('fetchWorkItems.test.ts', () => {
         settings: {
           organization: '',
           project: '',
-          assignedTo: 'User Name'
+          assignedTo: 'User Name',
+          todoStates: []
         },
         closedDateRange: {
           start: '2026-03-10',
@@ -83,11 +85,12 @@ describe('fetchWorkItems.test.ts', () => {
       .mockImplementationOnce(() => new Promise(() => undefined));
 
     const promise = fetchWorkItems({
-      settings: {
-        organization: '',
-        project: '',
-        assignedTo: 'User Name'
-      },
+        settings: {
+          organization: '',
+          project: '',
+          assignedTo: 'User Name',
+          todoStates: []
+        },
       closedDateRange: {
         start: '2026-03-10',
         end: '2026-03-17'

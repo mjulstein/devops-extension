@@ -47,9 +47,16 @@ export async function fetchWorkItems(
     closedItemsPromise
   ]);
 
-  return {
-    count: openItems.length + closedItems.length,
+  // Enrich open items with hasIncompleteChildren flag after both fetches complete
+  const openItemsWithChildren = await attachHasIncompleteChildren(
     openItems,
+    context.organization,
+    context.project
+  );
+
+  return {
+    count: openItemsWithChildren.length + closedItems.length,
+    openItems: openItemsWithChildren,
     closedItems,
     closedDateRange: {
       start: formatDateForInput(closedDateRange.start),
@@ -84,6 +91,119 @@ async function fetchOpenItems(
   return enrichParents(openItems, organization, project).then((items) =>
     items.filter((item) => item.closedDate === null).sort(compareOpenItems)
   );
+}
+
+async function attachHasIncompleteChildren(
+  items: WorkItem[],
+  organization: string,
+  project: string
+): Promise<WorkItem[]> {
+  const parentIds = items.map((i) => i.id);
+  const childIdMap = await fetchChildIdsForParents(
+    parentIds,
+    organization,
+    project
+  );
+
+  // Flatten all child ids we need to fetch details for
+  const allChildIds = Array.from(new Set(Array.prototype.concat(...Array.from(childIdMap.values() as any))));
+
+  const incompleteMap = new Map<number, boolean>();
+
+  if (allChildIds.length) {
+    const childDetails = await fetchWorkItemDetails(allChildIds, organization, project, [
+      'System.Id',
+      'System.State',
+      'System.WorkItemType'
+    ]);
+
+    const stateById = new Map<number, { state: string; type: string }>();
+    for (const child of childDetails) {
+      stateById.set(child.id, { state: child.state, type: child.workItemType });
+    }
+
+    for (const [parentId, childIds] of childIdMap.entries()) {
+      let hasIncomplete = false;
+      for (const cid of childIds) {
+        const info = stateById.get(cid);
+        if (!info) {
+          continue;
+        }
+
+        // Consider child only if it's a Task work item type
+        if (info.type.trim().toLowerCase() !== 'task') {
+          continue;
+        }
+
+        const normalized = info.state.trim().toLowerCase();
+        if (normalized !== 'done' && normalized !== 'closed') {
+          hasIncomplete = true;
+          break;
+        }
+      }
+
+      incompleteMap.set(parentId, hasIncomplete);
+    }
+  }
+
+  return items.map((item) => ({
+    ...item,
+    hasIncompleteChildren: incompleteMap.get(item.id) ?? false
+  }));
+}
+
+async function fetchChildIdsForParents(
+  parentIds: number[],
+  organization: string,
+  project: string
+): Promise<Map<number, number[]>> {
+  const map = new Map<number, number[]>();
+
+  // For each parent, fetch its relations to extract child ids.
+  // This could be optimized by batching if API supported expanding multiple items, but keep simple for now.
+  const promises = parentIds.map(async (pid) => {
+    try {
+      const url = `https://dev.azure.com/${encodeURIComponent(organization)}/${encodeURIComponent(project)}` +
+        `/_apis/wit/workitems/${pid}?$expand=relations&api-version=7.0`;
+      const resp = await fetch(url, { method: 'GET', credentials: 'include', headers: { Accept: 'application/json' } });
+      if (!resp.ok) {
+        return [pid, []] as const;
+      }
+
+      const data: unknown = await resp.json();
+      if (!isRecord(data) || !Array.isArray(data.relations)) {
+        return [pid, []] as const;
+      }
+
+      const childIds: number[] = [];
+      for (const rel of data.relations) {
+        if (!isRecord(rel) || rel.rel !== 'System.LinkTypes.Hierarchy-Forward' || typeof rel.url !== 'string') {
+          continue;
+        }
+
+        const match = /\/workItems\/(\d+)$/i.exec(rel.url);
+        if (!match) {
+          continue;
+        }
+
+        const parsed = Number(match[1]);
+        if (Number.isFinite(parsed)) {
+          childIds.push(parsed);
+        }
+      }
+
+      return [pid, childIds] as const;
+    } catch {
+      return [pid, []] as const;
+    }
+  });
+
+  const results = await Promise.all(promises);
+  for (const [pid, ids] of results) {
+    map.set(pid, [...ids]);
+  }
+
+  return map;
 }
 
 async function fetchClosedItems(

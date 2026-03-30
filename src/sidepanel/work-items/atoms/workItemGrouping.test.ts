@@ -15,6 +15,7 @@ function createWorkItem(overrides: Partial<WorkItem> = {}): WorkItem {
     parentId: null,
     parent: null,
     closedDate: '2026-03-20T12:00:00.000Z',
+    lastChangedDate: '2026-03-19T12:00:00.000Z',
     url: 'https://example.test/work-item/1',
     ...overrides
   };

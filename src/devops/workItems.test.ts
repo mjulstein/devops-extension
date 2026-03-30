@@ -21,71 +21,79 @@ describe('workItems.ts', () => {
 
   it('uses separate open and closed WIQL requests and enriches parent summaries', async () => {
     const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(createJsonResponse({ workItems: [{ id: 101 }] }))
-      .mockResolvedValueOnce(createJsonResponse({ workItems: [{ id: 202 }] }))
-      .mockResolvedValueOnce(
-        createJsonResponse({
-          value: [
-            {
-              fields: {
-                'System.Id': 101,
-                'System.WorkItemType': 'Task',
-                'System.Title': 'Open task',
-                'System.State': 'To Do',
-                'System.AssignedTo': 'Current User',
-                'System.Parent': 900,
-                'System.ChangedDate': '2026-03-17T10:00:00.000Z'
-              }
+    .fn()
+    // 1) open WIQL
+    .mockResolvedValueOnce(createJsonResponse({ workItems: [{ id: 101 }] }))
+    // 2) closed WIQL
+    .mockResolvedValueOnce(createJsonResponse({ workItems: [{ id: 202 }] }))
+    // 3) open details
+    .mockResolvedValueOnce(
+      createJsonResponse({
+        value: [
+          {
+            fields: {
+              'System.Id': 101,
+              'System.WorkItemType': 'Task',
+              'System.Title': 'Open task',
+              'System.State': 'To Do',
+              'System.AssignedTo': 'Current User',
+              'System.Parent': 900,
+              'System.ChangedDate': '2026-03-17T10:00:00.000Z'
             }
-          ]
-        })
-      )
-      .mockResolvedValueOnce(
-        createJsonResponse({
-          value: [
-            {
-              fields: {
-                'System.Id': 202,
-                'System.WorkItemType': 'Bug',
-                'System.Title': 'Closed bug',
-                'System.State': 'Done',
-                'System.AssignedTo': 'Current User',
-                'System.Parent': 900,
-                'Microsoft.VSTS.Common.ClosedDate': '2026-03-16T16:30:00.000Z',
-                // closed items may also have a changed date
-                'System.ChangedDate': '2026-03-16T16:30:00.000Z'
-              }
+          }
+        ]
+      })
+    )
+    // 4) closed details
+    .mockResolvedValueOnce(
+      createJsonResponse({
+        value: [
+          {
+            fields: {
+              'System.Id': 202,
+              'System.WorkItemType': 'Bug',
+              'System.Title': 'Closed bug',
+              'System.State': 'Done',
+              'System.AssignedTo': 'Current User',
+              'System.Parent': 900,
+              'Microsoft.VSTS.Common.ClosedDate': '2026-03-16T16:30:00.000Z',
+              // closed items may also have a changed date
+              'System.ChangedDate': '2026-03-16T16:30:00.000Z'
             }
-          ]
-        })
-      )
-      .mockResolvedValueOnce(
-        createJsonResponse({
-          value: [
-            {
-              fields: {
-                'System.Id': 900,
-                'System.WorkItemType': 'PBI',
-                'System.Title': 'Parent item'
-              }
+          }
+        ]
+      })
+    )
+    // 5) parent details for open items
+    .mockResolvedValueOnce(
+      createJsonResponse({
+        value: [
+          {
+            fields: {
+              'System.Id': 900,
+              'System.WorkItemType': 'PBI',
+              'System.Title': 'Parent item'
             }
-          ]
-        })
-      )
-      .mockResolvedValueOnce(
-        createJsonResponse({
-          value: [
-            {
-              fields: {
-                'System.Id': 900,
-                'System.WorkItemType': 'PBI',
-                'System.Title': 'Parent item'
-              }
+          }
+        ]
+      })
+    )
+    // 6) parent details for closed items
+    .mockResolvedValueOnce(
+      createJsonResponse({
+        value: [
+          {
+            fields: {
+              'System.Id': 900,
+              'System.WorkItemType': 'PBI',
+              'System.Title': 'Parent item'
             }
-          ]
-        })
-      );
+          }
+        ]
+      })
+    )
+    // 7) relations fetch for parent (101) - no child relations in this test
+    .mockResolvedValueOnce(createJsonResponse({ relations: [] }));
 
     vi.stubGlobal('fetch', fetchMock);
 
@@ -126,6 +134,7 @@ describe('workItems.ts', () => {
           },
           closedDate: null,
           lastChangedDate: '2026-03-17T10:00:00.000Z',
+          hasIncompleteChildren: false,
           url: 'https://dev.azure.com/my-org/my-project/_workitems/edit/101'
         }
       ],
@@ -151,7 +160,8 @@ describe('workItems.ts', () => {
       closedDateRange: request.closedDateRange
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(6);
+    // now includes an extra relations fetch for parent-child enrichment
+    expect(fetchMock).toHaveBeenCalledTimes(7);
 
     const [, openWiqlRequest] = fetchMock.mock.calls[0] as [
       string,
