@@ -14,6 +14,7 @@ Keep this document focused on files that live directly in `src/sidepanel/`. Use 
 - `DebugConsolePane.tsx` + `DebugConsolePane.module.css` — in-panel developer log viewer used by `App.tsx`.
 - `defaultSettings.ts` — default empty settings values used when storage has not been hydrated yet.
 - `Link.tsx` — navigation helper that opens Azure DevOps links in the active tab when appropriate.
+- `navigateToWorkItem.ts` — shared Azure DevOps work-item navigation helper that reuses matching tabs before opening new ones.
 - `Tabs.tsx` + `Tabs.module.css` — tab chrome for the Work items, Active item, and Settings sections, including the pin toggle.
 - `workItemsDateRange.ts` — default/validation helpers for the Work items tab closed-date range inputs.
 

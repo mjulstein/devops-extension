@@ -42,6 +42,7 @@ import {
   isTodayDateInputValue,
   isValidClosedDateRange
 } from './workItemsDateRange';
+import { navigateToWorkItem } from './navigateToWorkItem';
 import {
   createChildTask,
   fetchChildTasksForCurrentParent,
@@ -743,8 +744,16 @@ export function useSidepanelController() {
     setSelectedTaskId(task.id);
 
     try {
-      await chrome.tabs.update({ url: task.url });
-      pushDebugLog('info', `Opened task #${task.id} in active tab.`);
+      const navigationResult = await navigateToWorkItem(task.url, linkExternal);
+
+      pushDebugLog(
+        'info',
+        navigationResult === 'active-tab'
+          ? `Navigated the active Azure DevOps tab to task #${task.id}.`
+          : navigationResult === 'existing-tab'
+            ? `Switched to an existing tab for task #${task.id}.`
+            : `Opened task #${task.id} in a new tab.`
+      );
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);

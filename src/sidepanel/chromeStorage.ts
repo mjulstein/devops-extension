@@ -303,7 +303,10 @@ function normalizeWorkItem(value: unknown): WorkItem | null {
     parent: normalizeWorkItemParent(value.parent),
     closedDate: value.closedDate,
     lastChangedDate: value.lastChangedDate,
-    hasIncompleteChildren: typeof value.hasIncompleteChildren === 'boolean' ? value.hasIncompleteChildren : undefined,
+    hasIncompleteChildren:
+      typeof value.hasIncompleteChildren === 'boolean'
+        ? value.hasIncompleteChildren
+        : undefined,
     url: value.url
   };
 }

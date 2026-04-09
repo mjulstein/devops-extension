@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef, MouseEvent } from 'react';
-import { getWorkItemIdFromUrl } from '@/devops/urlContext';
+import { navigateToWorkItem } from './navigateToWorkItem';
 
 interface LinkProps extends Omit<
   ComponentPropsWithoutRef<'a'>,
@@ -15,7 +15,7 @@ export function Link({
   onClick: onClickProp,
   ...props
 }: LinkProps) {
-  async function onClick(event: MouseEvent<HTMLAnchorElement>) {
+  function onClick(event: MouseEvent<HTMLAnchorElement>) {
     onClickProp?.(event);
 
     if (event.defaultPrevented || shouldLetBrowserHandle(event)) {
@@ -24,52 +24,7 @@ export function Link({
 
     event.preventDefault();
 
-    // If the link is marked external we normally open a new tab. Instead,
-    // try to find an existing DevOps tab that already shows the same work item
-    // (by id) and switch to that tab. If none is found, open a new tab.
-    if (external) {
-      try {
-        const workItemId = getWorkItemIdFromUrl(href);
-
-        if (workItemId) {
-          const tabs = await chrome.tabs.query({});
-          const match = tabs.find((t) => {
-            if (!t.url) return false;
-            const id = getWorkItemIdFromUrl(t.url);
-            return id === workItemId;
-          });
-
-          if (match && typeof match.id === 'number') {
-            // Focus the window containing the tab (best-effort) then activate the tab.
-            try {
-              if (typeof match.windowId === 'number') {
-                await chrome.windows.update(match.windowId, { focused: true });
-              }
-            } catch {
-              // ignore window focus errors
-            }
-
-            await chrome.tabs.update(match.id, { active: true });
-            return;
-          }
-        }
-
-        // No existing tab for the target work item, open a new tab.
-        await chrome.tabs.create({ url: href });
-        return;
-      } catch {
-        // Fall back to opening a new tab on error.
-        try {
-          await chrome.tabs.create({ url: href });
-        } catch {
-          // swallow
-        }
-        return;
-      }
-    }
-
-    // Non-external links navigate the active tab as before.
-    void navigateActiveTab(href);
+    void navigateToWorkItem(href, external);
   }
 
   return (
@@ -81,16 +36,6 @@ export function Link({
       {...props}
     />
   );
-}
-
-async function navigateActiveTab(url: string): Promise<void> {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-  if (!tab?.id) {
-    return;
-  }
-
-  await chrome.tabs.update(tab.id, { url });
 }
 
 function shouldLetBrowserHandle(event: MouseEvent<HTMLAnchorElement>): boolean {

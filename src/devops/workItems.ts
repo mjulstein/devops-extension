@@ -106,16 +106,19 @@ async function attachHasIncompleteChildren(
   );
 
   // Flatten all child ids we need to fetch details for
-  const allChildIds = Array.from(new Set(Array.prototype.concat(...Array.from(childIdMap.values() as any))));
+  const allChildIds = Array.from(
+    new Set(Array.from(childIdMap.values()).flat())
+  );
 
   const incompleteMap = new Map<number, boolean>();
 
   if (allChildIds.length) {
-    const childDetails = await fetchWorkItemDetails(allChildIds, organization, project, [
-      'System.Id',
-      'System.State',
-      'System.WorkItemType'
-    ]);
+    const childDetails = await fetchWorkItemDetails(
+      allChildIds,
+      organization,
+      project,
+      ['System.Id', 'System.State', 'System.WorkItemType']
+    );
 
     const stateById = new Map<number, { state: string; type: string }>();
     for (const child of childDetails) {
@@ -163,9 +166,14 @@ async function fetchChildIdsForParents(
   // This could be optimized by batching if API supported expanding multiple items, but keep simple for now.
   const promises = parentIds.map(async (pid) => {
     try {
-      const url = `https://dev.azure.com/${encodeURIComponent(organization)}/${encodeURIComponent(project)}` +
+      const url =
+        `https://dev.azure.com/${encodeURIComponent(organization)}/${encodeURIComponent(project)}` +
         `/_apis/wit/workitems/${pid}?$expand=relations&api-version=7.0`;
-      const resp = await fetch(url, { method: 'GET', credentials: 'include', headers: { Accept: 'application/json' } });
+      const resp = await fetch(url, {
+        method: 'GET',
+        credentials: 'include',
+        headers: { Accept: 'application/json' }
+      });
       if (!resp.ok) {
         return [pid, []] as const;
       }
@@ -177,7 +185,11 @@ async function fetchChildIdsForParents(
 
       const childIds: number[] = [];
       for (const rel of data.relations) {
-        if (!isRecord(rel) || rel.rel !== 'System.LinkTypes.Hierarchy-Forward' || typeof rel.url !== 'string') {
+        if (
+          !isRecord(rel) ||
+          rel.rel !== 'System.LinkTypes.Hierarchy-Forward' ||
+          typeof rel.url !== 'string'
+        ) {
           continue;
         }
 

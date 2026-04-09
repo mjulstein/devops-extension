@@ -41,7 +41,8 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - Utility/function modules should use `camelCase.ts`.
 - When moving or renaming tracked files, use `git mv` so history is preserved; do not create a new file and delete the old file as a substitute for a move.
 - Run `npm run lint`, `npm test`, and `npm run build` after non-trivial changes.
-- Prettier formatting issues are surfaced as ESLint warnings via `prettier/prettier`.
+- Respect the repository formatting rules in `.prettierrc` and keep committed text files on LF line endings per `.editorconfig` and `.gitattributes`.
+- Prettier formatting issues are surfaced as ESLint warnings via `prettier/prettier`; avoid manual formatting that introduces warnings like `Delete ␍`, `Insert ··`, or indentation replacement diffs.
 
 ## Repository Map
 
@@ -56,6 +57,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - `src/sidepanel.html` — side panel HTML entry
 - `src/sidepanel.tsx` — React side panel entry
 - `src/sidepanel/{App,Tabs,Link,DebugConsolePane}.tsx` + matching `*.module.css` files — side panel shell, tab chrome, link navigation helper, and in-panel debug log viewer
+- `src/sidepanel/navigateToWorkItem.ts` — shared Azure DevOps work-item navigation helper used by links and task buttons to reuse matching tabs when possible
 - `src/sidepanel/{atoms,useSidepanelController}.ts*` — shared shell atoms plus the side-panel orchestration hook used by `App.tsx`
 - `src/sidepanel/workItemsDateRange.ts` — default closed-date range and validation helpers for the Work items tab
 - `src/sidepanel/work-items/*` + `src/sidepanel/work-items/atoms/*` — work-items tab layout plus smaller toolbar/date-range/row/group atoms and helper tests

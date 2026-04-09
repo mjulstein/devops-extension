@@ -85,12 +85,12 @@ describe('fetchWorkItems.test.ts', () => {
       .mockImplementationOnce(() => new Promise(() => undefined));
 
     const promise = fetchWorkItems({
-        settings: {
-          organization: '',
-          project: '',
-          assignedTo: 'User Name',
-          todoStates: []
-        },
+      settings: {
+        organization: '',
+        project: '',
+        assignedTo: 'User Name',
+        todoStates: []
+      },
       closedDateRange: {
         start: '2026-03-10',
         end: '2026-03-17'
