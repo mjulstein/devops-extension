@@ -17,6 +17,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - `README.md` is the human-facing project overview.
 - `AGENTS.md` is the agent-facing execution guide.
 - `.specify/memory/constitution.md` is the planning constitution for future spec work.
+- `.specify/commands/` and `.specify/skills/` provide optional repo-local planning helpers layered on top of the Spec Kit templates.
 - `specs/` holds promoted feature specs, and `specs/ideas/` is the incubator for rough feature ideas before they are promoted.
 - Markdown documentation should include a breadcrumb path link line at the top that points back to the repository root `README.md` and the current document path when practical (for example, `[root](./README.md) / AGENTS.md`). The root `README.md` itself is the exception and should not include a breadcrumb to itself.
 - In breadcrumb text and navigation labels, treat directory `README.md` files as implied like an index page: show `src`, `src/devops`, or `types`, not `src/README.md`.
@@ -46,7 +47,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 
 ## Repository Map
 
-- `.specify/README.md` + `.specify/{memory,templates}/*` — local Spec Kit memory and markdown templates for future planning work
+- `.specify/README.md` + `.specify/{commands,skills,memory,templates}/*` — local Spec Kit planning helpers, project memory, and markdown templates for future planning work
 - `specs/README.md` + `specs/ideas/README.md` — promoted feature spec workspace plus the rough-idea incubator
 - `src/manifest.json` — extension manifest template copied to build output
 - `src/service-worker.ts` — extension startup/background behavior

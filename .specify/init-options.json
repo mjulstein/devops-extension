@@ -1,7 +1,7 @@
 {
   "ai": "codex",
-  "ai_commands_dir": null,
-  "ai_skills": false,
+  "ai_commands_dir": ".specify/commands",
+  "ai_skills": true,
   "here": true,
   "preset": null,
   "script": "sh",

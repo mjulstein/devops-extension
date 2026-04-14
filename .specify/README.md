@@ -2,7 +2,7 @@
 
 # Spec Kit
 
-This directory holds the local Spec Kit project memory and markdown templates for feature planning.
+This directory holds the local Spec Kit project memory, markdown templates, and optional repo-local planning helpers for feature work.
 
 Keep this directory lightweight and documentation-first. It should support planning work without affecting the extension build or runtime.
 
@@ -12,6 +12,8 @@ Keep this directory lightweight and documentation-first. It should support plann
 
 ## Subdirectories
 
+- [`commands`](./commands/README.md) — optional repo-local command prompts for idea, spec, and planning workflows.
 - [`memory`](./memory/README.md) — project-specific Spec Kit memory such as the planning constitution.
+- [`skills`](./skills/README.md) — optional reusable planning skills for stable repository constraints.
 - [`templates`](./templates/README.md) — markdown templates for ideas, specs, plans, and task breakdowns.
 
