@@ -1,4 +1,25 @@
 .idea
+.vscode
 config.local.json
 node_modules
 dist
+
+
+# spec-kit
+.specify/integrations/copilot
+.github/agents
+.github/prompts
+
+.specify/integrations/codex
+.agents/skills/speckit-*
+
+.specify/integrations/claude
+.claude/skills
+
+.specify/extensions
+.specify/.registry
+.specify/integrations/*.manifest.json
+.specify/scripts
+.specify/templates
+.specify/extensions.yml
+.specify/*.json

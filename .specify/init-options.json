@@ -1,10 +1,9 @@
 {
-  "ai": "codex",
-  "ai_commands_dir": ".specify/commands",
-  "ai_skills": true,
+  "ai": "copilot",
+  "branch_numbering": "sequential",
   "here": true,
+  "integration": "copilot",
   "preset": null,
-  "script": "sh",
-  "speckit_version": "0.3.0"
+  "script": "ps",
+  "speckit_version": "0.5.1"
 }
-

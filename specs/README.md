@@ -10,7 +10,7 @@ Promoted features live in numbered subdirectories such as `specs/001-feature-nam
 
 ## Subdirectories
 
-- [`001-api-sidepanel-tab`](./001-api-sidepanel-tab/spec.md) — drafts the new `API` sidepanel tab for authenticated Azure DevOps request testing, console logging, copy helpers, and saved request macros.
+- [`001-api-sidepanel-tab`](./001-api-sidepanel-tab/spec.md) — promoted feature spec with plan/task breakdown for the new `API` sidepanel tab covering authenticated Azure DevOps request testing, console logging, copy helpers, and saved request macros.
 - [`ideas`](./ideas) — incubator for rough feature ideas before they are promoted into numbered spec folders.
 
 ## Promotion Flow

@@ -4,7 +4,9 @@
 
 **Feature Branch**: `[001-api-sidepanel-tab]`  
 **Created**: 2026-04-10  
-**Status**: Draft  
+**Status**: Planned  
+**Plan**: [plan.md](./plan.md)  
+**Tasks**: [tasks.md](./tasks.md)  
 **Input**: User stories for a new sidepanel `API` tab that lets users discover Azure DevOps REST APIs, send authenticated requests from the extension, inspect results in the sidepanel console, and save reusable request macros.
 
 ## User Scenarios & Testing
