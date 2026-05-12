@@ -1,5 +1,6 @@
 import type { Settings } from '@/types';
 import { useEffect, useState } from 'react';
+import { clearDevOpsCookies } from '../tabMessaging/clearDevOpsCookies';
 import classes from './SettingsCard.module.css';
 
 interface SettingsCardProps {
@@ -20,6 +21,7 @@ export function SettingsPane({
   const [todoStatesText, setTodoStatesText] = useState(() =>
     settings.todoStates.join(', ')
   );
+  const [clearingCookies, setClearingCookies] = useState(false);
 
   useEffect(() => {
     // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect
@@ -46,6 +48,16 @@ export function SettingsPane({
   function handleSaveClick() {
     commitTodoStates();
     void onSave();
+  }
+
+  async function handleClearCookies() {
+    setClearingCookies(true);
+    try {
+      const count = await clearDevOpsCookies();
+      console.log(`Cleared ${count} DevOps cookie(s) and reloaded the tab.`);
+    } finally {
+      setClearingCookies(false);
+    }
   }
 
   return (
@@ -134,6 +146,23 @@ export function SettingsPane({
         </button>
         <button className={classes.button} onClick={onReloadExtension}>
           Reload extension
+        </button>
+      </div>
+
+      <hr className={classes.separator} />
+
+      <p className={classes.description}>
+        Clear all dev.azure.com cookies and reload the active tab. Useful when
+        the Azure DevOps session gets stuck.
+      </p>
+
+      <div className={classes.buttonRow}>
+        <button
+          className={classes.button}
+          onClick={() => void handleClearCookies()}
+          disabled={clearingCookies}
+        >
+          {clearingCookies ? 'Clearing…' : 'Clear DevOps Cookies & Reload'}
         </button>
       </div>
     </section>

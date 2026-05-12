@@ -6,3 +6,4 @@ export { getActiveWorkItemContext } from './getActiveWorkItemContext';
 export { createChildTask } from './createChildTask';
 export { fetchChildTasksForCurrentParent } from './fetchChildTasksForCurrentParent';
 export { setActiveWorkItemParent } from './setActiveWorkItemParent';
+export { clearDevOpsCookies } from './clearDevOpsCookies';
