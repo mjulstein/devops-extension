@@ -1,3 +1,4 @@
+import { build as esbuildBuild } from 'esbuild';
 import { copyFileSync, existsSync, renameSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
@@ -19,6 +20,26 @@ function copyManifestPlugin() {
   };
 }
 
+// Bundles content-script as a self-contained IIFE so it needs no ES module
+// support from Chrome and no "type": "module" in the manifest.
+// All @/types imports are type-only and are silently dropped by esbuild.
+function buildContentScriptPlugin() {
+  return {
+    name: 'build-content-script-iife',
+    apply: 'build' as const,
+    async closeBundle() {
+      await esbuildBuild({
+        entryPoints: [resolve('src/content-script.ts')],
+        bundle: true,
+        format: 'iife',
+        outfile: resolve('dist/content-script.js'),
+        target: ['chrome92'],
+        tsconfig: resolve('tsconfig.json'),
+      });
+    }
+  };
+}
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -35,9 +56,10 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     rollupOptions: {
+      // content-script is intentionally excluded — built separately as IIFE by
+      // buildContentScriptPlugin so it doesn't need ES module support in Chrome.
       input: {
         sidepanel: resolve('src/sidepanel.html'),
-        'content-script': resolve('src/content-script.ts'),
         'service-worker': resolve('src/service-worker.ts')
       },
       output: {
@@ -47,5 +69,5 @@ export default defineConfig({
       }
     }
   },
-  plugins: [copyManifestPlugin()]
+  plugins: [copyManifestPlugin(), buildContentScriptPlugin()]
 });

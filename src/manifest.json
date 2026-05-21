@@ -11,7 +11,9 @@
     "cookies"
   ],
   "host_permissions": [
-    "https://dev.azure.com/*"
+    "https://dev.azure.com/*",
+    "https://login.microsoftonline.com/*",
+    "https://app.vssps.visualstudio.com/*"
   ],
   "background": {
     "service_worker": "service-worker.js",

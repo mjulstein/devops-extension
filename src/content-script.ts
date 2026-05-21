@@ -1,3 +1,4 @@
+import { initTabIcons, rescrapeTabIcons } from './devops/tabIcons';
 import { resolveActiveWorkItemContext } from './devops/activeParentContext';
 import { fetchChildTasksForActiveParent } from './devops/childTasks';
 import { createChildTaskFromActivePage } from './devops/taskCreation';
@@ -5,6 +6,10 @@ import { setParentForActiveWorkItem } from './devops/parentAssignment';
 import { detectActiveWorkItemId } from './devops/activeWorkItemDom';
 
 type RuntimeMessage =
+  | {
+      type: 'REFRESH_TAB_ICONS';
+      payload?: undefined;
+    }
   | {
       type: 'GET_ACTIVE_WORK_ITEM_CONTEXT';
       payload?: {
@@ -31,9 +36,20 @@ type RuntimeMessage =
       };
     };
 
+initTabIcons();
+
 chrome.runtime.onMessage.addListener(
   (message: RuntimeMessage, _sender, sendResponse) => {
-    if (message.type === 'GET_ACTIVE_WORK_ITEM_CONTEXT') {
+    if (message.type === 'REFRESH_TAB_ICONS') {
+    rescrapeTabIcons()
+      .then(() => sendResponse({ ok: true, result: null }))
+      .catch((error: Error) =>
+        sendResponse({ ok: false, error: error.message })
+      );
+    return true;
+  }
+
+  if (message.type === 'GET_ACTIVE_WORK_ITEM_CONTEXT') {
       const detectedWorkItemId = detectActiveWorkItemId(
         Boolean(message.payload?.forceResync)
       );

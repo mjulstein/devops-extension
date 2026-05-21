@@ -1,6 +1,7 @@
 import type { Settings } from '@/types';
 import { useEffect, useState } from 'react';
-import { clearDevOpsCookies } from '../tabMessaging/clearDevOpsCookies';
+import { clearDevOpsCookies } from '@/sidepanel/tabMessaging';
+import { refreshTabIcons } from '@/sidepanel/tabMessaging';
 import classes from './SettingsCard.module.css';
 
 interface SettingsCardProps {
@@ -22,6 +23,10 @@ export function SettingsPane({
     settings.todoStates.join(', ')
   );
   const [clearingCookies, setClearingCookies] = useState(false);
+  const [refreshingIcons, setRefreshingIcons] = useState(false);
+  const [iconRefreshStatus, setIconRefreshStatus] = useState<string | null>(
+    null
+  );
 
   useEffect(() => {
     // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect
@@ -48,6 +53,20 @@ export function SettingsPane({
   function handleSaveClick() {
     commitTodoStates();
     void onSave();
+  }
+
+  async function handleRefreshIcons() {
+    setRefreshingIcons(true);
+    setIconRefreshStatus(null);
+    try {
+      await refreshTabIcons();
+      setIconRefreshStatus('Icons refreshed.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setIconRefreshStatus(`Failed: ${msg}`);
+    } finally {
+      setRefreshingIcons(false);
+    }
   }
 
   async function handleClearCookies() {
@@ -152,8 +171,29 @@ export function SettingsPane({
       <hr className={classes.separator} />
 
       <p className={classes.description}>
-        Clear all dev.azure.com cookies and reload the active tab. Useful when
-        the Azure DevOps session gets stuck.
+        Re-scrape the Azure DevOps section icons from the live page and persist
+        them for instant loading. The active tab must be an Azure DevOps page.
+      </p>
+
+      <div className={classes.buttonRow}>
+        <button
+          className={classes.button}
+          onClick={() => void handleRefreshIcons()}
+          disabled={refreshingIcons}
+        >
+          {refreshingIcons ? 'Refreshing…' : 'Refresh Tab Icons'}
+        </button>
+        {iconRefreshStatus && (
+          <span className={classes.helperText}>{iconRefreshStatus}</span>
+        )}
+      </div>
+
+      <hr className={classes.separator} />
+
+      <p className={classes.description}>
+        Clear all Azure DevOps and Microsoft SSO cookies, then navigate to
+        dev.azure.com for a fresh sign-in. Useful when the session gets stuck,
+        even if you are currently on a different domain.
       </p>
 
       <div className={classes.buttonRow}>

@@ -1,37 +1,47 @@
-/**
- * Removes all cookies for dev.azure.com and reloads the active tab
- * so the user gets a fresh sign-in prompt. Intended as a debug
- * convenience when an Azure DevOps session gets stuck.
- */
-export async function clearDevOpsCookies(): Promise<number> {
-  const cookies = await chrome.cookies.getAll({ domain: 'dev.azure.com' });
+// All domains involved in Azure DevOps SSO authentication
+const SSO_DOMAINS = [
+  'dev.azure.com',
+  'login.microsoftonline.com',
+  'app.vssps.visualstudio.com',
+];
 
-  // Remove cookies sequentially to avoid overwhelming the cookie store
+async function removeCookiesForDomain(domain: string): Promise<number> {
+  const cookies = await chrome.cookies.getAll({ domain });
   for (const cookie of cookies) {
     const protocol = cookie.secure ? 'https' : 'http';
-    const url = `${protocol}://dev.azure.com${cookie.path}`;
-    await chrome.cookies.remove({ url, name: cookie.name });
+    // Cookie domain may have a leading dot (e.g. ".microsoftonline.com") — strip it for the URL
+    const cookieDomain = cookie.domain.startsWith('.')
+      ? cookie.domain.slice(1)
+      : cookie.domain;
+    await chrome.cookies.remove({
+      url: `${protocol}://${cookieDomain}${cookie.path}`,
+      name: cookie.name,
+    });
   }
-
-  // Verify all cookies are actually gone before reloading
-  let remaining = await chrome.cookies.getAll({ domain: 'dev.azure.com' });
-  let retries = 0;
-  while (remaining.length > 0 && retries < 10) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    for (const cookie of remaining) {
-      const protocol = cookie.secure ? 'https' : 'http';
-      const url = `${protocol}://dev.azure.com${cookie.path}`;
-      await chrome.cookies.remove({ url, name: cookie.name });
-    }
-    remaining = await chrome.cookies.getAll({ domain: 'dev.azure.com' });
-    retries++;
-  }
-
-  // Reload the active tab so the user lands on a fresh login prompt
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (tab?.id) {
-    await chrome.tabs.reload(tab.id);
-  }
-
   return cookies.length;
+}
+
+export async function clearDevOpsCookies(): Promise<number> {
+  let total = 0;
+  for (const domain of SSO_DOMAINS) {
+    total += await removeCookiesForDomain(domain);
+  }
+
+  // Navigate an existing Azure DevOps tab, or redirect the active tab there,
+  // so the user always lands on a fresh SSO prompt regardless of which domain
+  // they were on when they triggered the clear.
+  const [devOpsTab] = await chrome.tabs.query({ url: 'https://dev.azure.com/*' });
+  if (devOpsTab?.id != null) {
+    await chrome.tabs.reload(devOpsTab.id);
+  } else {
+    const [activeTab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+    if (activeTab?.id != null) {
+      await chrome.tabs.update(activeTab.id, { url: 'https://dev.azure.com/' });
+    }
+  }
+
+  return total;
 }

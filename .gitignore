@@ -23,3 +23,5 @@ dist
 .specify/templates
 .specify/extensions.yml
 .specify/*.json
+
+**/*.temp.*
