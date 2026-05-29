@@ -14,3 +14,4 @@ export type {
   ParentSuggestionItem,
   ParentSuggestionStore
 } from './ParentSuggestion';
+export type { PatRecord } from './PatRecord';

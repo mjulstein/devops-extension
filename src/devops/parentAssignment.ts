@@ -4,6 +4,7 @@ import {
   getOrganizationAndProjectFromUrl,
   getWorkItemIdFromUrl
 } from './urlContext';
+import { authFetch } from './authFetch';
 
 export async function setParentForActiveWorkItem(
   rawUrl: string,
@@ -47,9 +48,8 @@ export async function setParentForActiveWorkItem(
     `https://dev.azure.com/${encodeURIComponent(organization)}/${encodeURIComponent(project)}` +
     `/_apis/wit/workitems/${currentWorkItemId}?$expand=relations&api-version=7.0`;
 
-  const relationResponse = await fetch(relationUrl, {
+  const relationResponse = await authFetch(relationUrl, {
     method: 'GET',
-    credentials: 'include',
     headers: { Accept: 'application/json' }
   });
 
@@ -96,9 +96,8 @@ export async function setParentForActiveWorkItem(
     `https://dev.azure.com/${encodeURIComponent(organization)}/${encodeURIComponent(project)}` +
     `/_apis/wit/workitems/${currentWorkItemId}?api-version=7.0`;
 
-  const patchResponse = await fetch(patchUrl, {
+  const patchResponse = await authFetch(patchUrl, {
     method: 'PATCH',
-    credentials: 'include',
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json-patch+json'

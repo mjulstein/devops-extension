@@ -9,10 +9,12 @@ import type {
   ParentSuggestionGroup,
   ParentSuggestionItem,
   ParentSuggestionStore,
+  PatRecord,
   Settings,
   WorkItem,
   WorkItemResult
 } from '@/types';
+import { parsePatRecord, PAT_RECORD_KEY } from '../devops/patLifecycle';
 import type { SidepanelTabId } from './Tabs';
 import {
   LAST_VISITED_DEVOPS_CONTEXT_KEY,
@@ -237,6 +239,21 @@ export async function savePinnedActiveWorkItemContext(
 
 export async function clearPinnedActiveWorkItemContext(): Promise<void> {
   await chrome.storage.local.remove(PINNED_ACTIVE_WORK_ITEM_CONTEXT_KEY);
+}
+
+export async function loadPatRecord(): Promise<PatRecord | null> {
+  const stored = await chrome.storage.local.get(PAT_RECORD_KEY);
+  return parsePatRecord(stored[PAT_RECORD_KEY]);
+}
+
+export async function clearPatRecord(): Promise<void> {
+  await chrome.storage.local.remove(PAT_RECORD_KEY);
+}
+
+export async function loadDeviceId(): Promise<string | null> {
+  const stored = await chrome.storage.local.get('devopsExtDeviceId');
+  const value = stored['devopsExtDeviceId'];
+  return typeof value === 'string' && value ? value : null;
 }
 
 function normalizeWorkItemResult(value: unknown): WorkItemResult | null {

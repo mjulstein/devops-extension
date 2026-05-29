@@ -8,3 +8,4 @@ export { fetchChildTasksForCurrentParent } from './fetchChildTasksForCurrentPare
 export { setActiveWorkItemParent } from './setActiveWorkItemParent';
 export { clearDevOpsCookies } from './clearDevOpsCookies';
 export { refreshTabIcons } from './refreshTabIcons';
+export { rotatePat, revokeAllExtensionPats, loadPatStatus } from './managePat';

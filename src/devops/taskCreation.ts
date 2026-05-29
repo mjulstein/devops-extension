@@ -2,6 +2,7 @@ import type { CreatedChildTask } from '@/types';
 import { resolveActiveWorkItemContext } from './activeParentContext';
 import { getNumericIdFromResponse } from './typeGuards';
 import { getWorkItemDetails } from './workItemDetails';
+import { authFetch } from './authFetch';
 
 export async function createChildTaskFromActivePage(
   rawTitle: string,
@@ -64,9 +65,8 @@ export async function createChildTaskFromActivePage(
     `https://dev.azure.com/${encodeURIComponent(context.organization)}/${encodeURIComponent(context.project)}` +
     '/_apis/wit/workitems/$Task?api-version=7.0';
 
-  const response = await fetch(createUrl, {
+  const response = await authFetch(createUrl, {
     method: 'POST',
-    credentials: 'include',
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json-patch+json'

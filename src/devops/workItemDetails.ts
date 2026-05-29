@@ -1,4 +1,5 @@
 import { isObject } from './typeGuards';
+import { authFetch } from './authFetch';
 
 export interface WorkItemDetails {
   workItemType: string;
@@ -18,9 +19,8 @@ export async function getWorkItemDetails(
     `/_apis/wit/workitems/${workItemId}?fields=${encodeURIComponent('System.WorkItemType,System.Title,System.Parent,System.AreaPath,System.IterationPath')}` +
     '&api-version=7.0';
 
-  const response = await fetch(url, {
+  const response = await authFetch(url, {
     method: 'GET',
-    credentials: 'include',
     headers: { Accept: 'application/json' }
   });
 

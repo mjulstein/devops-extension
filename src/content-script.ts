@@ -4,7 +4,6 @@ import { fetchChildTasksForActiveParent } from './devops/childTasks';
 import { createChildTaskFromActivePage } from './devops/taskCreation';
 import { setParentForActiveWorkItem } from './devops/parentAssignment';
 import { detectActiveWorkItemId } from './devops/activeWorkItemDom';
-
 type RuntimeMessage =
   | {
       type: 'REFRESH_TAB_ICONS';
@@ -99,5 +98,6 @@ chrome.runtime.onMessage.addListener(
         );
       return true;
     }
+
   }
 );
