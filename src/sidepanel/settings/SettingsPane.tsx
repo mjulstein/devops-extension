@@ -1,7 +1,7 @@
 import type { PatRecord, Settings } from '@/types';
 import { useEffect, useState } from 'react';
 import {
-  clearDevOpsCookies,
+  clearPatData,
   loadPatStatus,
   refreshTabIcons,
   revokeAllExtensionPats,
@@ -28,14 +28,17 @@ export function SettingsPane({
   const [todoStatesText, setTodoStatesText] = useState(() =>
     settings.todoStates.join(', ')
   );
-  const [clearingCookies, setClearingCookies] = useState(false);
   const [refreshingIcons, setRefreshingIcons] = useState(false);
-  const [iconRefreshStatus, setIconRefreshStatus] = useState<string | null>(null);
+  const [iconRefreshStatus, setIconRefreshStatus] = useState<string | null>(
+    null
+  );
 
   const [patRecord, setPatRecord] = useState<PatRecord | null>(null);
   const [patDeviceId, setPatDeviceId] = useState<string | null>(null);
   const [patOrg, setPatOrg] = useState('');
-  const [patAction, setPatAction] = useState<'idle' | 'rotating' | 'revoking'>('idle');
+  const [patAction, setPatAction] = useState<'idle' | 'rotating' | 'revoking'>(
+    'idle'
+  );
   const [patActionMessage, setPatActionMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -49,12 +52,12 @@ export function SettingsPane({
         loadPatStatus(),
         loadLastVisitedDevOpsContext()
       ]);
-      // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect
+
       setPatRecord(status.record);
-      // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect
+
       setPatDeviceId(status.deviceId);
-      // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect
-      setPatOrg(settings.organization.trim() || context?.organization || '');
+
+      setPatOrg(settings.organization.trim() || (context?.organization ?? ''));
     })();
   }, [settings.organization]);
 
@@ -94,19 +97,11 @@ export function SettingsPane({
     }
   }
 
-  async function handleClearCookies() {
-    setClearingCookies(true);
-    try {
-      const count = await clearDevOpsCookies();
-      console.log(`Cleared ${count} DevOps cookie(s) and reloaded the tab.`);
-    } finally {
-      setClearingCookies(false);
-    }
-  }
-
   async function handleRotatePat() {
     if (!patOrg) {
-      setPatActionMessage('Open an Azure DevOps page first so the extension knows your organization.');
+      setPatActionMessage(
+        'Open an Azure DevOps page first so the extension knows your organization.'
+      );
       return;
     }
     setPatAction('rotating');
@@ -116,7 +111,9 @@ export function SettingsPane({
       setPatRecord(record);
       setPatActionMessage('PAT rotated successfully.');
     } catch (err) {
-      setPatActionMessage(`Rotation failed: ${err instanceof Error ? err.message : String(err)}`);
+      setPatActionMessage(
+        `Rotation failed: ${err instanceof Error ? err.message : String(err)}`
+      );
     } finally {
       setPatAction('idle');
     }
@@ -124,7 +121,9 @@ export function SettingsPane({
 
   async function handleRevokeAll() {
     if (!patOrg) {
-      setPatActionMessage('Open an Azure DevOps page first so the extension knows your organization.');
+      setPatActionMessage(
+        'Open an Azure DevOps page first so the extension knows your organization.'
+      );
       return;
     }
     setPatAction('revoking');
@@ -134,7 +133,28 @@ export function SettingsPane({
       setPatRecord(null);
       setPatActionMessage(`Revoked ${count} PAT${count !== 1 ? 's' : ''}.`);
     } catch (err) {
-      setPatActionMessage(`Revoke failed: ${err instanceof Error ? err.message : String(err)}`);
+      setPatActionMessage(
+        `Revoke failed: ${err instanceof Error ? err.message : String(err)}`
+      );
+    } finally {
+      setPatAction('idle');
+    }
+  }
+
+  async function handleClearPatData() {
+    setPatAction('rotating');
+    setPatActionMessage(null);
+    try {
+      await clearPatData();
+      setPatRecord(null);
+      setPatDeviceId(null);
+      setPatActionMessage(
+        'PAT data cleared. The extension will mint a fresh PAT on next sign-in.'
+      );
+    } catch (err) {
+      setPatActionMessage(
+        `Clear failed: ${err instanceof Error ? err.message : String(err)}`
+      );
     } finally {
       setPatAction('idle');
     }
@@ -252,24 +272,6 @@ export function SettingsPane({
       <hr className={classes.separator} />
 
       <p className={classes.description}>
-        Clear all Azure DevOps and Microsoft SSO cookies, then navigate to
-        dev.azure.com for a fresh sign-in. Useful when the session gets stuck,
-        even if you are currently on a different domain.
-      </p>
-
-      <div className={classes.buttonRow}>
-        <button
-          className={classes.button}
-          onClick={() => void handleClearCookies()}
-          disabled={clearingCookies}
-        >
-          {clearingCookies ? 'Clearing…' : 'Clear DevOps Cookies & Reload'}
-        </button>
-      </div>
-
-      <hr className={classes.separator} />
-
-      <p className={classes.description}>
         The extension uses a Personal Access Token (PAT) for authenticated
         requests. It is created and rotated automatically — no manual setup
         required.
@@ -321,15 +323,27 @@ export function SettingsPane({
         >
           {patAction === 'revoking' ? 'Revoking…' : 'Revoke all'}
         </button>
+        <button
+          className={classes.button}
+          onClick={() => void handleClearPatData()}
+          disabled={patAction !== 'idle'}
+          title="Wipe stored PAT and device ID so the extension starts fresh on next sign-in"
+        >
+          Clear PAT data
+        </button>
       </div>
       {patActionMessage && (
-        <span style={{
-          fontSize: 12,
-          color: /failed|error/i.test(patActionMessage) ? '#c62828' : '#2e7d32',
-          marginTop: 6,
-          display: 'block',
-          fontWeight: 500
-        }}>
+        <span
+          style={{
+            fontSize: 12,
+            color: /failed|error/i.test(patActionMessage)
+              ? '#c62828'
+              : '#2e7d32',
+            marginTop: 6,
+            display: 'block',
+            fontWeight: 500
+          }}
+        >
           {patActionMessage}
         </span>
       )}
@@ -337,11 +351,13 @@ export function SettingsPane({
   );
 }
 
+const EXPIRING_SOON_MS = 12 * 60 * 60 * 1000; // matches PAT rotation threshold
+
 function getPatStatusLabel(record: PatRecord | null): string {
   if (!record) return 'Not set up';
   const msLeft = record.expiresAt - Date.now();
   if (msLeft <= 0) return 'Expired';
-  if (msLeft < 2 * 24 * 60 * 60 * 1000) return 'Expiring soon';
+  if (msLeft < EXPIRING_SOON_MS) return 'Expiring soon';
   return 'Active';
 }
 
@@ -349,15 +365,14 @@ function getPatStatusColor(record: PatRecord | null): string {
   if (!record) return '#888';
   const msLeft = record.expiresAt - Date.now();
   if (msLeft <= 0) return '#d32f2f';
-  if (msLeft < 2 * 24 * 60 * 60 * 1000) return '#f57c00';
+  if (msLeft < EXPIRING_SOON_MS) return '#f57c00';
   return '#388e3c';
 }
 
 function formatExpiry(ms: number): string {
-  return new Date(ms).toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
+  return new Date(ms).toLocaleTimeString(undefined, {
+    hour: '2-digit',
+    minute: '2-digit'
   });
 }
 

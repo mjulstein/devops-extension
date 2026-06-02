@@ -105,6 +105,25 @@ types/
 - Update `README.md`, `AGENTS.md`, and directory `README.md`s for the new `src/devops/auth/` module and removed cookie feature.
 - Fold any still-useful operational notes from `HANDOFF.md` into this spec and retire the handoff.
 
+## Operational notes
+
+Folded in from the retired `HANDOFF.md` and updated with live-testing findings:
+
+- **Module layout (as built):** `src/devops/auth/` holds `rotationPolicy`, `bearerToken`, `patStore`, `patApi`, `ensurePat`, `readBearerFromTab`, `revokeAllExtensionPats`, `connectionStatus`, and `connectionService`. `src/devops/authFetch.ts` is the PAT-only fetch wrapper exporting `ReconnectNeededError`.
+- **Build / reload:** `npm run build` emits `dist/` (`service-worker.js` + `sidepanel.*` via Rollup; `content-script.js` + `token-interceptor.js` as esbuild IIFEs; `manifest.json` copied). After building, reload the extension in `edge://extensions` or `chrome://extensions`. **Existing DevOps tabs must be reloaded** so the latest `token-interceptor.js` re-injects; without this `window.__devopsExtCapturedAuth` is never set on those tabs.
+- **Auto-recovery plumbing:** main-world code has no `chrome.runtime`, so the fresh-capture signal flows MAIN (`token-interceptor.ts` `window.postMessage`) → ISOLATED (`content-script.ts` relay) → service worker (`DEVOPS_BEARER_CAPTURED` → `connectionService.handleBearerCaptured`). The content script also checks `window.__devopsExtCapturedAuth` on its own load (`document_idle`) and sends the signal retroactively — necessary because `dev.azure.com` API calls can fire before the content script registers its listener.
+- **Token interceptor capture scope:** the interceptor wraps calls to both `vssps.dev.azure.com` **and** `dev.azure.com`. `vssps` alone is insufficient because many DevOps pages (git, boards) never call it; `dev.azure.com` is called on every page load. Injection (re-attaching the captured auth to outgoing calls without one) remains `vssps`-only.
+- **`readBearerFromTab` parallelism:** all open `dev.azure.com/*` tabs are queried in parallel with a 4 s per-tab timeout. Background tabs in Edge can have 20+ entries and many are frozen/suspended — querying only `tabs[0]` blocked indefinitely on these; parallel query with timeout reduces worst-case latency to 4 s regardless of tab count.
+- **Connection status after `ROTATE_PAT`:** after the service worker successfully creates a PAT it calls `connectionService.ensure(org)` before returning. This broadcasts `CONNECTION_STATUS:connected` so the side panel banner dismisses without requiring a page reload.
+- **`awaitingManualRetry` re-arming:** `handleBearerCaptured` resets `autoRecoveryAttempted` when `awaitingManualRetry` is true. This ensures that clicking "Open Azure DevOps" on the reconnect banner and completing sign-in triggers auto-recovery even if a previous silent attempt had already run.
+- **Reconnect navigation:** the "Open Azure DevOps" button navigates to `https://dev.azure.com/{org}/{project}` (project included) rather than the org root, landing the user directly in their registered project.
+- **`EnsurePatOutcome.mintError`:** set on any failure that reaches or attempts `createPat`, including the no-bearer and stale-bearer early exits. Surfaced in the ROTATE_PAT service worker handler and via the `connectionService` debug callback.
+- **Service worker debug logging:** the service worker broadcasts `{ type: 'SW_DEBUG', payload: { message } }` at key points in the `ROTATE_PAT` handler and inside `connectionService` (via an optional `debug` callback injected at construction). The side panel renders these as `SW: …` entries in the debug console pane.
+- **Settings pane — "Clear PAT data":** wipes `devopsExtPat`, `devopsExtDeviceId`, and `devopsExtLastRotateAttemptAt` from local storage. Use when rotation is stuck or after testing with revoked tokens. A fresh PAT is minted on the next bearer capture.
+- **`chrome.runtime.sendMessage` timeout for `ROTATE_PAT`:** a 25 s `Promise.race` timeout guards the side panel's sendMessage call. On some Edge MV3 builds the service worker can terminate during an in-flight async operation without closing the message port, leaving the side panel's promise permanently pending and the "Rotate now" button stuck disabled.
+- **PAT API facts (grounded in MS docs):** there is no in-place "regenerate" — `POST` always mints a new `authorizationId`; `PUT` returns `token: null` (Extend only). Revoked tokens linger visibly in the registry for months (cosmetic; accepted).
+- **`PatRecord` shape** (`types/PatRecord.ts`) is unchanged and backwards-compatible; the only additive storage key is `lastRotateAttemptAt`.
+
 ## Complexity Tracking
 
 | Decision | Why Needed | Simpler Alternative Rejected Because |

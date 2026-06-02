@@ -14,7 +14,7 @@ import type {
   WorkItem,
   WorkItemResult
 } from '@/types';
-import { parsePatRecord, PAT_RECORD_KEY } from '../devops/patLifecycle';
+import { parsePatRecord, PAT_RECORD_KEY } from '../devops/auth/patStore';
 import type { SidepanelTabId } from './Tabs';
 import {
   LAST_VISITED_DEVOPS_CONTEXT_KEY,
@@ -252,7 +252,7 @@ export async function clearPatRecord(): Promise<void> {
 
 export async function loadDeviceId(): Promise<string | null> {
   const stored = await chrome.storage.local.get('devopsExtDeviceId');
-  const value = stored['devopsExtDeviceId'];
+  const value = stored.devopsExtDeviceId;
   return typeof value === 'string' && value ? value : null;
 }
 

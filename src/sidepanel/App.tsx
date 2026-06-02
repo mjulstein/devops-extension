@@ -1,6 +1,7 @@
 import { DebugConsolePane } from './DebugConsolePane';
 import { SettingsPane } from './settings';
 import { ActiveWorkItemBanner } from './atoms/ActiveWorkItemBanner';
+import { ReconnectBanner } from './atoms/ReconnectBanner';
 import classes from './App.module.css';
 import { Tabs } from './Tabs';
 import { useSidepanelController } from './useSidepanelController';
@@ -29,6 +30,17 @@ export function App() {
         }}
         activeItemTabLabel={controller.activeItemTabLabel}
       />
+
+      {controller.isReconnectNeeded ? (
+        <ReconnectBanner
+          organization={controller.reconnectOrganization}
+          awaitingManualRetry={controller.awaitingManualRetry}
+          onReconnect={controller.onReconnect}
+          onRetry={() => {
+            void controller.onRetryConnection();
+          }}
+        />
+      ) : null}
 
       {controller.activeTab === 'settings' ? (
         <SettingsPane

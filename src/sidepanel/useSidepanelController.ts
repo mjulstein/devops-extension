@@ -45,12 +45,15 @@ import {
 import { navigateToWorkItem } from './navigateToWorkItem';
 import {
   createChildTask,
+  ensureConnection,
   fetchChildTasksForCurrentParent,
   fetchWorkItems,
   getActiveTabId,
   getActiveWorkItemContext,
   isActiveTabAzureDevOps,
-  setActiveWorkItemParent
+  retryConnection,
+  setActiveWorkItemParent,
+  type ConnectionStatus
 } from './tabMessaging';
 import type { DebugLogEntry } from './DebugConsolePane';
 import type { SidepanelTabId } from './Tabs';
@@ -111,7 +114,12 @@ export function useSidepanelController() {
     useState(false);
   const [linkExternal, setLinkExternal] = useState(true);
   const [debugLogs, setDebugLogs] = useState<DebugLogEntry[]>([]);
+  const [connectionStatus, setConnectionStatus] =
+    useState<ConnectionStatus>('connected');
+  const [awaitingManualRetry, setAwaitingManualRetry] = useState(false);
   const workItemsFetchSequenceRef = useRef(0);
+
+  const isReconnectNeeded = connectionStatus === 'reconnect-needed';
 
   function pushDebugLog(level: DebugLogEntry['level'], message: string): void {
     const entry: DebugLogEntry = {
@@ -211,6 +219,14 @@ export function useSidepanelController() {
         void saveSettings(hydratedSettings).catch(() => undefined);
       }
 
+      // Lazy ensure-valid PAT when the side panel opens (spec FR-005).
+      const orgForConnection = hydratedSettings.organization.trim();
+      if (orgForConnection) {
+        void ensureConnection(orgForConnection)
+          .then((status) => setConnectionStatus(status))
+          .catch(() => undefined);
+      }
+
       setActiveTab(storedActiveTab);
       setHiddenTaskStates(storedHiddenStates);
       setClosedDateRange(storedClosedDateRange);
@@ -249,6 +265,36 @@ export function useSidepanelController() {
       await refreshActiveWorkItemContext();
       pushDebugLog('success', 'Side panel initialization complete.');
     })();
+  }, []);
+
+  useEffect(() => {
+    // The service worker broadcasts connection-status changes (auto-recovery
+    // outcomes, etc.) so the panel reflects them without a manual reload (FR-009).
+    const onRuntimeMessage = (message: {
+      type?: unknown;
+      payload?: {
+        status?: ConnectionStatus;
+        awaitingManualRetry?: boolean;
+        message?: string;
+      };
+    }) => {
+      if (message?.type === 'SW_DEBUG') {
+        if (typeof message.payload?.message === 'string') {
+          pushDebugLog('info', `SW: ${message.payload.message}`);
+        }
+        return;
+      }
+      if (message?.type !== 'CONNECTION_STATUS' || !message.payload) {
+        return;
+      }
+      if (message.payload.status) {
+        setConnectionStatus(message.payload.status);
+      }
+      setAwaitingManualRetry(Boolean(message.payload.awaitingManualRetry));
+    };
+
+    chrome.runtime.onMessage.addListener(onRuntimeMessage);
+    return () => chrome.runtime.onMessage.removeListener(onRuntimeMessage);
   }, []);
 
   useEffect(() => {
@@ -349,12 +395,61 @@ export function useSidepanelController() {
     chrome.runtime.reload();
   }
 
+  function connectionOrganization(): string {
+    return settings.organization.trim();
+  }
+
+  // Open a *new* Azure DevOps tab so any SSO/ENTRA prompt lands on a tab the user
+  // controls; the interceptor then captures a fresh Bearer (spec US-2 / FR-007).
+  function onReconnect() {
+    const org = connectionOrganization();
+    const project = settings.project.trim();
+    const url =
+      org && project
+        ? `https://dev.azure.com/${encodeURIComponent(org)}/${encodeURIComponent(project)}`
+        : org
+          ? `https://dev.azure.com/${encodeURIComponent(org)}`
+          : 'https://dev.azure.com/';
+    void chrome.tabs.create({ url }).catch(() => undefined);
+  }
+
+  async function onRetryConnection() {
+    const org = connectionOrganization();
+    if (!org) {
+      setStatusMessage({
+        kind: 'error',
+        text: 'Open an Azure DevOps project once so the extension knows your organization.'
+      });
+      return;
+    }
+    try {
+      const status = await retryConnection(org);
+      setConnectionStatus(status);
+      if (status === 'connected') {
+        setAwaitingManualRetry(false);
+      }
+    } catch (error) {
+      setStatusMessage({
+        kind: 'error',
+        text: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
   async function onFetchWorkItems(options?: {
     closedDateRange?: ClosedDateRange;
     source?: string;
     scope?: WorkItemsFetchScope;
     refetchedClosedDay?: string;
   }) {
+    if (isReconnectNeeded) {
+      setStatusMessage({
+        kind: 'error',
+        text: 'Reconnect needed. Open Azure DevOps to reconnect before fetching.'
+      });
+      return;
+    }
+
     const startedAt = Date.now();
     const fetchSequence = ++workItemsFetchSequenceRef.current;
     const effectiveClosedDateRange =
@@ -667,6 +762,14 @@ export function useSidepanelController() {
   }
 
   async function onCreateTaskFromCurrentWorkItem() {
+    if (isReconnectNeeded) {
+      setCreateTaskStatusMessage({
+        kind: 'error',
+        text: 'Reconnect needed. Open Azure DevOps to reconnect before creating tasks.'
+      });
+      return;
+    }
+
     const trimmedTitle = taskTitle.trim();
 
     if (!trimmedTitle) {
@@ -936,8 +1039,12 @@ export function useSidepanelController() {
     debugLogs,
     hasFetchedOnce,
     hiddenTaskStates,
-    isActionDisabled: isLoading || isCreatingTask,
+    isActionDisabled: isLoading || isCreatingTask || isReconnectNeeded,
     isActiveItemPinned,
+    connectionStatus,
+    isReconnectNeeded,
+    awaitingManualRetry,
+    reconnectOrganization: settings.organization.trim(),
     isClosedEndTodayShortcut,
     isLoading,
     isRecentFeaturesCollapsed,
@@ -961,6 +1068,8 @@ export function useSidepanelController() {
     onEnableCustomClosedEndDate,
     onFetchWorkItems,
     onRefetchClosedDay,
+    onReconnect,
+    onRetryConnection,
     onReloadExtension,
     onReparentSelectedTask,
     onResetClosedDateRange,

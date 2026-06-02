@@ -19,7 +19,7 @@ const SECTION_PATH_PATTERNS: Record<DevOpsSection, string[]> = {
   testplans: ['/_testplans', '/_testmanagement'],
   artifacts: ['/_artifacts', '/_packaging'],
   wiki: ['/_wiki'],
-  settings: ['/_settings'],
+  settings: ['/_settings']
 };
 
 // How each section's <a> is identified in the nav sidebar.
@@ -32,7 +32,7 @@ const SECTION_NAV_SELECTORS: Record<DevOpsSection, string> = {
   testplans: 'a[aria-label="Test Plans"]',
   artifacts: 'a[aria-label="Artifacts"]',
   wiki: 'a[aria-label="Wiki"]',
-  settings: '', // uses an icon font, not scrape-able
+  settings: '' // uses an icon font, not scrape-able
 };
 
 const SCRAPABLE_SECTIONS = (
@@ -48,7 +48,7 @@ const FALLBACK_ICONS: Record<DevOpsSection, string> = {
   testplans: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="2" fill="#ca5010"/><path d="M5.5 2h5v5.5l3 5A1.5 1.5 0 0112.2 15H3.8a1.5 1.5 0 01-1.3-2.5l3-5V2z" fill="white"/><circle cx="8" cy="11.5" r="1.5" fill="#ca5010"/></svg>`,
   artifacts: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="2" fill="#ea4300"/><path d="M8 2L14 5.5v5L8 14 2 10.5v-5L8 2z" fill="white"/><path d="M8 2v12M2 5.5l6 3M14 5.5l-6 3" stroke="#ea4300" stroke-width="1" fill="none"/></svg>`,
   wiki: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="2" fill="#5c2d91"/><rect x="2" y="2.5" width="6" height="11" rx="1" fill="white"/><rect x="4" y="5" width="2.5" height="1" fill="#5c2d91"/><rect x="4" y="7" width="2.5" height="1" fill="#5c2d91"/><rect x="4" y="9" width="1.5" height="1" fill="#5c2d91"/><rect x="8.5" y="4" width="5.5" height="9.5" rx="1" fill="white" opacity=".65"/></svg>`,
-  settings: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="2" fill="#605e5c"/><circle cx="8" cy="8" r="2.2" fill="none" stroke="white" stroke-width="1.5"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4" stroke="white" stroke-width="1.3" stroke-linecap="round"/></svg>`,
+  settings: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="2" fill="#605e5c"/><circle cx="8" cy="8" r="2.2" fill="none" stroke="white" stroke-width="1.5"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4" stroke="white" stroke-width="1.3" stroke-linecap="round"/></svg>`
 };
 
 // In-memory cache: section → CDN URL or data URI
@@ -76,9 +76,10 @@ async function saveCachedIcons(): Promise<void> {
 function detectSection(href: string): DevOpsSection {
   try {
     const path = new URL(href).pathname.toLowerCase();
-    for (const [section, patterns] of Object.entries(
-      SECTION_PATH_PATTERNS
-    ) as [DevOpsSection, string[]][]) {
+    for (const [section, patterns] of Object.entries(SECTION_PATH_PATTERNS) as [
+      DevOpsSection,
+      string[]
+    ][]) {
       if (patterns.some((p) => path.includes(p))) return section;
     }
   } catch {
@@ -118,7 +119,10 @@ function refreshIconCache(): void {
   for (const section of SCRAPABLE_SECTIONS) {
     if (iconCache.has(section)) continue;
     const icon = scrapeNavIcon(section);
-    if (icon) { iconCache.set(section, icon); added++; }
+    if (icon) {
+      iconCache.set(section, icon);
+      added++;
+    }
   }
   if (added > 0) void saveCachedIcons();
 }
@@ -160,7 +164,9 @@ function setFavicon(url: string): void {
 function startFaviconGuard(): void {
   faviconGuard = new MutationObserver(() => {
     if (!currentIconUrl) return;
-    const favicons = Array.from(document.querySelectorAll('link')).filter(isFaviconLink);
+    const favicons = Array.from(document.querySelectorAll('link')).filter(
+      isFaviconLink
+    );
     // Re-evaluate from the current URL so mid-navigation overrides immediately
     // show the correct section rather than the previous one.
     if (favicons.length !== 1 || favicons[0].href !== currentIconUrl) {
@@ -182,17 +188,26 @@ function applyFavicon(): void {
 
 function waitForNav(): Promise<void> {
   // Any of these aria-label anchors confirm the sidebar has rendered
-  const probe = SCRAPABLE_SECTIONS.map(
-    (s) => SECTION_NAV_SELECTORS[s]
-  ).join(', ');
+  const probe = SCRAPABLE_SECTIONS.map((s) => SECTION_NAV_SELECTORS[s]).join(
+    ', '
+  );
 
   return new Promise((resolve) => {
-    if (document.querySelector(probe)) { resolve(); return; }
+    if (document.querySelector(probe)) {
+      resolve();
+      return;
+    }
     const obs = new MutationObserver(() => {
-      if (document.querySelector(probe)) { obs.disconnect(); resolve(); }
+      if (document.querySelector(probe)) {
+        obs.disconnect();
+        resolve();
+      }
     });
     obs.observe(document.body, { childList: true, subtree: true });
-    setTimeout(() => { obs.disconnect(); resolve(); }, 8000);
+    setTimeout(() => {
+      obs.disconnect();
+      resolve();
+    }, 8000);
   });
 }
 
@@ -253,7 +268,11 @@ export function initTabIcons(): void {
   });
   const titleEl = document.querySelector('title');
   if (titleEl) {
-    titleObserver.observe(titleEl, { childList: true, characterData: true, subtree: true });
+    titleObserver.observe(titleEl, {
+      childList: true,
+      characterData: true,
+      subtree: true
+    });
   }
 }
 

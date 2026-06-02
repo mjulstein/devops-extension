@@ -4,9 +4,14 @@
 
 This directory contains Azure DevOps-specific logic. Keep `src/content-script.ts` generic and place selectors, URL parsing, work-item context resolution, and REST operations here.
 
+## Child directories
+
+- [`auth`](./auth/README.md) — the Azure DevOps authentication adapter: PAT lifecycle, Bearer-token freshness, connection status, and the reconnect flow.
+
 ## Files in this directory
 
 - `activeParentContext.ts` — resolves the current work item, detected parent, and viewed task context from the active Azure DevOps URL and fetched work-item details.
+- `authFetch.ts` — PAT-only Azure DevOps fetch wrapper (HTTP Basic auth, `credentials: 'omit'`); rotates the PAT once and retries on a `401`, then throws a typed `ReconnectNeededError`. No cookie fallback.
 - `activeWorkItemDom.ts` — detects the visually active work item id from Azure DevOps panels, dialogs, and main page surfaces.
 - `childTasks.ts` — loads child task relations and task summaries for the resolved or selected parent work item.
 - `lastVisitedContext.ts` — creates and parses persisted last-visited org/project and work-item references for service-worker fallback behavior.

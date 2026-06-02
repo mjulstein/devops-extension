@@ -34,7 +34,7 @@ function buildContentScriptPlugin() {
         format: 'iife',
         outfile: resolve('dist/content-script.js'),
         target: ['chrome92'],
-        tsconfig: resolve('tsconfig.json'),
+        tsconfig: resolve('tsconfig.json')
       });
       await esbuildBuild({
         entryPoints: [resolve('src/token-interceptor.ts')],
@@ -42,7 +42,7 @@ function buildContentScriptPlugin() {
         format: 'iife',
         outfile: resolve('dist/token-interceptor.js'),
         target: ['chrome92'],
-        tsconfig: resolve('tsconfig.json'),
+        tsconfig: resolve('tsconfig.json')
       });
     }
   };

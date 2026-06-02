@@ -17,3 +17,5 @@ This directory contains small messaging helpers that the side panel uses to talk
 - `createChildTask.ts` / `createChildTask.test.ts` — requests child-task creation for the current or selected parent.
 - `fetchChildTasksForCurrentParent.ts` / `fetchChildTasksForCurrentParent.test.ts` — requests child-task lists for the resolved or selected parent.
 - `setActiveWorkItemParent.ts` / `setActiveWorkItemParent.test.ts` — requests parent updates for the active work item or selected task.
+- `connection.ts` — `ensureConnection` (lazy ensure-valid PAT on panel open) and `retryConnection` (manual Retry) messaging to the service worker; exposes the `ConnectionStatus` type.
+- `managePat.ts` — Settings-pane PAT helpers: `rotatePat`, `revokeAllExtensionPats`, and `loadPatStatus`.

@@ -7,3 +7,4 @@ This directory contains shared side-panel shell atoms that are reused across top
 ## Files in this directory
 
 - `ActiveWorkItemBanner.tsx` + `ActiveWorkItemBanner.module.css` — clickable active-work-item summary banner used by `App.tsx`.
+- `ReconnectBanner.tsx` — shown when the connection status is **Reconnect needed**: offers the "Open Azure DevOps to reconnect" link and, after a failed automatic recovery, a manual **Retry** button.

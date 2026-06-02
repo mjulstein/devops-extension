@@ -1,6 +1,6 @@
 // Provides a minimal chrome API stub for tests that run outside the extension runtime.
-// chrome.storage.local.get returns {} (no stored PAT), so authFetch falls back to
-// the same credentials:'include' behaviour the tests already mock via vi.stubGlobal('fetch').
+// chrome.storage.local.get returns {} by default (no stored PAT); tests that exercise
+// the PAT-only data path (e.g. workItems.test.ts) override get to supply a PatRecord.
 // Uses beforeEach so vi.unstubAllGlobals() in test afterEach hooks doesn't permanently remove it.
 
 beforeEach(() => {
