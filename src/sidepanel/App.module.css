@@ -7,3 +7,10 @@
 .wrap {
   padding: 16px;
 }
+
+.bannerRow {
+  display: flex;
+  gap: 4px;
+  align-items: stretch;
+  margin: 0 0 10px;
+}

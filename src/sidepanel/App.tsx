@@ -1,6 +1,7 @@
 import { DebugConsolePane } from './DebugConsolePane';
 import { SettingsPane } from './settings';
 import { ActiveWorkItemBanner } from './atoms/ActiveWorkItemBanner';
+import { DeduplicateTabsButton } from './atoms/DeduplicateTabsButton';
 import { ReconnectBanner } from './atoms/ReconnectBanner';
 import classes from './App.module.css';
 import { Tabs } from './Tabs';
@@ -13,13 +14,20 @@ export function App() {
 
   return (
     <div className={classes.wrap}>
-      <ActiveWorkItemBanner
-        heading={controller.activeItemHeading}
-        isPinned={controller.isActiveItemPinned}
-        onClick={() => {
-          void controller.onActiveItemBannerClick();
-        }}
-      />
+      <header className={classes.bannerRow}>
+        <ActiveWorkItemBanner
+          heading={controller.activeItemHeading}
+          isPinned={controller.isActiveItemPinned}
+          onClick={() => {
+            void controller.onActiveItemBannerClick();
+          }}
+        />
+        <DeduplicateTabsButton
+          onClick={() => {
+            void controller.onDeduplicateTabs();
+          }}
+        />
+      </header>
 
       <Tabs
         activeTab={controller.activeTab}

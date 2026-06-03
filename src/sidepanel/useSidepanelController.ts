@@ -43,6 +43,7 @@ import {
   isValidClosedDateRange
 } from './workItemsDateRange';
 import { navigateToWorkItem } from './navigateToWorkItem';
+import { deduplicateTabs } from './deduplicateTabs';
 import {
   createChildTask,
   ensureConnection,
@@ -1014,6 +1015,18 @@ export function useSidepanelController() {
     await refreshActiveWorkItemContext(true);
   }
 
+  async function onDeduplicateTabs() {
+    const closed = await deduplicateTabs();
+    setCreateTaskStatusMessage(
+      closed > 0
+        ? {
+            kind: 'success',
+            text: `Closed ${closed} duplicate tab${closed === 1 ? '' : 's'}.`
+          }
+        : { kind: 'info', text: 'No duplicate tabs found.' }
+    );
+  }
+
   async function onToggleRecentFeaturesCollapsed() {
     const nextValue = !isRecentFeaturesCollapsed;
     setIsRecentFeaturesCollapsed(nextValue);
@@ -1061,6 +1074,7 @@ export function useSidepanelController() {
     taskTitle,
     visibleChildTasks,
     onActiveItemBannerClick,
+    onDeduplicateTabs,
     onChangeDebugLogs: setDebugLogs,
     onChangeSettings: setSettings,
     onClosedDateRangeChange,
