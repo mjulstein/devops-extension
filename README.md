@@ -2,7 +2,9 @@
 
 A Microsoft Edge extension that generates a quick summary of Azure DevOps work items assigned to a specific user.
 
-The extension runs inside the browser and uses the currently authenticated Azure DevOps session to query work items through the Azure DevOps REST API. No personal access tokens or additional authentication are required.
+The extension runs inside the browser and queries the Azure DevOps REST API with a Personal Access Token (PAT) it mints and rotates **at runtime** — you never create or paste a token. The browser's authenticated Azure DevOps session is used only to mint that PAT, so data calls keep working even when the page's short-lived Bearer token expires. See [`CONTEXT.md`](./CONTEXT.md) for the authentication vocabulary and [`specs/002-pat-auth-redesign`](./specs/002-pat-auth-redesign/spec.md) for the design.
+
+If the session is genuinely signed out, the side panel shows **Reconnect needed** with a link that opens Azure DevOps in a new tab; once you are signed in there it recovers automatically.
 
 Results are displayed in the side panel as clickable links grouped into:
 
@@ -78,11 +80,12 @@ Use the linked directory `README.md` files for structure details instead of expa
 - `manifest.json`
 - `service-worker.js`
 - `content-script.js`
+- `token-interceptor.js` — injected at `document_start` in the page's main world to capture the Bearer token used to mint the PAT
 - `sidepanel.html`
 - `sidepanel.js`
 - emitted CSS assets generated from the side panel's colocated CSS module imports
 
-Load `dist/` as the unpacked extension directory in Edge.
+Load `dist/` as the unpacked extension directory in Edge. After rebuilding, reload the extension in `edge://extensions`, then refresh any open Azure DevOps tab so the latest `token-interceptor.js` is re-injected.
 
 ## Configuration
 
@@ -157,7 +160,7 @@ npm test
 8. Use the per-day refetch button beside any closed-date heading to reload only that day.
 9. Open the **Active item** tab to create child tasks. The tab resolves context from the last visited Azure DevOps work-item view (or the pinned item if set), so it can continue working even when a non-DevOps tab is active.
 
-The extension queries Azure DevOps using the current browser session and displays matching work items in the side panel.
+The extension queries Azure DevOps with its runtime-minted PAT (over HTTP Basic auth) and displays matching work items in the side panel.
 
 ## License
 

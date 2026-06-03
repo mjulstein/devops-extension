@@ -1,6 +1,7 @@
 import type { ChildTaskItem } from '@/types';
 import { resolveActiveWorkItemContext } from './activeParentContext';
 import { isObject } from './typeGuards';
+import { authFetch } from './authFetch';
 
 export async function fetchChildTasksForActiveParent(
   rawUrl: string,
@@ -18,9 +19,8 @@ export async function fetchChildTasksForActiveParent(
     `https://dev.azure.com/${encodeURIComponent(context.organization)}/${encodeURIComponent(context.project)}` +
     `/_apis/wit/workitems/${context.parentId}?$expand=relations&api-version=7.0`;
 
-  const relationResponse = await fetch(relationUrl, {
+  const relationResponse = await authFetch(relationUrl, {
     method: 'GET',
-    credentials: 'include',
     headers: { Accept: 'application/json' }
   });
 
@@ -60,9 +60,8 @@ async function fetchTaskItemsByIds(
     `&fields=${encodeURIComponent('System.Id,System.Title,System.State,System.WorkItemType')}` +
     '&api-version=7.0';
 
-  const response = await fetch(url, {
+  const response = await authFetch(url, {
     method: 'GET',
-    credentials: 'include',
     headers: { Accept: 'application/json' }
   });
 

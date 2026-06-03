@@ -8,7 +8,7 @@ This file gives coding agents and contributors a compact, actionable guide for w
 
 ## Project Summary
 
-This repository contains a Microsoft Edge extension that fetches Azure DevOps work items for a configured user using the current authenticated browser session and displays them in a side panel.
+This repository contains a Microsoft Edge extension that fetches Azure DevOps work items for a configured user and displays them in a side panel. Data calls authenticate with a runtime-minted, auto-rotating Personal Access Token (PAT); the browser's authenticated session is used only to mint that PAT. See [`CONTEXT.md`](./CONTEXT.md) and [`specs/002-pat-auth-redesign`](./specs/002-pat-auth-redesign/spec.md).
 
 The project uses Vite as the build system. Source files live under `src/`, and extension artifacts are generated into `dist/`.
 
@@ -30,8 +30,9 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 
 - Keep changes minimal and targeted.
 - Preserve the current architecture unless a change request requires restructuring.
-- Keep the extension usable with the existing authenticated Azure DevOps session.
+- Keep the extension usable through frequent Azure DevOps Bearer-token expiry: data calls use the runtime PAT, never cookie auth.
 - Keep `src/content-script.ts` as a generic runtime message bridge; place Azure DevOps-specific selectors, parsing, and API/domain logic under `src/devops/` modules.
+- Keep all Azure DevOps authentication (PAT lifecycle, Bearer capture, connection status) inside the `src/devops/auth/` adapter; `src/service-worker.ts` stays a generic message router. The only code that runs in the page's main world is the one-line Bearer read in `readBearerFromTab.ts` plus the passive `token-interceptor.ts`.
 - Preserve the current service-worker/side-panel context flow: `src/service-worker.ts` records the last visited Azure DevOps org/project and work-item URLs in `chrome.storage.local`, and `src/sidepanel/App.tsx` can pin an active work-item context so work-item actions still work when the active tab is not Azure DevOps.
 - Keep exploratory feature notes in `specs/ideas/` until goals, acceptance criteria, and sequencing are clear enough for a numbered feature spec.
 - Do not add secrets, tokens, or committed local configuration.
@@ -53,6 +54,9 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - `src/service-worker.ts` — extension startup/background behavior
 - `src/content-script.ts` — generic runtime message router between side panel and domain modules
 - `src/devops/*` — Azure DevOps-specific DOM detection, URL/context parsing, REST/WIQL, and task/parent operations
+- `src/devops/authFetch.ts` — PAT-only Azure DevOps fetch wrapper (HTTP Basic, `credentials: 'omit'`); rotates once and retries on `401`, then throws `ReconnectNeededError`
+- `src/devops/auth/*` — the auth adapter: `rotationPolicy` (use/rotate/reconnect), `bearerToken` (JWT `exp` freshness), `patStore` (storage), `patApi` (PAT Lifecycle transport), `ensurePat` (orchestration + throttle), `readBearerFromTab` (one-line main-world Bearer read), `connectionStatus`/`connectionService` (derived status + auto-once-then-manual reconnect)
+- `src/token-interceptor.ts` — main-world `document_start` script that captures the page's Bearer token and signals fresh captures for auto-recovery
 - `src/devops/{activeParentContext,lastVisitedContext}.ts` — active work-item context resolution plus persisted last-visited org/project and work-item references used by the service worker fallback flow
 - `src/devops/workItems.ts` — separate open/closed work-item query and transformation logic, including closed-date range filtering and parent-summary enrichment
 - `src/sidepanel.html` — side panel HTML entry
@@ -105,7 +109,7 @@ Before finishing a change, verify:
 - The extension still loads as an unpacked Edge extension from `dist/`.
 - Manifest entries remain consistent with the generated implementation.
 - Side panel flow still works from the browser context.
-- Azure DevOps requests still rely on the active authenticated session.
+- Azure DevOps data requests authenticate with the runtime PAT (Basic auth); the browser session is used only to mint/rotate it.
 - Documentation reflects the current behavior and file structure.
 - Linting passes with `npm run lint` (or intentionally reported warnings are explained).
 - Tests pass with `npm test` (or intentionally reported failures are explained).
@@ -128,6 +132,6 @@ Any pull request or change that modifies one of the following should check and u
 
 Unless explicitly requested, do not:
 
-- add backend services
-- require personal access tokens
+- add backend services (the PAT is minted at runtime in the browser, never via a proxy)
+- require the user to manually create or paste a personal access token (the extension mints and rotates its own)
 - add complex tooling for a small change

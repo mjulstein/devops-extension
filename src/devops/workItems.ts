@@ -4,6 +4,7 @@ import type {
   WorkItemParentSummary,
   WorkItemResult
 } from '@/types';
+import { authFetch } from './authFetch';
 
 export interface WorkItemsContext {
   organization: string;
@@ -169,9 +170,8 @@ async function fetchChildIdsForParents(
       const url =
         `https://dev.azure.com/${encodeURIComponent(organization)}/${encodeURIComponent(project)}` +
         `/_apis/wit/workitems/${pid}?$expand=relations&api-version=7.0`;
-      const resp = await fetch(url, {
+      const resp = await authFetch(url, {
         method: 'GET',
-        credentials: 'include',
         headers: { Accept: 'application/json' }
       });
       if (!resp.ok) {
@@ -262,9 +262,8 @@ async function queryWorkItemIds(
 ): Promise<number[]> {
   const wiqlUrl = `https://dev.azure.com/${encodeURIComponent(organization)}/${encodeURIComponent(project)}/_apis/wit/wiql?api-version=7.0`;
 
-  const wiqlResponse = await fetch(wiqlUrl, {
+  const wiqlResponse = await authFetch(wiqlUrl, {
     method: 'POST',
-    credentials: 'include',
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json'
@@ -303,12 +302,9 @@ async function fetchWorkItemDetails(
       `&fields=${encodeURIComponent(fields.join(','))}` +
       '&api-version=7.0';
 
-    const workItemsResponse = await fetch(workItemsUrl, {
+    const workItemsResponse = await authFetch(workItemsUrl, {
       method: 'GET',
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json'
-      }
+      headers: { Accept: 'application/json' }
     });
 
     if (!workItemsResponse.ok) {

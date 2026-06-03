@@ -11,6 +11,7 @@ Keep ideas in Markdown only. Prefer one file per concept and use [`.specify/temp
 If your tooling supports repo-local planning commands, [`.specify/commands/idea.md`](../../.specify/commands/idea.md) can be used as a shortcut prompt for the same workflow.
 
 - [`separate-open-closed-work-item-results.md`](./separate-open-closed-work-item-results.md) — explores stronger open/closed result typing and future independent refresh behavior for the Work items tab.
+- [`provider-port-and-reconnect-generalization.md`](./provider-port-and-reconnect-generalization.md) — deferred follow-ups from the PAT redesign: a generic `RECONNECT` capability and provider-contributed settings UI toward the ADR-0001 provider port.
 
 ## Rules
 

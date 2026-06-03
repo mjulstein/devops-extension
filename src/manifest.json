@@ -8,10 +8,11 @@
     "activeTab",
     "tabs",
     "storage",
-    "cookies"
+    "scripting"
   ],
   "host_permissions": [
     "https://dev.azure.com/*",
+    "https://vssps.dev.azure.com/*",
     "https://login.microsoftonline.com/*",
     "https://app.vssps.visualstudio.com/*"
   ],
@@ -23,6 +24,12 @@
     "default_path": "sidepanel.html"
   },
   "content_scripts": [
+    {
+      "matches": ["https://dev.azure.com/*"],
+      "js": ["token-interceptor.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
     {
       "matches": ["https://dev.azure.com/*"],
       "js": ["content-script.js"],

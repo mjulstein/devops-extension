@@ -20,8 +20,8 @@ function copyManifestPlugin() {
   };
 }
 
-// Bundles content-script as a self-contained IIFE so it needs no ES module
-// support from Chrome and no "type": "module" in the manifest.
+// Bundles content-script and token-interceptor as self-contained IIFEs so they
+// need no ES module support from Chrome and no "type": "module" in the manifest.
 // All @/types imports are type-only and are silently dropped by esbuild.
 function buildContentScriptPlugin() {
   return {
@@ -34,7 +34,15 @@ function buildContentScriptPlugin() {
         format: 'iife',
         outfile: resolve('dist/content-script.js'),
         target: ['chrome92'],
-        tsconfig: resolve('tsconfig.json'),
+        tsconfig: resolve('tsconfig.json')
+      });
+      await esbuildBuild({
+        entryPoints: [resolve('src/token-interceptor.ts')],
+        bundle: true,
+        format: 'iife',
+        outfile: resolve('dist/token-interceptor.js'),
+        target: ['chrome92'],
+        tsconfig: resolve('tsconfig.json')
       });
     }
   };
@@ -50,7 +58,8 @@ export default defineConfig({
   publicDir: false,
   test: {
     globals: true,
-    include: ['**/*.test.ts', '**/*.test.tsx']
+    include: ['**/*.test.ts', '**/*.test.tsx'],
+    setupFiles: ['src/test-setup.ts']
   },
   build: {
     outDir: 'dist',

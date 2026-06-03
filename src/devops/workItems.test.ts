@@ -14,6 +14,19 @@ function getQueryFromRequestBody(body: BodyInit | null | undefined): string {
 }
 
 describe('workItems.ts', () => {
+  beforeEach(() => {
+    // The data path is PAT-only (no cookie fallback). authFetch sends the stored
+    // PAT as Basic auth, so the tests need one in storage to reach the mocked fetch.
+    chrome.storage.local.get = vi.fn().mockResolvedValue({
+      devopsExtPat: {
+        token: 'test-pat',
+        authorizationId: 'auth-test',
+        expiresAt: 9_999_999_999_999,
+        displayName: 'test-devopsext'
+      }
+    });
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
