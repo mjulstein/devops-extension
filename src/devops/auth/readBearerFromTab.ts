@@ -34,9 +34,91 @@ export async function readBearerFromTab(): Promise<string | null> {
           .executeScript({
             target: { tabId },
             world: 'MAIN',
-            func: () =>
-              (window as unknown as { __devopsExtCapturedAuth?: unknown })
-                .__devopsExtCapturedAuth ?? null
+            func: () => {
+              const w = window as unknown as Record<string, unknown>;
+              // The injected function runs in the tab's context, so module-level
+              // constants are not available — use the literal key name directly.
+              const captured = w.__devopsExtCapturedAuth;
+
+              // Fall back to MSAL's token cache when the interceptor window key is
+              // absent or stale. This covers two failure modes:
+              //   1. The extension was installed while DevOps tabs were already open —
+              //      Chrome doesn't re-inject content scripts into existing tabs, so
+              //      token-interceptor.ts never ran and the key is undefined.
+              //   2. The page has been idle long enough for Azure AD to silently refresh
+              //      the token via a hidden MSAL iframe (not through window.fetch), so
+              //      the key holds a now-expired token.
+              // MSAL stores its cache in localStorage/sessionStorage and refreshes
+              // proactively, so it always reflects the current session token.
+              let msalSecret: string | null = null;
+              let msalExp = 0;
+
+              const storesToSearch: Storage[] = [];
+              try {
+                storesToSearch.push(localStorage);
+              } catch {
+                /* unavailable */
+              }
+              try {
+                storesToSearch.push(sessionStorage);
+              } catch {
+                /* unavailable */
+              }
+
+              for (const store of storesToSearch) {
+                try {
+                  for (let i = 0; i < store.length; i++) {
+                    const k = store.key(i);
+                    if (!k?.toLowerCase().includes('accesstoken')) continue;
+                    let item: unknown;
+                    try {
+                      item = JSON.parse(store.getItem(k) ?? '');
+                    } catch {
+                      continue;
+                    }
+                    if (
+                      typeof item !== 'object' ||
+                      item === null ||
+                      (item as Record<string, unknown>).credentialType !==
+                        'AccessToken' ||
+                      typeof (item as Record<string, unknown>).secret !==
+                        'string'
+                    ) {
+                      continue;
+                    }
+                    // Azure DevOps scopes use the "vso." prefix or management.visualstudio.com
+                    const target = String(
+                      (item as Record<string, string | number>).target ?? ''
+                    );
+                    if (
+                      !target.includes('vso.') &&
+                      !target.includes('management.visualstudio.com')
+                    ) {
+                      continue;
+                    }
+                    const exp = Number(
+                      (item as Record<string, unknown>).expiresOn
+                    );
+                    if (!isNaN(exp) && exp > msalExp) {
+                      msalSecret = (item as Record<string, unknown>)
+                        .secret as string;
+                      msalExp = exp;
+                    }
+                  }
+                } catch {
+                  /* skip this storage */
+                }
+              }
+
+              if (msalSecret) {
+                const fresh = `Bearer ${msalSecret}`;
+                // Keep the interceptor window key in sync so VSSPS injection also uses the latest token
+                w.__devopsExtCapturedAuth = fresh;
+                return fresh;
+              }
+
+              return typeof captured === 'string' ? captured : null;
+            }
           })
           .then((r) => r[0]?.result ?? null),
         new Promise<null>((resolve) =>
