@@ -50,6 +50,7 @@ function buildContentScriptPlugin() {
 
 export default defineConfig({
   resolve: {
+    tsconfigPaths: true,
     alias: {
       '@/types': resolve(__dirname, 'types/index.ts'),
       '@': resolve(__dirname, 'src')
