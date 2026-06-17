@@ -48,7 +48,7 @@ A valid **PAT** exists. All data requests are allowed.
 No valid **PAT** and one cannot be minted right now (no fresh **Bearer token**, no Azure DevOps tab, or a failed rotation). All data requests from the side panel are blocked and a **Reconnect** affordance is shown.
 
 **Reconnect**:
-The recovery action: open a *new* Azure DevOps tab (`dev.azure.com/{org}`) so the user can complete any SSO/ENTRA prompt on a tab they control, letting the interceptor capture a fresh **Bearer token**. Exactly **one** automatic rotation is attempted when that fresh token is captured; if it fails, recovery falls back to a manual **Retry** button with no further automatic attempts.
+The recovery action: open a *new* Azure DevOps tab (`dev.azure.com/{org}`) so the user can complete any SSO/ENTRA prompt on a tab they control. Once that tab finishes loading, the extension automatically attempts to **Rotate** a fresh **PAT** from the tab's live session — one attempt per page load. The first success ends the episode (no further attempts until the next expiry); a manual **Retry** affordance is always available as an immediate escape hatch.
 _Avoid_: re-login, refresh, sign-in
 
 ## Flagged ambiguities

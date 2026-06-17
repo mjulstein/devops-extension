@@ -42,9 +42,10 @@ export function SettingsPane({
   const [patActionMessage, setPatActionMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect
-    setTodoStatesText(settings.todoStates.join(', '));
-  }, [settings.todoStates]);
+    const jointedTodosStates = settings.todoStates.join(', ');
+    if (jointedTodosStates !== todoStatesText)
+      setTodoStatesText(jointedTodosStates);
+  }, [settings.todoStates, todoStatesText]);
 
   useEffect(() => {
     void (async () => {

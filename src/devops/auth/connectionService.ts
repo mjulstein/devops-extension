@@ -1,14 +1,18 @@
 import { ensurePat, type EnsurePatOutcome } from './ensurePat';
-import {
-  getConnectionStatus,
-  shouldAttemptAutoRecovery,
-  type ConnectionStatus
-} from './connectionStatus';
+import { getConnectionStatus, type ConnectionStatus } from './connectionStatus';
 
 // Owns the small amount of state the reconnect flow needs that is NOT derivable
-// from PAT validity: whether the single automatic rotation has been spent, and
-// whether the side panel should now offer a manual Retry. Kept in the adapter so
-// the service worker stays a generic router (FR-010).
+// from PAT validity: whether a recovery is currently in flight (so near-simultaneous
+// triggers don't double-mint), and whether the side panel should offer a manual
+// Retry. Kept in the adapter so the service worker stays a generic router (FR-010).
+//
+// Recovery is pull-driven: the service worker calls handleBearerCaptured() whenever
+// an Azure DevOps tab finishes loading while disconnected (and, as a best-effort
+// fast path, on the relayed bearer-captured signal). It's a deliberate, reliable
+// signal, so it bypasses the rotate throttle (like the original auto-recovery).
+// Storms are prevented structurally instead: the in-flight latch blocks concurrent
+// triggers, and a successful mint flips us to 'connected' so further tab-loads
+// no-op until the next expiry. See docs/adr/0002-pull-driven-reconnect-recovery.md.
 
 export interface ConnectionBroadcast {
   status: ConnectionStatus;
@@ -41,23 +45,25 @@ export interface ConnectionService {
 export function createConnectionService(
   deps: ConnectionServiceDeps
 ): ConnectionService {
-  let autoRecoveryAttempted = false;
+  // True only while a recovery rotation is awaiting, so near-simultaneous triggers
+  // (e.g. several DevOps tabs finishing at once) don't each start a mint before the
+  // first writes its throttle timestamp. NOT a one-shot: each fresh trigger is
+  // eligible once the previous attempt settles.
+  let recoveryInFlight = false;
   let awaitingManualRetry = false;
-
-  function reset(): void {
-    autoRecoveryAttempted = false;
-    awaitingManualRetry = false;
-  }
 
   function settle(status: ConnectionStatus): ConnectionStatus {
     if (status === 'connected') {
-      reset();
+      awaitingManualRetry = false;
     }
     deps.broadcast({ status, awaitingManualRetry });
     return status;
   }
 
   async function rotate(organization: string): Promise<ConnectionStatus> {
+    // force:true also bypasses the rotate throttle — recovery and manual Retry are
+    // both deliberate, immediate attempts (ADR 0002). The lazy `ensure` path keeps
+    // respecting the throttle.
     const outcome = await deps.ensurePat({ organization, force: true });
     deps.debug?.(
       `rotate: ensurePat=${outcome.status}${outcome.mintError ? ` err="${outcome.mintError}"` : ''}`
@@ -75,40 +81,37 @@ export function createConnectionService(
     },
 
     async retry(organization) {
-      // A manual Retry re-arms the automatic path for the next capture cycle.
-      autoRecoveryAttempted = false;
       return rotate(organization);
     },
 
     async handleBearerCaptured() {
       const status = await deps.getConnectionStatus();
       deps.debug?.(
-        `bearer-captured: status=${status} awaitingRetry=${awaitingManualRetry} attempted=${autoRecoveryAttempted}`
+        `recover: status=${status} awaitingRetry=${awaitingManualRetry} inFlight=${recoveryInFlight}`
       );
-      // When the user is actively waiting to reconnect, a new distinct bearer
-      // capture likely means they just signed in — re-arm the auto-recovery so
-      // this attempt is not blocked by a previous failed rotation.
-      if (awaitingManualRetry) {
-        autoRecoveryAttempted = false;
-      }
-      if (!shouldAttemptAutoRecovery(status, autoRecoveryAttempted)) {
-        deps.debug?.(
-          'bearer-captured: skipping (connected or already attempted)'
-        );
+      if (status === 'connected') {
+        // A background mint (e.g. an authFetch 401 retry) already recovered us.
+        awaitingManualRetry = false;
         return;
       }
-      // Spend the single automatic attempt up front so a second capture mid-flight
-      // cannot fire another.
-      autoRecoveryAttempted = true;
-
-      const organization = await deps.resolveOrganization();
-      deps.debug?.(`bearer-captured: org=${organization ?? '(none)'}`);
-      if (!organization) {
-        awaitingManualRetry = true;
-        deps.broadcast({ status: 'reconnect-needed', awaitingManualRetry });
+      if (recoveryInFlight) {
+        deps.debug?.('recover: skipping (a rotation is already in flight)');
         return;
       }
-      await rotate(organization);
+      // Latch synchronously before the next await so a concurrent trigger bails.
+      recoveryInFlight = true;
+      try {
+        const organization = await deps.resolveOrganization();
+        deps.debug?.(`recover: org=${organization ?? '(none)'}`);
+        if (!organization) {
+          awaitingManualRetry = true;
+          deps.broadcast({ status: 'reconnect-needed', awaitingManualRetry });
+          return;
+        }
+        await rotate(organization);
+      } finally {
+        recoveryInFlight = false;
+      }
     }
   };
 }

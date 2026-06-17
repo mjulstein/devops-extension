@@ -122,6 +122,17 @@ chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
   const candidateUrl = changeInfo.url ?? tab.url;
   void recordLastVisitedDevOpsContext(candidateUrl);
   void recordLastVisitedWorkItemRef(candidateUrl);
+
+  // Pull-driven reconnect: when an Azure DevOps tab finishes loading, attempt one
+  // automatic recovery. handleBearerCaptured no-ops unless we're disconnected, and
+  // pulls the Bearer via readBearerFromTab — a reliable trigger that doesn't depend
+  // on the racy main-world postMessage relay. See ADR 0002.
+  if (
+    changeInfo.status === 'complete' &&
+    tab.url?.startsWith('https://dev.azure.com/')
+  ) {
+    void connectionService.handleBearerCaptured();
+  }
 });
 
 chrome.runtime.onMessage.addListener(

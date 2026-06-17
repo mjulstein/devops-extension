@@ -299,6 +299,38 @@ export function useSidepanelController() {
   }, []);
 
   useEffect(() => {
+    // Re-derive connection status when the panel regains focus. A background mint
+    // (e.g. an authFetch 401-retry) can flip the derived status to connected without
+    // connectionService broadcasting, leaving the card stuck on "disconnected"; this
+    // self-heals it from PAT validity on the next interaction. See ADR 0002.
+    const org = settings.organization.trim();
+    if (!org) {
+      return;
+    }
+
+    const rederive = () => {
+      if (document.hidden) {
+        return;
+      }
+      void ensureConnection(org)
+        .then((status) => {
+          setConnectionStatus(status);
+          if (status === 'connected') {
+            setAwaitingManualRetry(false);
+          }
+        })
+        .catch(() => undefined);
+    };
+
+    window.addEventListener('focus', rederive);
+    document.addEventListener('visibilitychange', rederive);
+    return () => {
+      window.removeEventListener('focus', rederive);
+      document.removeEventListener('visibilitychange', rederive);
+    };
+  }, [settings.organization]);
+
+  useEffect(() => {
     const onFocus = () => {
       void refreshActiveTabLinkMode();
 

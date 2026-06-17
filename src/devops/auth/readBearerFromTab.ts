@@ -6,8 +6,6 @@
 // captured yet, or no access to chrome.scripting (e.g. a content-script context,
 // which cannot call executeScript). Freshness is judged by the caller.
 
-const CAPTURED_AUTH_WINDOW_KEY = '__devopsExtCapturedAuth';
-
 // Per-tab timeout: frozen/suspended background tabs can cause executeScript to hang
 // indefinitely (observed in Edge MV3). 4 s is generous for an active tab.
 const EXECUTE_SCRIPT_TIMEOUT_MS = 4_000;
@@ -131,5 +129,3 @@ export async function readBearerFromTab(): Promise<string | null> {
   const bearer = results.find((r): r is string => typeof r === 'string');
   return bearer ?? null;
 }
-
-export { CAPTURED_AUTH_WINDOW_KEY };

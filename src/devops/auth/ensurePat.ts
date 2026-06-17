@@ -21,7 +21,7 @@ import { readBearerFromTab } from './readBearerFromTab';
 //   store -> rotationPolicy -> (if minting) fresh Bearer -> patApi -> persist.
 // Returns the derived connection status so callers never read a separate flag.
 
-export type ConnectionStatusValue = 'connected' | 'reconnect-needed';
+type ConnectionStatusValue = 'connected' | 'reconnect-needed';
 
 export interface EnsurePatOutcome {
   status: ConnectionStatusValue;

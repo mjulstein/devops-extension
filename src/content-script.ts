@@ -43,19 +43,16 @@ function relayBearerCaptured(): void {
     .catch(() => undefined);
 }
 
-// If the token interceptor already captured a bearer before this content script
-// reached document_idle, relay it now — the window.postMessage from that capture
-// fired before our listener existed and was lost.
-if (
-  typeof (window as unknown as Record<string, unknown>)
-    .__devopsExtCapturedAuth === 'string'
-) {
-  relayBearerCaptured();
-}
-
 // Relay the main-world token-interceptor's fresh-Bearer signal to the service
 // worker, which has no access to the page's main world. The interceptor posts on
-// window; we forward as a runtime message (spec FR-008, plan Phase 4).
+// window; we forward as a runtime message. This is a best-effort *fast path* only:
+// the post can fire before this listener attaches (it runs at document_idle, the
+// interceptor captures at document_start), in which case the signal is simply lost.
+// Reliable recovery does not depend on it — the service worker pulls the Bearer
+// when an Azure DevOps tab finishes loading. See ADR 0002.
+//
+// (We can't read window.__devopsExtCapturedAuth here to cover a missed post: that
+// key lives in the page's MAIN world and is invisible to this isolated-world script.)
 window.addEventListener('message', (event) => {
   if (event.source !== window) {
     return;

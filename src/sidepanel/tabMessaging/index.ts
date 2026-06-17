@@ -1,4 +1,3 @@
-export type { RuntimeResponse } from './runtimeResponse';
 export { getActiveTabId } from './getActiveTabId';
 export { isActiveTabAzureDevOps } from './isActiveTabAzureDevOps';
 export { fetchWorkItems } from './fetchWorkItems';

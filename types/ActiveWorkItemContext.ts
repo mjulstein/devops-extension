@@ -1,4 +1,4 @@
-export interface ActiveWorkItemSummary {
+interface ActiveWorkItemSummary {
   id: number;
   title: string;
   workItemType: string;

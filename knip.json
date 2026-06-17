@@ -1,0 +1,10 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "entry": [
+    "src/sidepanel.tsx",
+    "src/service-worker.ts",
+    "src/content-script.ts",
+    "src/token-interceptor.ts"
+  ],
+  "project": ["src/**/*.{ts,tsx}", "types/**/*.ts"]
+}

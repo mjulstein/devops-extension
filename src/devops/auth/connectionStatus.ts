@@ -19,13 +19,3 @@ export async function getConnectionStatus(
 ): Promise<ConnectionStatus> {
   return deriveConnectionStatus(await readPatRecord(), now);
 }
-
-// On capture of a fresh Bearer the extension attempts exactly one automatic
-// rotation; a second capture must not fire another until the cycle resets
-// (success, or a manual Retry). See spec FR-008 / US-2.
-export function shouldAttemptAutoRecovery(
-  status: ConnectionStatus,
-  autoRecoveryAttempted: boolean
-): boolean {
-  return status === 'reconnect-needed' && !autoRecoveryAttempted;
-}
