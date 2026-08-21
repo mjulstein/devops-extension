@@ -14,7 +14,6 @@ dist
 .agents/skills/speckit-*
 
 .specify/integrations/claude
-.claude/skills
 
 .specify/extensions
 .specify/.registry
@@ -24,7 +23,9 @@ dist
 .specify/extensions.yml
 .specify/*.json
 
+temp/
 **/*.temp.*
 
 #claude
 .claude/**/*.local.*
+.claude/worktrees

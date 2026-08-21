@@ -39,6 +39,7 @@ A raw JSON response is also available in a collapsible section for debugging.
 - [`.specify`](./.specify/README.md) — local Spec Kit memory, planning templates, and optional command/skill helpers
 - [`specs`](./specs/README.md) — promoted feature specs and the idea-to-spec workflow
 - [`specs/ideas`](./specs/ideas/README.md) — incubator for rough feature ideas before they become numbered specs
+- [`dev`](./dev/README.md) — side-panel dev harness for UI work without an extension build
 - [`src`](./src/README.md) — extension entry points plus links to the source subdirectory docs
 - [`src/devops`](./src/devops/README.md) — Azure DevOps-specific selectors, parsing, context, and REST logic
 - [`src/sidepanel`](./src/sidepanel/README.md) — side panel shell, storage helpers, and UI module docs

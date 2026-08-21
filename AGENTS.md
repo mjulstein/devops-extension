@@ -16,6 +16,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 
 - `README.md` is the human-facing project overview.
 - `AGENTS.md` is the agent-facing execution guide.
+- `CLAUDE.md` is the Claude Code entry point; it imports `AGENTS.md` and adds no duplicate rules, so `AGENTS.md` stays the single source of truth for agent guidance.
 - `.specify/memory/constitution.md` is the planning constitution for future spec work.
 - `.specify/commands/` and `.specify/skills/` provide optional repo-local planning helpers layered on top of the Spec Kit templates.
 - `specs/` holds promoted feature specs, and `specs/ideas/` is the incubator for rough feature ideas before they are promoted.
@@ -36,6 +37,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - Preserve the current service-worker/side-panel context flow: `src/service-worker.ts` records the last visited Azure DevOps org/project and work-item URLs in `chrome.storage.local`, and `src/sidepanel/App.tsx` can pin an active work-item context so work-item actions still work when the active tab is not Azure DevOps.
 - Keep exploratory feature notes in `specs/ideas/` until goals, acceptance criteria, and sequencing are clear enough for a numbered feature spec.
 - Do not add secrets, tokens, or committed local configuration.
+- Prefer the `dev/` harness (`npm run dev:panel`) for side-panel UI work; it needs no extension build or reload. It serves fixtures only and never calls Azure DevOps, so verify data-dependent behavior by loading `dist/` as an unpacked extension.
 - Side panel React component files should use `PascalCase.tsx`.
 - Side panel React component styles should live beside their components in `ComponentName.module.css` files and be imported as `import classes from './ComponentName.module.css';`; when an element needs multiple classes, use `clsx` to compose them in JSX.
 - Side panel sections may add local `atoms/` subdirectories for reusable interactive concepts and colocated `*.test.ts` / `*.test.tsx` coverage; keep section layout files focused on composition rather than repeated row/button/control behavior.
@@ -50,6 +52,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 
 - `.specify/README.md` + `.specify/{commands,skills,memory,templates}/*` — local Spec Kit planning helpers, project memory, and markdown templates for future planning work
 - `specs/README.md` + `specs/ideas/README.md` — promoted feature spec workspace plus the rough-idea incubator
+- `dev/README.md` + `dev/*` — side-panel dev harness: runs the real `App` against a fake `chrome` global under Vite for UI work without an extension build/reload (mock data only)
 - `src/manifest.json` — extension manifest template copied to build output
 - `src/service-worker.ts` — extension startup/background behavior
 - `src/content-script.ts` — generic runtime message router between side panel and domain modules
@@ -76,6 +79,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - `dist/` — generated unpacked extension files (build output)
 - `README.md` — user/developer documentation
 - `AGENTS.md` — agent instructions
+- `CLAUDE.md` — Claude Code entry point (imports `AGENTS.md`)
 
 ## Configuration Rules
 
