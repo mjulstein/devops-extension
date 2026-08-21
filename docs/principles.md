@@ -1,6 +1,6 @@
-[root](../../README.md) / [.specify](../README.md) / [memory](./README.md) / constitution.md
+[root](../README.md) / [docs](./principles.md) / principles.md
 
-# DevOps Extension Constitution
+# DevOps Extension Principles
 
 ## Core Principles
 
@@ -19,10 +19,10 @@ The service worker and side panel must preserve the current fallback flow: last 
 Runtime settings and side-panel state should stay browser-local unless a deliberate design change says otherwise. Storage changes must remain backwards-compatible where practical so saved settings, cached results, hidden task filters, parent suggestions, and pinned context continue to hydrate cleanly.
 
 ### V. Documentation-First Planning
-Before a feature grows beyond a rough note, its scope, acceptance criteria, and implementation sequencing should be captured in Spec Kit artifacts. Markdown navigation, breadcrumbs, and directory docs must stay aligned so contributors and agents can move from root docs to feature docs predictably.
+Before a feature grows beyond a rough note, its scope, acceptance criteria, and implementation sequencing should be captured in `specs/` artifacts. Markdown navigation, breadcrumbs, and directory docs must stay aligned so contributors and agents can move from root docs to feature docs predictably.
 
 ### VI. Replaceable Backend Providers
-The extension targets Azure DevOps today but the integration must stay replaceable (for example, a future Jira/Bitbucket fork). Generic code — the side panel UI, the service-worker message router, and the work-item domain shape — must depend on a backend-agnostic provider port, never on backend-specific details. All Azure DevOps specifics, including the **entire authentication mechanism** (PAT lifecycle, main-world Bearer-token capture, any cookie handling), live inside the `src/devops/` adapter and are exposed to the generic core only through mechanism-free capabilities (fetch work items, reconnect, connection status). Swapping providers should mean replacing one adapter, with no change to the generic core. See [ADR-0001](../../docs/adr/0001-replaceable-provider-adapters.md).
+The extension targets Azure DevOps today but the integration must stay replaceable (for example, a future Jira/Bitbucket fork). Generic code — the side panel UI, the service-worker message router, and the work-item domain shape — must depend on a backend-agnostic provider port, never on backend-specific details. All Azure DevOps specifics, including the **entire authentication mechanism** (PAT lifecycle, main-world Bearer-token capture, any cookie handling), live inside the `src/devops/` adapter and are exposed to the generic core only through mechanism-free capabilities (fetch work items, reconnect, connection status). Swapping providers should mean replacing one adapter, with no change to the generic core. See [ADR-0001](./adr/0001-replaceable-provider-adapters.md).
 
 ### VII. Small, Single-Responsibility Units
 Source files stay as small as their single responsibility allows. Prefer decomposing into nested modules over growing a file: transport, policy, storage, and presentation are separate units. A unit should have one reason to change, and provider-specific logic should be legible file-by-file so a fork can see exactly what to replace.
@@ -44,7 +44,7 @@ Source files stay as small as their single responsibility allows. Prefer decompo
 
 ## Governance
 
-This constitution guides future spec work in this repository. Amendments should update this file together with any affected `README.md`, `AGENTS.md`, or spec artifacts so the planning workflow stays internally consistent.
+These principles guide work in this repository. Amendments should update this file together with any affected `README.md`, `AGENTS.md`, or `specs/` artifacts so guidance stays internally consistent.
 
 **Version**: 2.1.0 | **Ratified**: 2026-03-16 | **Last Amended**: 2026-05-29
 

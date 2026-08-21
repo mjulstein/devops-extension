@@ -14,7 +14,7 @@ The extension only integrates with Azure DevOps today, but we want to be able to
 
 ## Consequences
 
-- The PAT lifecycle moves out of `service-worker.ts` into the `src/devops/` adapter as small, single-responsibility units (transport / rotation policy / storage), per constitution Principle VII.
+- The PAT lifecycle moves out of `service-worker.ts` into the `src/devops/` adapter as small, single-responsibility units (transport / rotation policy / storage), per [principles](../principles.md) VII.
 - The main-world step shrinks to the one thing that truly needs the page's main world: returning the captured Bearer token. The lifecycle runs in the service worker against `patLifecycle`, making it unit-testable and debuggable.
 - The PAT settings UI (rotate, revoke, status) is itself provider-specific; long term it should be contributed by the provider rather than hardcoded in the generic `SettingsPane`.
 - Backend-specific message types (e.g. `ROTATE_PAT`) should converge on generic ones (e.g. `RECONNECT`).
