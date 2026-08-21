@@ -60,3 +60,44 @@
 .titleEmphasis {
   font-weight: 700;
 }
+
+/* Pull-request chip occupying the status slot. Sized to fit "mark + 5-digit id"
+   in the same 64px the state text had, so the title keeps its width. */
+.pr {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+  color: #0a5bd3;
+}
+
+.pr:hover {
+  text-decoration: underline;
+}
+
+.prMark {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.prApproved {
+  color: #1a7f37;
+  font-weight: 600;
+}
+
+.prRejected {
+  color: #b42318;
+}
+
+.prWaiting {
+  color: #9a6700;
+}
+
+.prDraft {
+  color: #6e7781;
+}

@@ -15,3 +15,7 @@ export type {
   ParentSuggestionStore
 } from './ParentSuggestion';
 export type { PatRecord } from './PatRecord';
+export type {
+  PullRequestApproval,
+  PullRequestRef
+} from './PullRequestRef';

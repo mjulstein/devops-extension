@@ -6,7 +6,11 @@ import type { PatRecord } from '@/types';
 // (`PUT validTo`) operation is deliberately never used. See CONTEXT.md + spec FR-004.
 
 const PAT_API_VERSION = '7.1-preview.1';
-const PAT_SCOPE = 'vso.work_write';
+// vso.work_write: read/write work items (the core feature).
+// vso.code:       read pull requests so the side panel can show an item's active
+//                 PR and whether it is approved. Azure DevOps has no PR-only
+//                 scope, so this also permits reading repository contents.
+export const PAT_SCOPE = 'vso.work_write vso.code';
 const PAT_FETCH_TIMEOUT_MS = 15_000;
 
 export interface RemotePatSummary {
@@ -55,7 +59,8 @@ export async function createPat(
     token: created.token,
     authorizationId: created.authorizationId,
     expiresAt: new Date(created.validTo).getTime(),
-    displayName
+    displayName,
+    scope: PAT_SCOPE
   };
 }
 

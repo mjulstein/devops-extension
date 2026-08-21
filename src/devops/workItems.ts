@@ -5,6 +5,11 @@ import type {
   WorkItemResult
 } from '@/types';
 import { authFetch } from './authFetch';
+import {
+  extractPullRequestIds,
+  fetchActivePullRequests,
+  selectActivePullRequests
+} from './pullRequests';
 
 export interface WorkItemsContext {
   organization: string;
@@ -87,9 +92,25 @@ async function fetchOpenItems(
     `
   );
 
-  const openItems = await fetchWorkItemDetails(openIds, organization, project);
+  // Relations are requested only for open items: they carry the pull-request
+  // links, and the closed list has no use for them (or for the extra payload).
+  const pullRequestIdsByItem = new Map<number, number[]>();
+  const openItems = await fetchWorkItemDetails(
+    openIds,
+    organization,
+    project,
+    WORK_ITEM_FIELDS,
+    { withRelations: true, collectPullRequestIds: pullRequestIdsByItem }
+  );
 
-  return enrichParents(openItems, organization, project).then((items) =>
+  const withPullRequests = await attachPullRequests(
+    openItems,
+    pullRequestIdsByItem,
+    organization,
+    project
+  );
+
+  return enrichParents(withPullRequests, organization, project).then((items) =>
     items.filter((item) => item.closedDate === null).sort(compareOpenItems)
   );
 }
@@ -286,7 +307,12 @@ async function fetchWorkItemDetails(
   ids: number[],
   organization: string,
   project: string,
-  fields = WORK_ITEM_FIELDS
+  fields = WORK_ITEM_FIELDS,
+  options: {
+    withRelations?: boolean;
+    /** Filled with itemId -> linked pull-request ids when `withRelations`. */
+    collectPullRequestIds?: Map<number, number[]>;
+  } = {}
 ): Promise<WorkItem[]> {
   if (!ids.length) {
     return [];
@@ -294,12 +320,19 @@ async function fetchWorkItemDetails(
 
   const idChunks = chunkArray(ids, 50);
   const allItems: WorkItem[] = [];
+  const linkedPullRequestIds = options.collectPullRequestIds;
 
   for (const chunk of idChunks) {
+    // Azure DevOps rejects `fields` together with `$expand`, so asking for
+    // relations means taking the full field set for those items.
+    const projection = options.withRelations
+      ? '&$expand=relations'
+      : `&fields=${encodeURIComponent(fields.join(','))}`;
+
     const workItemsUrl =
       `https://dev.azure.com/${encodeURIComponent(organization)}/${encodeURIComponent(project)}` +
       `/_apis/wit/workitems?ids=${chunk.join(',')}` +
-      `&fields=${encodeURIComponent(fields.join(','))}` +
+      projection +
       '&api-version=7.0';
 
     const workItemsResponse = await authFetch(workItemsUrl, {
@@ -320,12 +353,48 @@ async function fetchWorkItemDetails(
     for (const payload of payloads) {
       const parsed = toWorkItem(payload, organization, project);
       if (parsed) {
+        if (linkedPullRequestIds) {
+          const relationIds = extractPullRequestIds(payload.relations);
+          if (relationIds.length) {
+            linkedPullRequestIds.set(parsed.id, relationIds);
+          }
+        }
         allItems.push(parsed);
       }
     }
   }
 
   return allItems;
+}
+
+/**
+ * Attaches each item's still-open pull requests. Best-effort by design: when PR
+ * data cannot be read (for example a PAT that predates the `vso.code` scope and
+ * returns 401), items come back untouched and the row shows state instead.
+ */
+async function attachPullRequests(
+  items: WorkItem[],
+  linked: Map<number, number[]>,
+  organization: string,
+  project: string
+): Promise<WorkItem[]> {
+  if (!linked.size) {
+    return items;
+  }
+
+  const activeById = await fetchActivePullRequests(organization, project);
+  if (!activeById.size) {
+    return items;
+  }
+
+  return items.map((item) => {
+    const ids = linked.get(item.id);
+    if (!ids?.length) {
+      return item;
+    }
+    const pullRequests = selectActivePullRequests(ids, activeById);
+    return pullRequests.length ? { ...item, pullRequests } : item;
+  });
 }
 
 async function enrichParents(

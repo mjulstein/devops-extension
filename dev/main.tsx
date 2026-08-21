@@ -36,7 +36,7 @@ const WIDTH_KEY = 'devharness.width';
 function DevHarness() {
   const [scenario, setScenario] = useState<ScenarioId>(scenarioId);
   const [width, setWidth] = useState<number>(
-    Number(window.localStorage.getItem(WIDTH_KEY)) || 400
+    Number(window.localStorage.getItem(WIDTH_KEY)) || 360
   );
   // Remount App on scenario change so it refetches from the new fixtures.
   const [generation, setGeneration] = useState(0);

@@ -5,6 +5,7 @@ import {
   type PatApiPort,
   type PatStorePort
 } from './ensurePat';
+import { PAT_SCOPE } from './patApi';
 import { PAT_ROTATION_THRESHOLD_MS, PAT_VALIDITY_MS } from './rotationPolicy';
 
 const NOW = 1_700_000_000_000;
@@ -29,6 +30,9 @@ function makeRecord(overrides: Partial<PatRecord> = {}): PatRecord {
     authorizationId: 'auth-old',
     expiresAt: NOW + PAT_VALIDITY_MS,
     displayName: 'abcd1234-devopsext',
+    // Records default to the current scope; a stale scope is its own rotation
+    // trigger, covered in rotationPolicy.test.ts.
+    scope: PAT_SCOPE,
     ...overrides
   };
 }

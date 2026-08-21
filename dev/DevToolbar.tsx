@@ -2,7 +2,8 @@ import classes from './DevToolbar.module.css';
 import { SCENARIO_IDS, SCENARIOS } from './scenarios';
 import type { ScenarioId } from './scenarios';
 
-const WIDTHS = [320, 400, 480, 600];
+// 360 is the real Edge/Chrome side-panel default width — iterate against that.
+const WIDTHS = [320, 360, 400, 480, 600];
 
 interface DevToolbarProps {
   scenarioId: ScenarioId;

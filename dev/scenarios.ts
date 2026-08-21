@@ -1,6 +1,8 @@
 import type {
   ActiveWorkItemContext,
   ChildTaskItem,
+  PullRequestApproval,
+  PullRequestRef,
   WorkItem,
   WorkItemResult
 } from '@/types';
@@ -42,6 +44,23 @@ function daysAgo(days: number): string {
   return date.toISOString();
 }
 
+function pullRequest(
+  id: number,
+  approval: PullRequestApproval,
+  overrides: Partial<PullRequestRef> = {}
+): PullRequestRef {
+  return {
+    id,
+    url: `https://dev.azure.com/${DEV_ORGANIZATION}/${DEV_PROJECT}/_git/some-repo/pullrequest/${id}`,
+    title: `Pull request ${id}`,
+    repoName: 'some-repo',
+    isDraft: false,
+    approval,
+    createdAt: Date.now() - id,
+    ...overrides
+  };
+}
+
 function workItem(overrides: Partial<WorkItem> & { id: number }): WorkItem {
   return {
     workItemType: 'Task',
@@ -73,14 +92,21 @@ const HAPPY_OPEN: WorkItem[] = [
     parentId: 1000,
     parent: parentSummary,
     hasIncompleteChildren: true,
-    lastChangedDate: daysAgo(0)
+    lastChangedDate: daysAgo(0),
+    // Approved and waiting to merge — the state text would just say "In Progress".
+    pullRequests: [pullRequest(41909, 'approved')]
   }),
   workItem({
     id: 1002,
     title: 'Group closed items by day',
     state: 'To Do',
     parentId: 1000,
-    parent: parentSummary
+    parent: parentSummary,
+    // Two open PRs: the row links the oldest (the first incomplete one).
+    pullRequests: [
+      pullRequest(41820, 'no-vote'),
+      pullRequest(41955, 'approved')
+    ]
   }),
   workItem({
     id: 1003,
@@ -89,6 +115,26 @@ const HAPPY_OPEN: WorkItem[] = [
       'A deliberately long title that should wrap or truncate gracefully in a narrow side panel without pushing the layout sideways',
     state: 'To Do',
     lastChangedDate: daysAgo(9)
+  }),
+  workItem({
+    id: 1004,
+    workItemType: 'Bug',
+    title: 'Reviewer asked for changes on the auth resync',
+    state: 'In Progress',
+    pullRequests: [pullRequest(41870, 'waiting-for-author')]
+  }),
+  workItem({
+    id: 1005,
+    title: 'Draft PR for the closed-items grouping',
+    state: 'In Progress',
+    pullRequests: [pullRequest(41888, 'no-vote', { isDraft: true })]
+  }),
+  workItem({
+    id: 1006,
+    workItemType: 'Bug',
+    title: 'Rejected approach to tab dedup',
+    state: 'In Progress',
+    pullRequests: [pullRequest(41799, 'rejected')]
   })
 ];
 

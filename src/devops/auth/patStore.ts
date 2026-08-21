@@ -31,7 +31,8 @@ export function parsePatRecord(value: unknown): PatRecord | null {
     token: value.token,
     authorizationId: value.authorizationId,
     expiresAt: value.expiresAt,
-    displayName: value.displayName
+    displayName: value.displayName,
+    ...(typeof value.scope === 'string' ? { scope: value.scope } : {})
   };
 }
 
