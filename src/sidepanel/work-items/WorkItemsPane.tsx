@@ -37,6 +37,9 @@ interface StatusCardProps {
   authoredItems: WorkItem[] | null;
   isAuthoredLoading: boolean;
   authoredError: string | null;
+  closedParentRollup: WorkItem[] | null;
+  isClosedRollupLoading: boolean;
+  closedRollupError: string | null;
 }
 
 export function WorkItemsPane({
@@ -60,7 +63,10 @@ export function WorkItemsPane({
   onSelectListTab,
   authoredItems,
   isAuthoredLoading,
-  authoredError
+  authoredError,
+  closedParentRollup,
+  isClosedRollupLoading,
+  closedRollupError
 }: StatusCardProps) {
   const statusKindClassNames = {
     info: classes.statusInfo,
@@ -113,7 +119,7 @@ export function WorkItemsPane({
               emptyText="No open items."
               items={result.openItems}
               showState={true}
-              showParentDetails={showWorkItemParentDetails}
+              groupByParent={showWorkItemParentDetails}
               linkExternal={linkExternal}
             />
           ) : isAuthoredLoading ? (
@@ -129,7 +135,7 @@ export function WorkItemsPane({
               emptyText="No open items you authored and are not assigned to."
               items={authoredItems ?? []}
               showState={true}
-              showParentDetails={showWorkItemParentDetails}
+              groupByParent={showWorkItemParentDetails}
               linkExternal={linkExternal}
             />
           )}
@@ -146,16 +152,36 @@ export function WorkItemsPane({
             onEnableCustomClosedEndDate={onEnableCustomClosedEndDate}
             onResetClosedDateRange={onResetClosedDateRange}
           />
-          <WorkItemSection
-            title="Closed"
-            emptyText="No closed items in this range."
-            items={result.closedItems}
-            showState={false}
-            showParentDetails={showWorkItemParentDetails}
-            groupByClosedDate={true}
-            onRefetchClosedDay={onRefetchClosedDay}
-            linkExternal={linkExternal}
-          />
+          {showWorkItemParentDetails ? (
+            isClosedRollupLoading ? (
+              <div className={classes.loading}>Loading finished items…</div>
+            ) : closedRollupError ? (
+              <div className={clsx(classes.statusMessage, classes.statusError)}>
+                {closedRollupError}
+              </div>
+            ) : (
+              <WorkItemSection
+                title="Closed"
+                emptyText="Nothing finished in this range — every parent still has open tasks."
+                items={closedParentRollup ?? []}
+                showState={false}
+                groupByClosedDate={true}
+                onRefetchClosedDay={onRefetchClosedDay}
+                linkExternal={linkExternal}
+              />
+            )
+          ) : (
+            <WorkItemSection
+              title="Closed"
+              emptyText="No closed items in this range."
+              items={result.closedItems}
+              showState={false}
+              showParentDetails={showWorkItemParentDetails}
+              groupByClosedDate={true}
+              onRefetchClosedDay={onRefetchClosedDay}
+              linkExternal={linkExternal}
+            />
+          )}
         </section>
       )}
     </>

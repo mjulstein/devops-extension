@@ -32,6 +32,10 @@ export interface Scenario {
   workItems: WorkItemResult;
   childTasks: ChildTaskItem[];
   activeContext: ActiveWorkItemContext | null;
+  /** Lazily-loaded Authored tab contents. */
+  authoredItems: WorkItem[];
+  /** Lazily-loaded Closed rollup: parents with no remaining open tasks. */
+  closedParentRollup: WorkItem[];
 }
 
 function url(id: number): string {
@@ -205,6 +209,43 @@ function result(open: WorkItem[], closed: WorkItem[]): WorkItemResult {
 
 const EMPTY_RESULT = result([], []);
 
+const AUTHORED: WorkItem[] = [
+  workItem({
+    id: 1200,
+    title: 'Spec the reconnect flow (handed to someone else)',
+    state: 'To Do',
+    parentId: 1000,
+    parent: parentSummary
+  }),
+  workItem({
+    id: 1201,
+    workItemType: 'Bug',
+    title: 'Tab icons flicker on first paint',
+    state: 'In Progress',
+    pullRequests: [pullRequest(41700, 'approved')]
+  })
+];
+
+// Parents whose children are all done, plus a standalone closed deliverable.
+const CLOSED_ROLLUP: WorkItem[] = [
+  workItem({
+    id: 1000,
+    workItemType: 'Product Backlog Item',
+    title: 'Make the side panel readable at a glance',
+    state: 'Done',
+    closedDate: daysAgo(0),
+    lastChangedDate: daysAgo(0)
+  }),
+  workItem({
+    id: 901,
+    workItemType: 'Bug',
+    title: 'Stale bearer token breaks the session',
+    state: 'Closed',
+    closedDate: daysAgo(1),
+    lastChangedDate: daysAgo(1)
+  })
+];
+
 function manyItems(): WorkItem[] {
   return Array.from({ length: 40 }, (_, index) =>
     workItem({
@@ -224,7 +265,9 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     connection: 'connected',
     workItems: result(HAPPY_OPEN, HAPPY_CLOSED),
     childTasks: CHILD_TASKS,
-    activeContext: ACTIVE_CONTEXT
+    activeContext: ACTIVE_CONTEXT,
+    authoredItems: AUTHORED,
+    closedParentRollup: CLOSED_ROLLUP,
   },
   empty: {
     id: 'empty',
@@ -234,7 +277,9 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     connection: 'connected',
     workItems: EMPTY_RESULT,
     childTasks: [],
-    activeContext: null
+    activeContext: null,
+    authoredItems: AUTHORED,
+    closedParentRollup: CLOSED_ROLLUP,
   },
   many: {
     id: 'many',
@@ -244,7 +289,9 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     connection: 'connected',
     workItems: result(manyItems(), HAPPY_CLOSED),
     childTasks: CHILD_TASKS,
-    activeContext: ACTIVE_CONTEXT
+    activeContext: ACTIVE_CONTEXT,
+    authoredItems: AUTHORED,
+    closedParentRollup: CLOSED_ROLLUP,
   },
   'reconnect-needed': {
     id: 'reconnect-needed',
@@ -254,7 +301,9 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     connection: 'reconnect-needed',
     workItems: EMPTY_RESULT,
     childTasks: [],
-    activeContext: null
+    activeContext: null,
+    authoredItems: AUTHORED,
+    closedParentRollup: CLOSED_ROLLUP,
   },
   error: {
     id: 'error',
@@ -265,7 +314,9 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     connection: 'connected',
     workItems: EMPTY_RESULT,
     childTasks: [],
-    activeContext: null
+    activeContext: null,
+    authoredItems: AUTHORED,
+    closedParentRollup: CLOSED_ROLLUP,
   },
   slow: {
     id: 'slow',
@@ -275,7 +326,9 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     connection: 'connected',
     workItems: result(HAPPY_OPEN, HAPPY_CLOSED),
     childTasks: CHILD_TASKS,
-    activeContext: ACTIVE_CONTEXT
+    activeContext: ACTIVE_CONTEXT,
+    authoredItems: AUTHORED,
+    closedParentRollup: CLOSED_ROLLUP,
   }
 };
 

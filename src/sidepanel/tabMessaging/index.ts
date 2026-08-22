@@ -3,6 +3,7 @@ export { getActiveTabId } from './getActiveTabId';
 export { isActiveTabAzureDevOps } from './isActiveTabAzureDevOps';
 export { fetchWorkItems } from './fetchWorkItems';
 export { fetchAuthoredWorkItems } from './fetchAuthoredWorkItems';
+export { fetchClosedParentRollup } from './fetchClosedParentRollup';
 export { getActiveWorkItemContext } from './getActiveWorkItemContext';
 export { createChildTask } from './createChildTask';
 export { fetchChildTasksForCurrentParent } from './fetchChildTasksForCurrentParent';

@@ -10,7 +10,11 @@ import {
 import { fetchChildTasksForActiveParent } from './devops/childTasks';
 import { resolveActiveWorkItemContext } from './devops/activeParentContext';
 import { createChildTaskFromActivePage } from './devops/taskCreation';
-import { fetchAuthoredWorkItems, fetchWorkItems } from './devops/workItems';
+import {
+  fetchAuthoredWorkItems,
+  fetchClosedParentRollup,
+  fetchWorkItems
+} from './devops/workItems';
 import { setParentForActiveWorkItem } from './devops/parentAssignment';
 import { ensurePat } from './devops/auth/ensurePat';
 import { revokeAllExtensionPats } from './devops/auth/revokeAllExtensionPats';
@@ -32,6 +36,10 @@ type RuntimeMessage =
     }
   | {
       type: 'FETCH_AUTHORED_WORK_ITEMS';
+      payload: FetchWorkItemsRequest;
+    }
+  | {
+      type: 'FETCH_CLOSED_PARENT_ROLLUP';
       payload: FetchWorkItemsRequest;
     }
   | {
@@ -299,6 +307,16 @@ chrome.runtime.onMessage.addListener(
     if (message.type === 'DEVOPS_BEARER_CAPTURED') {
       void connectionService.handleBearerCaptured();
       return;
+    }
+
+    if (message.type === 'FETCH_CLOSED_PARENT_ROLLUP') {
+      resolveWorkItemsContext(message.payload.settings)
+        .then((context) => fetchClosedParentRollup(message.payload, context))
+        .then((result) => sendResponse({ ok: true, result }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
     }
 
     if (message.type === 'FETCH_AUTHORED_WORK_ITEMS') {

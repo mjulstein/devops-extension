@@ -1,6 +1,7 @@
 import type { WorkItem } from '@/types';
 import {
   getClosedGroup,
+  groupItemsByParent,
   groupClosedItems,
   shouldEmphasizeCompletedItem
 } from './workItemGrouping';
@@ -65,5 +66,71 @@ describe('workItemGrouping', () => {
         createWorkItem({ workItemType: 'PBI', closedDate: null })
       )
     ).toBe(false);
+  });
+});
+
+describe('groupItemsByParent', () => {
+  function parent(id: number) {
+    return {
+      id,
+      title: `Parent ${id}`,
+      workItemType: 'Product Backlog Item',
+      url: `https://example.invalid/${id}`
+    };
+  }
+
+  function item(id: number, parentId: number | null): WorkItem {
+    return {
+      id,
+      workItemType: 'Task',
+      title: `Task ${id}`,
+      state: 'To Do',
+      assignedTo: 'Dev',
+      parentId,
+      parent: parentId === null ? null : parent(parentId),
+      closedDate: null,
+      lastChangedDate: null,
+      url: `https://example.invalid/${id}`
+    };
+  }
+
+  it('collects items under a shared parent', () => {
+    const groups = groupItemsByParent([
+      item(1, 900),
+      item(2, 900),
+      item(3, 901)
+    ]);
+
+    expect(groups.map((g) => g.key)).toEqual(['parent-900', 'parent-901']);
+    expect(groups[0]?.items.map((i) => i.id)).toEqual([1, 2]);
+    expect(groups[1]?.items.map((i) => i.id)).toEqual([3]);
+  });
+
+  // Upstream sorting must survive grouping, so a parent appears where its
+  // first item did.
+  it('orders parents by first appearance', () => {
+    const groups = groupItemsByParent([
+      item(1, 901),
+      item(2, 900),
+      item(3, 901)
+    ]);
+
+    expect(groups.map((g) => g.key)).toEqual(['parent-901', 'parent-900']);
+  });
+
+  it('puts parentless items in a single trailing group', () => {
+    const groups = groupItemsByParent([
+      item(1, null),
+      item(2, 900),
+      item(3, null)
+    ]);
+
+    expect(groups.map((g) => g.key)).toEqual(['parent-900', 'no-parent']);
+    expect(groups[1]?.parent).toBeNull();
+    expect(groups[1]?.items.map((i) => i.id)).toEqual([1, 3]);
+  });
+
+  it('returns nothing for an empty list', () => {
+    expect(groupItemsByParent([])).toEqual([]);
   });
 });

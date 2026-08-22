@@ -48,6 +48,7 @@ import {
   createChildTask,
   ensureConnection,
   fetchAuthoredWorkItems,
+  fetchClosedParentRollup,
   fetchChildTasksForCurrentParent,
   fetchWorkItems,
   getActiveTabId,
@@ -107,6 +108,15 @@ export function useSidepanelController() {
   const [authoredItems, setAuthoredItems] = useState<WorkItem[] | null>(null);
   const [isAuthoredLoading, setIsAuthoredLoading] = useState(false);
   const [authoredError, setAuthoredError] = useState<string | null>(null);
+  // Closed list rolled up to finished parents. Loaded only while "show task
+  // parent details" is on, since it needs every parent's child states.
+  const [closedParentRollup, setClosedParentRollup] = useState<
+    WorkItem[] | null
+  >(null);
+  const [isClosedRollupLoading, setIsClosedRollupLoading] = useState(false);
+  const [closedRollupError, setClosedRollupError] = useState<string | null>(
+    null
+  );
   const [hiddenTaskStates, setHiddenTaskStates] = useState<string[]>([]);
   const [closedDateRange, setClosedDateRange] = useState<ClosedDateRange>(() =>
     createDefaultClosedDateRange()
@@ -461,6 +471,12 @@ export function useSidepanelController() {
 
     const startedAt = Date.now();
     const fetchSequence = ++workItemsFetchSequenceRef.current;
+
+    // The lazily-loaded lists are derived from the same query parameters, so a
+    // refetch invalidates them rather than leaving a stale Authored count or a
+    // rollup computed for a different date range.
+    setAuthoredItems(null);
+    setClosedParentRollup(null);
     const effectiveClosedDateRange =
       options?.closedDateRange ?? closedDateRange;
     const fetchSource = options?.source ?? 'manual';
@@ -631,6 +647,42 @@ export function useSidepanelController() {
     const nextValue = !showWorkItemParentDetails;
     setShowWorkItemParentDetails(nextValue);
     await saveShowWorkItemParentDetails(nextValue);
+
+    if (nextValue) {
+      await loadClosedParentRollup();
+    }
+  }
+
+  async function loadClosedParentRollup() {
+    if (closedParentRollup !== null || isClosedRollupLoading) {
+      return;
+    }
+
+    setIsClosedRollupLoading(true);
+    setClosedRollupError(null);
+    try {
+      const response = await fetchClosedParentRollup({
+        settings,
+        closedDateRange,
+        scope: 'all'
+      });
+      if (response.ok) {
+        setClosedParentRollup(response.result);
+        pushDebugLog(
+          'success',
+          `Closed rollup returned ${response.result.length} finished parent(s).`
+        );
+      } else {
+        setClosedRollupError(response.error);
+        pushDebugLog('error', `Closed rollup failed: ${response.error}`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setClosedRollupError(message);
+      pushDebugLog('error', `Closed rollup threw: ${message}`);
+    } finally {
+      setIsClosedRollupLoading(false);
+    }
   }
 
   async function refreshActiveWorkItemContext(
@@ -1087,6 +1139,9 @@ export function useSidepanelController() {
   }
 
   return {
+    closedParentRollup,
+    isClosedRollupLoading,
+    closedRollupError,
     activeListTab,
     onSelectListTab,
     authoredItems,

@@ -140,6 +140,163 @@ export async function fetchAuthoredWorkItems(
 }
 
 /**
+ * The Closed list, rolled up to finished deliverables.
+ *
+ * Individual closed tasks are noise when reviewing what actually shipped: what
+ * matters is whether the parent they belong to is *done*. So this returns
+ *
+ *   - parents of the closed tasks that have **no remaining open children**, and
+ *   - closed non-task items with no parent, which are the deliverable themselves.
+ *
+ * A parent that still has open tasks is deliberately absent: the work is not
+ * finished, however many of its tasks closed in the range.
+ *
+ * Each returned item carries an *effective* closedDate — the parent's own, or
+ * failing that the latest closed date among its children in range — so the
+ * existing date grouping keeps working and a parent lands on the day its work
+ * actually finished.
+ */
+export async function fetchClosedParentRollup(
+  request: FetchWorkItemsRequest,
+  context: WorkItemsContext
+): Promise<WorkItem[]> {
+  const organization = context.organization.trim();
+  const project = context.project.trim();
+
+  if (!organization || !project) {
+    throw new Error(
+      'Missing organization/project context for closed rollup fetch.'
+    );
+  }
+
+  const closedDateRange = normalizeClosedDateRange(request.closedDateRange);
+  const assignedToClause = buildAssignedToClause(
+    request.settings.assignedTo.trim()
+  );
+
+  const closedItems = await fetchClosedItems(
+    organization,
+    project,
+    assignedToClause,
+    closedDateRange.start,
+    closedDateRange.end
+  );
+
+  // Latest closed date seen per parent, used when the parent itself is not closed.
+  const latestChildClosedByParent = new Map<number, string>();
+  const standalone: WorkItem[] = [];
+
+  for (const item of closedItems) {
+    if (item.parentId === null) {
+      // Tasks are the noise this view exists to remove; anything else with no
+      // parent is a deliverable in its own right.
+      if (item.workItemType.trim().toLowerCase() !== 'task') {
+        standalone.push(item);
+      }
+      continue;
+    }
+
+    const current = latestChildClosedByParent.get(item.parentId);
+    if (item.closedDate && (!current || item.closedDate > current)) {
+      latestChildClosedByParent.set(item.parentId, item.closedDate);
+    }
+  }
+
+  const parentIds = Array.from(latestChildClosedByParent.keys());
+  const finishedParents: WorkItem[] = [];
+
+  if (parentIds.length) {
+    // Relations come back with the parents themselves, so this costs two
+    // requests rather than one per parent.
+    const childIdsByParent = new Map<number, number[]>();
+    const parents = await fetchWorkItemDetails(
+      parentIds,
+      organization,
+      project,
+      WORK_ITEM_FIELDS,
+      { withRelations: true, collectChildIds: childIdsByParent }
+    );
+
+    const allChildIds = Array.from(
+      new Set(Array.from(childIdsByParent.values()).flat())
+    );
+    const openChildIds = new Set<number>();
+
+    if (allChildIds.length) {
+      const children = await fetchWorkItemDetails(
+        allChildIds,
+        organization,
+        project,
+        ['System.Id', 'System.State', 'System.WorkItemType']
+      );
+      for (const child of children) {
+        if (!isCompletedState(child.state)) {
+          openChildIds.add(child.id);
+        }
+      }
+    }
+
+    for (const parent of parents) {
+      // Every child type counts here, not only Tasks: an umbrella Feature whose
+      // children are PBIs has no Task children at all, and treating that as
+      // "finished" would surface work that has barely started.
+      const children = childIdsByParent.get(parent.id) ?? [];
+      if (children.some((childId) => openChildIds.has(childId))) {
+        continue;
+      }
+      finishedParents.push({
+        ...parent,
+        closedDate:
+          parent.closedDate ?? latestChildClosedByParent.get(parent.id) ?? null
+      });
+    }
+  }
+
+  return [...finishedParents, ...standalone].sort(compareClosedItemsByDateDesc);
+}
+
+function isCompletedState(state: string): boolean {
+  const normalized = state.trim().toLowerCase();
+  return normalized === 'done' || normalized === 'closed';
+}
+
+/** Child work-item ids from a payload's hierarchy relations. */
+function extractHierarchyChildIds(relations: unknown): number[] {
+  if (!Array.isArray(relations)) {
+    return [];
+  }
+
+  const ids: number[] = [];
+  for (const relation of relations) {
+    if (
+      !isRecord(relation) ||
+      relation.rel !== 'System.LinkTypes.Hierarchy-Forward' ||
+      typeof relation.url !== 'string'
+    ) {
+      continue;
+    }
+    const match = /\/workItems\/(\d+)$/i.exec(relation.url);
+    if (!match) {
+      continue;
+    }
+    const id = Number(match[1]);
+    if (Number.isInteger(id) && !ids.includes(id)) {
+      ids.push(id);
+    }
+  }
+  return ids;
+}
+
+function compareClosedItemsByDateDesc(a: WorkItem, b: WorkItem): number {
+  const left = a.closedDate ?? '';
+  const right = b.closedDate ?? '';
+  if (left === right) {
+    return b.id - a.id;
+  }
+  return left < right ? 1 : -1;
+}
+
+/**
  * Shared pipeline for every "still open" list: resolve ids, fetch details with
  * relations (which carry the pull-request links), attach the open PRs, then
  * enrich parents.
@@ -372,6 +529,8 @@ async function fetchWorkItemDetails(
     withRelations?: boolean;
     /** Filled with itemId -> linked pull-request ids when `withRelations`. */
     collectPullRequestIds?: Map<number, number[]>;
+    /** Filled with itemId -> child work-item ids when `withRelations`. */
+    collectChildIds?: Map<number, number[]>;
   } = {}
 ): Promise<WorkItem[]> {
   if (!ids.length) {
@@ -381,6 +540,7 @@ async function fetchWorkItemDetails(
   const idChunks = chunkArray(ids, 50);
   const allItems: WorkItem[] = [];
   const linkedPullRequestIds = options.collectPullRequestIds;
+  const linkedChildIds = options.collectChildIds;
 
   for (const chunk of idChunks) {
     // Azure DevOps rejects `fields` together with `$expand`, so asking for
@@ -417,6 +577,12 @@ async function fetchWorkItemDetails(
           const relationIds = extractPullRequestIds(payload.relations);
           if (relationIds.length) {
             linkedPullRequestIds.set(parsed.id, relationIds);
+          }
+        }
+        if (linkedChildIds) {
+          const childIds = extractHierarchyChildIds(payload.relations);
+          if (childIds.length) {
+            linkedChildIds.set(parsed.id, childIds);
           }
         }
         allItems.push(parsed);

@@ -89,6 +89,9 @@ export function App() {
           authoredItems={controller.authoredItems}
           isAuthoredLoading={controller.isAuthoredLoading}
           authoredError={controller.authoredError}
+          closedParentRollup={controller.closedParentRollup}
+          isClosedRollupLoading={controller.isClosedRollupLoading}
+          closedRollupError={controller.closedRollupError}
           isActionDisabled={controller.isActionDisabled}
           linkExternal={controller.linkExternal}
         />
