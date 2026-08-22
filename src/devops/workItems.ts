@@ -77,7 +77,7 @@ async function fetchOpenItems(
   assignedToClause: string,
   todoStates: string[]
 ): Promise<WorkItem[]> {
-  const openIds = await queryWorkItemIds(
+  return fetchOpenItemsForWiql(
     organization,
     project,
     `
@@ -91,12 +91,71 @@ async function fetchOpenItems(
       ORDER BY [System.ChangedDate] DESC
     `
   );
+}
+
+/**
+ * Work items the user authored that are still open, excluding anything assigned
+ * to them — those already appear in the TODO list, and the point of this view is
+ * work you started but someone else now owns.
+ *
+ * Unassigned items are deliberately kept: in WIQL a `<>` comparison excludes
+ * empty values, so they need an explicit escape hatch or authored-but-unassigned
+ * work would silently vanish.
+ */
+export async function fetchAuthoredWorkItems(
+  request: FetchWorkItemsRequest,
+  context: WorkItemsContext
+): Promise<WorkItem[]> {
+  const organization = context.organization.trim();
+  const project = context.project.trim();
+
+  if (!organization || !project) {
+    throw new Error(
+      'Missing organization/project context for authored work-item fetch.'
+    );
+  }
+
+  const assignedToClause = buildAssignedToClause(
+    request.settings.assignedTo.trim()
+  );
+
+  return fetchOpenItemsForWiql(
+    organization,
+    project,
+    `
+      SELECT
+        [System.Id]
+      FROM WorkItems
+      WHERE
+        [System.TeamProject] = @project
+        AND [System.CreatedBy] = @Me
+        AND [System.State] NOT IN ('Done', 'Closed', 'Removed')
+        AND (
+          [System.AssignedTo] <> ${assignedToClause}
+          OR [System.AssignedTo] = ''
+        )
+      ORDER BY [System.ChangedDate] DESC
+    `
+  );
+}
+
+/**
+ * Shared pipeline for every "still open" list: resolve ids, fetch details with
+ * relations (which carry the pull-request links), attach the open PRs, then
+ * enrich parents.
+ */
+async function fetchOpenItemsForWiql(
+  organization: string,
+  project: string,
+  wiql: string
+): Promise<WorkItem[]> {
+  const ids = await queryWorkItemIds(organization, project, wiql);
 
   // Relations are requested only for open items: they carry the pull-request
   // links, and the closed list has no use for them (or for the extra payload).
   const pullRequestIdsByItem = new Map<number, number[]>();
-  const openItems = await fetchWorkItemDetails(
-    openIds,
+  const items = await fetchWorkItemDetails(
+    ids,
     organization,
     project,
     WORK_ITEM_FIELDS,
@@ -104,14 +163,15 @@ async function fetchOpenItems(
   );
 
   const withPullRequests = await attachPullRequests(
-    openItems,
+    items,
     pullRequestIdsByItem,
     organization,
     project
   );
 
-  return enrichParents(withPullRequests, organization, project).then((items) =>
-    items.filter((item) => item.closedDate === null).sort(compareOpenItems)
+  return enrichParents(withPullRequests, organization, project).then(
+    (enriched) =>
+      enriched.filter((item) => item.closedDate === null).sort(compareOpenItems)
   );
 }
 

@@ -82,6 +82,13 @@ export function App() {
           onToggleShowWorkItemParentDetails={
             controller.onToggleShowWorkItemParentDetails
           }
+          activeListTab={controller.activeListTab}
+          onSelectListTab={(tab) => {
+            void controller.onSelectListTab(tab);
+          }}
+          authoredItems={controller.authoredItems}
+          isAuthoredLoading={controller.isAuthoredLoading}
+          authoredError={controller.authoredError}
           isActionDisabled={controller.isActionDisabled}
           linkExternal={controller.linkExternal}
         />

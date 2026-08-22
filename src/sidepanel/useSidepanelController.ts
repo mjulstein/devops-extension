@@ -47,6 +47,7 @@ import { deduplicateTabs } from './deduplicateTabs';
 import {
   createChildTask,
   ensureConnection,
+  fetchAuthoredWorkItems,
   fetchChildTasksForCurrentParent,
   fetchWorkItems,
   getActiveTabId,
@@ -56,6 +57,7 @@ import {
   setActiveWorkItemParent,
   type ConnectionStatus
 } from './tabMessaging';
+import type { WorkItemListTab } from './work-items/atoms/WorkItemListTabs';
 import type { DebugLogEntry } from './DebugConsolePane';
 import type { SidepanelTabId } from './Tabs';
 import { tryCreateLastVisitedDevOpsContext } from '../devops/lastVisitedContext';
@@ -99,6 +101,12 @@ export function useSidepanelController() {
   const [createTaskStatusMessage, setCreateTaskStatusMessage] =
     useState<StatusMessage | null>(null);
   const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
+  // Which list the Work items tab is showing, plus the lazily-loaded Authored
+  // data. `null` means "not fetched yet", which is distinct from an empty list.
+  const [activeListTab, setActiveListTab] = useState<WorkItemListTab>('todo');
+  const [authoredItems, setAuthoredItems] = useState<WorkItem[] | null>(null);
+  const [isAuthoredLoading, setIsAuthoredLoading] = useState(false);
+  const [authoredError, setAuthoredError] = useState<string | null>(null);
   const [hiddenTaskStates, setHiddenTaskStates] = useState<string[]>([]);
   const [closedDateRange, setClosedDateRange] = useState<ClosedDateRange>(() =>
     createDefaultClosedDateRange()
@@ -1042,7 +1050,48 @@ export function useSidepanelController() {
       ? `${activeItemHeading} (task #${activeWorkItemContext.viewedTaskId})`
       : activeItemHeading;
 
+  async function onSelectListTab(tab: WorkItemListTab) {
+    setActiveListTab(tab);
+
+    // Load once, lazily: the Authored list is a second query and should not
+    // slow the TODO view that the panel exists to show.
+    if (tab !== 'authored' || authoredItems !== null || isAuthoredLoading) {
+      return;
+    }
+
+    setIsAuthoredLoading(true);
+    setAuthoredError(null);
+    try {
+      const response = await fetchAuthoredWorkItems({
+        settings,
+        closedDateRange,
+        scope: 'all'
+      });
+      if (response.ok) {
+        setAuthoredItems(response.result);
+        pushDebugLog(
+          'success',
+          `Authored fetch returned ${response.result.length} item(s).`
+        );
+      } else {
+        setAuthoredError(response.error);
+        pushDebugLog('error', `Authored fetch failed: ${response.error}`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAuthoredError(message);
+      pushDebugLog('error', `Authored fetch threw: ${message}`);
+    } finally {
+      setIsAuthoredLoading(false);
+    }
+  }
+
   return {
+    activeListTab,
+    onSelectListTab,
+    authoredItems,
+    isAuthoredLoading,
+    authoredError,
     activeItemHeading,
     activeItemTabLabel,
     activeTab,

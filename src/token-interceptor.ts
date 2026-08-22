@@ -10,11 +10,14 @@
 // Injection scope: vssps.dev.azure.com only — calls there may not carry cookies,
 // so we re-attach the captured auth. dev.azure.com calls already carry full auth.
 //
-// Both fetch and XMLHttpRequest are wrapped. Azure DevOps issues its authorized
-// calls through fetch, but frequently as `fetch(new Request(url, { headers }))`
-// with no second argument — so the Authorization header must be read off the
-// Request object as well as off `init`. Reading only `init.headers` silently
-// captures nothing on such pages.
+// The Authorization header is read off a Request passed as `input` as well as
+// off `init.headers`: `fetch(new Request(url, { headers }))` is common and
+// reading only `init.headers` misses it entirely.
+//
+// This is a best-effort fallback. Azure DevOps issues its authorized calls from
+// a realm this patch does not reach, so the primary capture path is
+// devops/auth/bearerObserver.ts, which observes headers at the network layer and
+// is indifferent to the calling realm.
 
 (function () {
   let capturedAuth: string | null = null;
@@ -101,43 +104,5 @@
     }
 
     return origFetch(input, init);
-  };
-
-  // ----------------------------------------------------- XMLHttpRequest
-  // Belt and braces: any authorized call that goes through XHR instead of fetch
-  // would otherwise be invisible.
-  const XhrProto = XMLHttpRequest.prototype;
-  const origOpen = XhrProto.open;
-  const origSetRequestHeader = XhrProto.setRequestHeader;
-  const URL_FLAG = '__devopsExtRelevantUrl';
-
-  XhrProto.open = function (
-    this: XMLHttpRequest,
-    method: string,
-    url: string | URL,
-    ...rest: unknown[]
-  ) {
-    const href = typeof url === 'string' ? url : url.href;
-    const { vssps, devops } = isRelevantUrl(href);
-    (this as unknown as Record<string, unknown>)[URL_FLAG] = vssps || devops;
-    return (origOpen as (...args: unknown[]) => void).apply(this, [
-      method,
-      url,
-      ...rest
-    ]);
-  } as typeof XhrProto.open;
-
-  XhrProto.setRequestHeader = function (
-    this: XMLHttpRequest,
-    name: string,
-    value: string
-  ) {
-    if (
-      (this as unknown as Record<string, unknown>)[URL_FLAG] &&
-      name.toLowerCase() === 'authorization'
-    ) {
-      captureIfBearer(value);
-    }
-    return origSetRequestHeader.call(this, name, value);
   };
 })();

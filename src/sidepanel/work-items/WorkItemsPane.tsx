@@ -1,8 +1,12 @@
 import clsx from 'clsx';
-import type { ClosedDateRange, WorkItemResult } from '@/types';
+import type { ClosedDateRange, WorkItem, WorkItemResult } from '@/types';
 import classes from './StatusCard.module.css';
 import { ClosedDateRangeControls } from './atoms/ClosedDateRangeControls';
 import { WorkItemsToolbar } from './atoms/WorkItemsToolbar';
+import {
+  WorkItemListTabs,
+  type WorkItemListTab
+} from './atoms/WorkItemListTabs';
 import { WorkItemSection } from './WorkItemSection';
 
 interface StatusCardProps {
@@ -28,6 +32,11 @@ interface StatusCardProps {
   onToggleShowWorkItemParentDetails: () => Promise<void>;
   isActionDisabled: boolean;
   linkExternal: boolean;
+  activeListTab: WorkItemListTab;
+  onSelectListTab: (tab: WorkItemListTab) => void;
+  authoredItems: WorkItem[] | null;
+  isAuthoredLoading: boolean;
+  authoredError: string | null;
 }
 
 export function WorkItemsPane({
@@ -46,7 +55,12 @@ export function WorkItemsPane({
   onRefetchClosedDay,
   onToggleShowWorkItemParentDetails,
   isActionDisabled,
-  linkExternal
+  linkExternal,
+  activeListTab,
+  onSelectListTab,
+  authoredItems,
+  isAuthoredLoading,
+  authoredError
 }: StatusCardProps) {
   const statusKindClassNames = {
     info: classes.statusInfo,
@@ -85,14 +99,40 @@ export function WorkItemsPane({
       </section>
       {result && (
         <section className={classes.card}>
-          <WorkItemSection
-            title="TODO"
-            emptyText="No open items."
-            items={result.openItems}
-            showState={true}
-            showParentDetails={showWorkItemParentDetails}
-            linkExternal={linkExternal}
+          <WorkItemListTabs
+            activeTab={activeListTab}
+            todoCount={result.openItems.length}
+            authoredCount={authoredItems?.length ?? null}
+            onSelectTab={onSelectListTab}
           />
+
+          {activeListTab === 'todo' ? (
+            <WorkItemSection
+              title="TODO"
+              showTitle={false}
+              emptyText="No open items."
+              items={result.openItems}
+              showState={true}
+              showParentDetails={showWorkItemParentDetails}
+              linkExternal={linkExternal}
+            />
+          ) : isAuthoredLoading ? (
+            <div className={classes.loading}>Loading authored items…</div>
+          ) : authoredError ? (
+            <div className={clsx(classes.statusMessage, classes.statusError)}>
+              {authoredError}
+            </div>
+          ) : (
+            <WorkItemSection
+              title="Authored"
+              showTitle={false}
+              emptyText="No open items you authored and are not assigned to."
+              items={authoredItems ?? []}
+              showState={true}
+              showParentDetails={showWorkItemParentDetails}
+              linkExternal={linkExternal}
+            />
+          )}
         </section>
       )}
 
