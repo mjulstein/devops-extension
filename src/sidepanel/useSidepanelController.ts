@@ -670,7 +670,7 @@ export function useSidepanelController() {
         setClosedParentRollup(response.result);
         pushDebugLog(
           'success',
-          `Closed rollup returned ${response.result.length} finished parent(s).`
+          `Closed rollup returned ${response.result.length} finished item(s).`
         );
       } else {
         setClosedRollupError(response.error);

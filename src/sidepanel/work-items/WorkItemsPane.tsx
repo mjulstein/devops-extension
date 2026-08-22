@@ -162,7 +162,7 @@ export function WorkItemsPane({
             ) : (
               <WorkItemSection
                 title="Closed"
-                emptyText="Nothing finished in this range — every parent still has open tasks."
+                emptyText="Nothing finished in this range — every item still has open work."
                 items={closedParentRollup ?? []}
                 showState={false}
                 groupByClosedDate={true}

@@ -140,21 +140,83 @@ export async function fetchAuthoredWorkItems(
 }
 
 /**
+ * Work-item types that count as a deliverable in the Closed list.
+ *
+ * Features are deliberately excluded: they are long-lived umbrellas spanning
+ * many releases, so rolling a closed task all the way up to its Feature reports
+ * "Frontend - Issuer Portal" as finished on the day one task closed under it.
+ * Improvement / Bug / PBI are the level at which work is actually delivered.
+ */
+const TOP_LEVEL_CLOSED_TYPES = new Set([
+  'improvement',
+  'bug',
+  'product backlog item',
+  'pbi'
+]);
+
+export function isTopLevelClosedType(workItemType: string): boolean {
+  return TOP_LEVEL_CLOSED_TYPES.has(workItemType.trim().toLowerCase());
+}
+
+export interface ClosedRollupCandidates {
+  /** Ids to inspect: deliverables themselves, plus the parents of closed tasks. */
+  candidateIds: number[];
+  /** Latest closed date seen among an id's closed children, for dating a parent. */
+  latestChildClosedById: Map<number, string>;
+}
+
+/**
+ * Chooses which items the Closed rollup should consider.
+ *
+ * A closed deliverable is its own top-level row — it does not climb to its
+ * Feature. A closed task contributes its parent instead, since the task itself
+ * is the detail this view exists to hide. Whether a candidate actually survives
+ * depends on its type and its remaining children, decided by the caller.
+ */
+export function collectClosedRollupCandidates(
+  closedItems: WorkItem[]
+): ClosedRollupCandidates {
+  const candidateIds: number[] = [];
+  const latestChildClosedById = new Map<number, string>();
+
+  const addCandidate = (id: number) => {
+    if (!candidateIds.includes(id)) {
+      candidateIds.push(id);
+    }
+  };
+
+  for (const item of closedItems) {
+    if (isTopLevelClosedType(item.workItemType)) {
+      addCandidate(item.id);
+      continue;
+    }
+
+    // Anything else (a Task, typically) is represented by its parent.
+    if (item.parentId === null) {
+      continue;
+    }
+
+    addCandidate(item.parentId);
+    const current = latestChildClosedById.get(item.parentId);
+    if (item.closedDate && (!current || item.closedDate > current)) {
+      latestChildClosedById.set(item.parentId, item.closedDate);
+    }
+  }
+
+  return { candidateIds, latestChildClosedById };
+}
+
+/**
  * The Closed list, rolled up to finished deliverables.
  *
- * Individual closed tasks are noise when reviewing what actually shipped: what
- * matters is whether the parent they belong to is *done*. So this returns
+ * Individual closed tasks are noise when reviewing what shipped: what matters is
+ * whether the Improvement, Bug or PBI they belong to is *done*. So this returns
+ * deliverables with **no remaining open children** — a parent that still has
+ * open work is absent, however many of its tasks closed in the range.
  *
- *   - parents of the closed tasks that have **no remaining open children**, and
- *   - closed non-task items with no parent, which are the deliverable themselves.
- *
- * A parent that still has open tasks is deliberately absent: the work is not
- * finished, however many of its tasks closed in the range.
- *
- * Each returned item carries an *effective* closedDate — the parent's own, or
- * failing that the latest closed date among its children in range — so the
- * existing date grouping keeps working and a parent lands on the day its work
- * actually finished.
+ * Each item carries an *effective* closedDate — its own, or failing that the
+ * latest closed date among its children in range — so the existing date grouping
+ * keeps working and a deliverable lands on the day its work actually finished.
  */
 export async function fetchClosedParentRollup(
   request: FetchWorkItemsRequest,
@@ -182,82 +244,76 @@ export async function fetchClosedParentRollup(
     closedDateRange.end
   );
 
-  // Latest closed date seen per parent, used when the parent itself is not closed.
-  const latestChildClosedByParent = new Map<number, string>();
-  const standalone: WorkItem[] = [];
+  const { candidateIds, latestChildClosedById } =
+    collectClosedRollupCandidates(closedItems);
 
-  for (const item of closedItems) {
-    if (item.parentId === null) {
-      // Tasks are the noise this view exists to remove; anything else with no
-      // parent is a deliverable in its own right.
-      if (item.workItemType.trim().toLowerCase() !== 'task') {
-        standalone.push(item);
+  if (!candidateIds.length) {
+    return [];
+  }
+
+  // Relations come back with the candidates themselves, so this costs two
+  // requests rather than one per candidate.
+  const childIdsById = new Map<number, number[]>();
+  const candidates = await fetchWorkItemDetails(
+    candidateIds,
+    organization,
+    project,
+    WORK_ITEM_FIELDS,
+    { withRelations: true, collectChildIds: childIdsById }
+  );
+
+  const allChildIds = Array.from(
+    new Set(Array.from(childIdsById.values()).flat())
+  );
+  const openChildIds = new Set<number>();
+
+  if (allChildIds.length) {
+    const children = await fetchWorkItemDetails(
+      allChildIds,
+      organization,
+      project,
+      ['System.Id', 'System.State', 'System.WorkItemType']
+    );
+    for (const child of children) {
+      if (!isCompletedState(child.state)) {
+        openChildIds.add(child.id);
       }
+    }
+  }
+
+  const finished: WorkItem[] = [];
+
+  for (const candidate of candidates) {
+    // A closed task's parent can be a Feature; drop those here rather than when
+    // collecting, so the type rule lives in exactly one place.
+    if (!isTopLevelClosedType(candidate.workItemType)) {
       continue;
     }
 
-    const current = latestChildClosedByParent.get(item.parentId);
-    if (item.closedDate && (!current || item.closedDate > current)) {
-      latestChildClosedByParent.set(item.parentId, item.closedDate);
+    // Every child type counts, not only Tasks: a deliverable with open child
+    // Improvements is not finished either.
+    const children = childIdsById.get(candidate.id) ?? [];
+    if (children.some((childId) => openChildIds.has(childId))) {
+      continue;
     }
+
+    finished.push({
+      ...candidate,
+      closedDate:
+        candidate.closedDate ?? latestChildClosedById.get(candidate.id) ?? null
+    });
   }
 
-  const parentIds = Array.from(latestChildClosedByParent.keys());
-  const finishedParents: WorkItem[] = [];
-
-  if (parentIds.length) {
-    // Relations come back with the parents themselves, so this costs two
-    // requests rather than one per parent.
-    const childIdsByParent = new Map<number, number[]>();
-    const parents = await fetchWorkItemDetails(
-      parentIds,
-      organization,
-      project,
-      WORK_ITEM_FIELDS,
-      { withRelations: true, collectChildIds: childIdsByParent }
-    );
-
-    const allChildIds = Array.from(
-      new Set(Array.from(childIdsByParent.values()).flat())
-    );
-    const openChildIds = new Set<number>();
-
-    if (allChildIds.length) {
-      const children = await fetchWorkItemDetails(
-        allChildIds,
-        organization,
-        project,
-        ['System.Id', 'System.State', 'System.WorkItemType']
-      );
-      for (const child of children) {
-        if (!isCompletedState(child.state)) {
-          openChildIds.add(child.id);
-        }
-      }
-    }
-
-    for (const parent of parents) {
-      // Every child type counts here, not only Tasks: an umbrella Feature whose
-      // children are PBIs has no Task children at all, and treating that as
-      // "finished" would surface work that has barely started.
-      const children = childIdsByParent.get(parent.id) ?? [];
-      if (children.some((childId) => openChildIds.has(childId))) {
-        continue;
-      }
-      finishedParents.push({
-        ...parent,
-        closedDate:
-          parent.closedDate ?? latestChildClosedByParent.get(parent.id) ?? null
-      });
-    }
-  }
-
-  return [...finishedParents, ...standalone].sort(compareClosedItemsByDateDesc);
+  return finished.sort(compareClosedItemsByDateDesc);
 }
 
-function isCompletedState(state: string): boolean {
-  const normalized = state.trim().toLowerCase();
-  return normalized === 'done' || normalized === 'closed';
+function compareClosedItemsByDateDesc(a: WorkItem, b: WorkItem): number {
+  const left = a.closedDate ?? '';
+  const right = b.closedDate ?? '';
+  if (left === right) {
+    return b.id - a.id;
+  }
+  return left < right ? 1 : -1;
 }
 
 /** Child work-item ids from a payload's hierarchy relations. */
@@ -287,13 +343,9 @@ function extractHierarchyChildIds(relations: unknown): number[] {
   return ids;
 }
 
-function compareClosedItemsByDateDesc(a: WorkItem, b: WorkItem): number {
-  const left = a.closedDate ?? '';
-  const right = b.closedDate ?? '';
-  if (left === right) {
-    return b.id - a.id;
-  }
-  return left < right ? 1 : -1;
+function isCompletedState(state: string): boolean {
+  const normalized = state.trim().toLowerCase();
+  return normalized === 'done' || normalized === 'closed';
 }
 
 /**
