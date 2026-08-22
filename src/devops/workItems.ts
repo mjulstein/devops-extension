@@ -668,8 +668,18 @@ function toWorkItem(
     return null;
   }
 
-  const id = fieldsUnknown['System.Id'];
-  if (typeof id !== 'number' || !Number.isFinite(id)) {
+  // With an explicit `fields=` projection Azure DevOps echoes System.Id inside
+  // `fields`, but with `$expand=relations` it does not — the id is then only on
+  // the payload itself. Accept either, or every expanded item fails to parse.
+  const idField = fieldsUnknown['System.Id'];
+  const id =
+    typeof idField === 'number' && Number.isFinite(idField)
+      ? idField
+      : typeof item.id === 'number' && Number.isFinite(item.id)
+        ? item.id
+        : null;
+
+  if (id === null) {
     return null;
   }
 

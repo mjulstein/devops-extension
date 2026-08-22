@@ -6,6 +6,8 @@
 // captured yet, or no access to chrome.scripting (e.g. a content-script context,
 // which cannot call executeScript). Freshness is judged by the caller.
 
+import { readObservedBearer } from './bearerObserver';
+
 const CAPTURED_AUTH_WINDOW_KEY = '__devopsExtCapturedAuth';
 
 // Per-tab timeout: frozen/suspended background tabs can cause executeScript to hang
@@ -16,6 +18,13 @@ const EXECUTE_SCRIPT_TIMEOUT_MS = 4_000;
 // in parallel so a frozen tab (common with many background tabs) does not block
 // the result from a tab that is actually responsive.
 export async function readBearerFromTab(): Promise<string | null> {
+  // Preferred source: headers observed at the network layer, which sees calls
+  // from any realm. The in-page reads below remain as fallbacks.
+  const observed = await readObservedBearer();
+  if (observed) {
+    return observed;
+  }
+
   if (!chrome.scripting?.executeScript || !chrome.tabs?.query) {
     return null;
   }
@@ -117,7 +126,17 @@ export async function readBearerFromTab(): Promise<string | null> {
                 return fresh;
               }
 
-              return typeof captured === 'string' ? captured : null;
+              if (typeof captured === 'string') {
+                return captured;
+              }
+
+              // Nothing usable. Report *why* so the two very different failures
+              // are distinguishable: the content script never ran in this tab
+              // (needs a tab reload after install/update), versus it ran but the
+              // page has not issued an authorized request yet.
+              return w.__devopsExtInterceptorInstalled
+                ? '@@no-bearer-captured-yet'
+                : '@@interceptor-not-installed';
             }
           })
           .then((r) => r[0]?.result ?? null),
@@ -128,8 +147,30 @@ export async function readBearerFromTab(): Promise<string | null> {
     )
   );
 
-  const bearer = results.find((r): r is string => typeof r === 'string');
-  return bearer ?? null;
+  const bearer = results.find(
+    (r): r is string => typeof r === 'string' && !r.startsWith('@@')
+  );
+
+  if (bearer) {
+    return bearer;
+  }
+
+  const diagnostics = results.filter(
+    (r): r is string => typeof r === 'string' && r.startsWith('@@')
+  );
+  if (diagnostics.includes('@@interceptor-not-installed')) {
+    console.warn(
+      '[readBearerFromTab] token-interceptor is not installed in any Azure DevOps tab — ' +
+        'reload the Azure DevOps tab so the content script is injected.'
+    );
+  } else if (diagnostics.length) {
+    console.warn(
+      '[readBearerFromTab] token-interceptor is installed but has captured no Bearer yet — ' +
+        'the page may not have issued an authorized request since it loaded.'
+    );
+  }
+
+  return null;
 }
 
 export { CAPTURED_AUTH_WINDOW_KEY };

@@ -32,6 +32,60 @@ describe('workItems.ts', () => {
     vi.unstubAllGlobals();
   });
 
+  // Regression: switching the open-items projection to `$expand=relations` broke
+  // every open item, because Azure DevOps echoes System.Id inside `fields` only
+  // for an explicit `fields=` projection. Expanded payloads carry the id on the
+  // item itself, and parsing must accept that.
+  it('parses expanded payloads whose id is only on the item, not in fields', async () => {
+    const fetchMock = vi
+      .fn()
+      // open WIQL
+      .mockResolvedValueOnce(createJsonResponse({ workItems: [{ id: 101 }] }))
+      // closed WIQL — empty, keeps this test focused on the open path
+      .mockResolvedValueOnce(createJsonResponse({ workItems: [] }))
+      // open details, shaped as $expand=relations returns them
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          value: [
+            {
+              id: 101,
+              fields: {
+                // note: no 'System.Id'
+                'System.WorkItemType': 'Bug',
+                'System.Title': 'Expanded item',
+                'System.State': 'In Progress',
+                'System.ChangedDate': '2026-08-21T10:00:00.000Z'
+              },
+              relations: []
+            }
+          ]
+        })
+      )
+      // no parents to enrich, no child relations
+      .mockResolvedValue(createJsonResponse({ value: [], relations: [] }));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const request: FetchWorkItemsRequest = {
+      settings: {
+        organization: '',
+        project: '',
+        assignedTo: '   ',
+        todoStates: []
+      },
+      closedDateRange: { start: '2026-08-14', end: '2026-08-21' },
+      scope: 'all'
+    };
+
+    const result = await fetchWorkItems(request, {
+      organization: 'my-org',
+      project: 'my-project'
+    });
+
+    expect(result.openItems.map((item) => item.id)).toEqual([101]);
+    expect(result.openItems[0]?.title).toBe('Expanded item');
+  });
+
   it('uses separate open and closed WIQL requests and enriches parent summaries', async () => {
     const fetchMock = vi
       .fn()

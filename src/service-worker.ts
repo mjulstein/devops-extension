@@ -15,6 +15,11 @@ import { setParentForActiveWorkItem } from './devops/parentAssignment';
 import { ensurePat } from './devops/auth/ensurePat';
 import { revokeAllExtensionPats } from './devops/auth/revokeAllExtensionPats';
 import { createDefaultConnectionService } from './devops/auth/connectionService';
+import { startBearerObserver } from './devops/auth/bearerObserver';
+
+// Observe Azure DevOps request headers so a Bearer is available for PAT
+// minting regardless of which realm issued the call.
+startBearerObserver();
 
 type RuntimeMessage =
   | {
