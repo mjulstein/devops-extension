@@ -92,6 +92,9 @@ export function App() {
           closedParentRollup={controller.closedParentRollup}
           isClosedRollupLoading={controller.isClosedRollupLoading}
           closedRollupError={controller.closedRollupError}
+          pullRequests={controller.pullRequests}
+          isPullRequestsLoading={controller.isPullRequestsLoading}
+          pullRequestsError={controller.pullRequestsError}
           isActionDisabled={controller.isActionDisabled}
           linkExternal={controller.linkExternal}
         />

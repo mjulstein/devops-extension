@@ -1,5 +1,10 @@
 import clsx from 'clsx';
-import type { ClosedDateRange, WorkItem, WorkItemResult } from '@/types';
+import type {
+  ClosedDateRange,
+  PullRequestActivityItem,
+  WorkItem,
+  WorkItemResult
+} from '@/types';
 import classes from './StatusCard.module.css';
 import { ClosedDateRangeControls } from './atoms/ClosedDateRangeControls';
 import { WorkItemsToolbar } from './atoms/WorkItemsToolbar';
@@ -7,6 +12,7 @@ import {
   WorkItemListTabs,
   type WorkItemListTab
 } from './atoms/WorkItemListTabs';
+import { PullRequestList } from './atoms/PullRequestList';
 import { WorkItemSection } from './WorkItemSection';
 
 interface StatusCardProps {
@@ -40,6 +46,9 @@ interface StatusCardProps {
   closedParentRollup: WorkItem[] | null;
   isClosedRollupLoading: boolean;
   closedRollupError: string | null;
+  pullRequests: PullRequestActivityItem[] | null;
+  isPullRequestsLoading: boolean;
+  pullRequestsError: string | null;
 }
 
 export function WorkItemsPane({
@@ -66,7 +75,10 @@ export function WorkItemsPane({
   authoredError,
   closedParentRollup,
   isClosedRollupLoading,
-  closedRollupError
+  closedRollupError,
+  pullRequests,
+  isPullRequestsLoading,
+  pullRequestsError
 }: StatusCardProps) {
   const statusKindClassNames = {
     info: classes.statusInfo,
@@ -109,6 +121,7 @@ export function WorkItemsPane({
             activeTab={activeListTab}
             todoCount={result.openItems.length}
             authoredCount={authoredItems?.length ?? null}
+            pullRequestCount={pullRequests?.length ?? null}
             onSelectTab={onSelectListTab}
           />
 
@@ -122,6 +135,22 @@ export function WorkItemsPane({
               groupByParent={showWorkItemParentDetails}
               linkExternal={linkExternal}
             />
+          ) : activeListTab === 'prs' ? (
+            isPullRequestsLoading ? (
+              <div className={classes.loading}>
+                Scanning pull-request comments…
+              </div>
+            ) : pullRequestsError ? (
+              <div className={clsx(classes.statusMessage, classes.statusError)}>
+                {pullRequestsError}
+              </div>
+            ) : (
+              <PullRequestList
+                items={pullRequests ?? []}
+                emptyText="No pull requests you authored, commented on recently, or were mentioned in."
+                linkExternal={linkExternal}
+              />
+            )
           ) : isAuthoredLoading ? (
             <div className={classes.loading}>Loading authored items…</div>
           ) : authoredError ? (

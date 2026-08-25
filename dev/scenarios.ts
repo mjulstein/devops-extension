@@ -1,6 +1,7 @@
 import type {
   ActiveWorkItemContext,
   ChildTaskItem,
+  PullRequestActivityItem,
   PullRequestApproval,
   PullRequestRef,
   WorkItem,
@@ -36,6 +37,8 @@ export interface Scenario {
   authoredItems: WorkItem[];
   /** Lazily-loaded Closed rollup: parents with no remaining open tasks. */
   closedParentRollup: WorkItem[];
+  /** Lazily-loaded PRs tab contents. */
+  pullRequestActivity: PullRequestActivityItem[];
 }
 
 function url(id: number): string {
@@ -209,6 +212,62 @@ function result(open: WorkItem[], closed: WorkItem[]): WorkItemResult {
 
 const EMPTY_RESULT = result([], []);
 
+function activityPr(
+  id: number,
+  overrides: Partial<PullRequestActivityItem> = {}
+): PullRequestActivityItem {
+  return {
+    id,
+    url: `https://dev.azure.com/${DEV_ORGANIZATION}/${DEV_PROJECT}/_git/some-repo/pullrequest/${id}`,
+    title: `Pull request ${id}`,
+    repoName: 'some-repo',
+    status: 'active',
+    isDraft: false,
+    approval: 'no-vote',
+    lastActivityAt: Date.now() - id,
+    lastCommentedAt: null,
+    involvement: {
+      authoredByMe: false,
+      commentedByMe: false,
+      mentionsMe: false
+    },
+    ...overrides
+  };
+}
+
+const PULL_REQUEST_ACTIVITY: PullRequestActivityItem[] = [
+  activityPr(41943, {
+    title: 'Add a bulk-upload modal',
+    approval: 'approved',
+    involvement: { authoredByMe: true, commentedByMe: true, mentionsMe: false }
+  }),
+  activityPr(41310, {
+    title: 'Fix a duplicated React key',
+    repoName: 'reporting-frontend',
+    involvement: { authoredByMe: false, commentedByMe: true, mentionsMe: false },
+    lastCommentedAt: Date.now() - 3 * 86400000
+  }),
+  activityPr(41631, {
+    title: 'Delete a retired endpoint',
+    repoName: 'portal-api',
+    isDraft: true,
+    involvement: { authoredByMe: false, commentedByMe: false, mentionsMe: true }
+  }),
+  activityPr(41824, {
+    title: 'Upgrade the design system package',
+    repoName: 'lending-frontend',
+    status: 'completed',
+    approval: 'approved',
+    involvement: { authoredByMe: true, commentedByMe: false, mentionsMe: false }
+  }),
+  activityPr(41892, {
+    title: 'Prepare the auth module for extraction',
+    repoName: 'portal-frontend',
+    status: 'abandoned',
+    involvement: { authoredByMe: true, commentedByMe: false, mentionsMe: false }
+  })
+];
+
 const AUTHORED: WorkItem[] = [
   workItem({
     id: 1200,
@@ -268,6 +327,7 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     activeContext: ACTIVE_CONTEXT,
     authoredItems: AUTHORED,
     closedParentRollup: CLOSED_ROLLUP,
+    pullRequestActivity: PULL_REQUEST_ACTIVITY,
   },
   empty: {
     id: 'empty',
@@ -280,6 +340,7 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     activeContext: null,
     authoredItems: AUTHORED,
     closedParentRollup: CLOSED_ROLLUP,
+    pullRequestActivity: PULL_REQUEST_ACTIVITY,
   },
   many: {
     id: 'many',
@@ -292,6 +353,7 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     activeContext: ACTIVE_CONTEXT,
     authoredItems: AUTHORED,
     closedParentRollup: CLOSED_ROLLUP,
+    pullRequestActivity: PULL_REQUEST_ACTIVITY,
   },
   'reconnect-needed': {
     id: 'reconnect-needed',
@@ -304,6 +366,7 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     activeContext: null,
     authoredItems: AUTHORED,
     closedParentRollup: CLOSED_ROLLUP,
+    pullRequestActivity: PULL_REQUEST_ACTIVITY,
   },
   error: {
     id: 'error',
@@ -317,6 +380,7 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     activeContext: null,
     authoredItems: AUTHORED,
     closedParentRollup: CLOSED_ROLLUP,
+    pullRequestActivity: PULL_REQUEST_ACTIVITY,
   },
   slow: {
     id: 'slow',
@@ -329,6 +393,7 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     activeContext: ACTIVE_CONTEXT,
     authoredItems: AUTHORED,
     closedParentRollup: CLOSED_ROLLUP,
+    pullRequestActivity: PULL_REQUEST_ACTIVITY,
   }
 };
 

@@ -49,6 +49,7 @@ import {
   ensureConnection,
   fetchAuthoredWorkItems,
   fetchClosedParentRollup,
+  fetchPullRequestActivity,
   fetchChildTasksForCurrentParent,
   fetchWorkItems,
   getActiveTabId,
@@ -59,6 +60,7 @@ import {
   type ConnectionStatus
 } from './tabMessaging';
 import type { WorkItemListTab } from './work-items/atoms/WorkItemListTabs';
+import type { PullRequestActivityItem } from '@/types';
 import type { DebugLogEntry } from './DebugConsolePane';
 import type { SidepanelTabId } from './Tabs';
 import { tryCreateLastVisitedDevOpsContext } from '../devops/lastVisitedContext';
@@ -115,6 +117,15 @@ export function useSidepanelController() {
   >(null);
   const [isClosedRollupLoading, setIsClosedRollupLoading] = useState(false);
   const [closedRollupError, setClosedRollupError] = useState<string | null>(
+    null
+  );
+  // Pull requests I am involved in. Loaded on first opening the PRs tab, since
+  // it scans comment threads across every candidate PR.
+  const [pullRequests, setPullRequests] = useState<
+    PullRequestActivityItem[] | null
+  >(null);
+  const [isPullRequestsLoading, setIsPullRequestsLoading] = useState(false);
+  const [pullRequestsError, setPullRequestsError] = useState<string | null>(
     null
   );
   const [hiddenTaskStates, setHiddenTaskStates] = useState<string[]>([]);
@@ -477,6 +488,7 @@ export function useSidepanelController() {
     // rollup computed for a different date range.
     setAuthoredItems(null);
     setClosedParentRollup(null);
+    setPullRequests(null);
     const effectiveClosedDateRange =
       options?.closedDateRange ?? closedDateRange;
     const fetchSource = options?.source ?? 'manual';
@@ -650,6 +662,38 @@ export function useSidepanelController() {
 
     if (nextValue) {
       await loadClosedParentRollup();
+    }
+  }
+
+  async function loadPullRequests() {
+    if (pullRequests !== null || isPullRequestsLoading) {
+      return;
+    }
+
+    setIsPullRequestsLoading(true);
+    setPullRequestsError(null);
+    try {
+      const response = await fetchPullRequestActivity({
+        settings,
+        closedDateRange,
+        scope: 'all'
+      });
+      if (response.ok) {
+        setPullRequests(response.result);
+        pushDebugLog(
+          'success',
+          `Pull-request activity returned ${response.result.length} PR(s).`
+        );
+      } else {
+        setPullRequestsError(response.error);
+        pushDebugLog('error', `Pull-request fetch failed: ${response.error}`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setPullRequestsError(message);
+      pushDebugLog('error', `Pull-request fetch threw: ${message}`);
+    } finally {
+      setIsPullRequestsLoading(false);
     }
   }
 
@@ -1105,6 +1149,11 @@ export function useSidepanelController() {
   async function onSelectListTab(tab: WorkItemListTab) {
     setActiveListTab(tab);
 
+    if (tab === 'prs') {
+      await loadPullRequests();
+      return;
+    }
+
     // Load once, lazily: the Authored list is a second query and should not
     // slow the TODO view that the panel exists to show.
     if (tab !== 'authored' || authoredItems !== null || isAuthoredLoading) {
@@ -1139,6 +1188,9 @@ export function useSidepanelController() {
   }
 
   return {
+    pullRequests,
+    isPullRequestsLoading,
+    pullRequestsError,
     closedParentRollup,
     isClosedRollupLoading,
     closedRollupError,

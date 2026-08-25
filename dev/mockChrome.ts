@@ -127,6 +127,9 @@ async function route(
     case 'FETCH_CLOSED_PARENT_ROLLUP':
       return ok(scenario.closedParentRollup);
 
+    case 'FETCH_PULL_REQUEST_ACTIVITY':
+      return ok(scenario.pullRequestActivity);
+
     case 'CREATE_CHILD_TASK': {
       const { title } = (message.payload ?? {}) as { title?: string };
       const id = nextCreatedId++;

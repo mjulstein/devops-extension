@@ -1,0 +1,84 @@
+.list {
+  display: grid;
+  gap: 4px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1.4ch 7ch minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+  font-size: 13px;
+}
+
+.mark {
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.id {
+  font-variant-numeric: tabular-nums;
+  color: #0a5bd3;
+}
+
+.main {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.titleClosed {
+  color: #6e7781;
+}
+
+.meta {
+  font-size: 11px;
+  color: #6e7781;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.tag {
+  display: inline-block;
+  margin-inline-end: 4px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: #eaeef2;
+  color: #57606a;
+}
+
+.tagMine {
+  background: #ddf4e4;
+  color: #1a7f37;
+}
+
+.tagMention {
+  background: #fff1d6;
+  color: #9a6700;
+}
+
+.approved {
+  color: #1a7f37;
+  font-weight: 600;
+}
+
+.rejected {
+  color: #b42318;
+}
+
+.waiting {
+  color: #9a6700;
+}
+
+.draft {
+  color: #6e7781;
+}

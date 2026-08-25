@@ -8,6 +8,7 @@ import {
   tryCreateLastVisitedWorkItemRef
 } from './devops/lastVisitedContext';
 import { fetchChildTasksForActiveParent } from './devops/childTasks';
+import { fetchPullRequestActivity } from './devops/pullRequestActivity';
 import { resolveActiveWorkItemContext } from './devops/activeParentContext';
 import { createChildTaskFromActivePage } from './devops/taskCreation';
 import {
@@ -40,6 +41,10 @@ type RuntimeMessage =
     }
   | {
       type: 'FETCH_CLOSED_PARENT_ROLLUP';
+      payload: FetchWorkItemsRequest;
+    }
+  | {
+      type: 'FETCH_PULL_REQUEST_ACTIVITY';
       payload: FetchWorkItemsRequest;
     }
   | {
@@ -307,6 +312,18 @@ chrome.runtime.onMessage.addListener(
     if (message.type === 'DEVOPS_BEARER_CAPTURED') {
       void connectionService.handleBearerCaptured();
       return;
+    }
+
+    if (message.type === 'FETCH_PULL_REQUEST_ACTIVITY') {
+      resolveWorkItemsContext(message.payload.settings)
+        .then((context) =>
+          fetchPullRequestActivity(context.organization, context.project)
+        )
+        .then((result) => sendResponse({ ok: true, result }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
     }
 
     if (message.type === 'FETCH_CLOSED_PARENT_ROLLUP') {

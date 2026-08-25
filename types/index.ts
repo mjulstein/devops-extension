@@ -19,3 +19,8 @@ export type {
   PullRequestApproval,
   PullRequestRef
 } from './PullRequestRef';
+export type {
+  PullRequestActivityItem,
+  PullRequestInvolvement,
+  PullRequestStatus
+} from './PullRequestActivity';
