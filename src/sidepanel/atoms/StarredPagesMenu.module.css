@@ -92,3 +92,11 @@
   border: 1px solid #d0d7de;
   border-radius: 5px;
 }
+
+/* Keyboard highlight has to read as strongly as hover, since arrow keys are the
+   primary way through this list. */
+.itemHighlighted,
+.itemHighlighted:hover {
+  background: #ddeaff;
+  color: #0a3977;
+}

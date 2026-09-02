@@ -32,6 +32,26 @@ startBearerObserver();
 // side panel and put the cursor in the starred-pages search. Opening the panel
 // from a command handler is allowed because the command counts as a user
 // gesture.
+// A suggested_key that clashes with a browser shortcut is silently left
+// unbound — Ctrl+Shift+K is Duplicate Tab in Edge, for instance — and the
+// command then does nothing with no error anywhere. Report what is actually
+// bound so that failure is diagnosable instead of mysterious.
+void chrome.commands?.getAll().then((commands) => {
+  for (const command of commands) {
+    if (!command.name) {
+      continue;
+    }
+    if (command.shortcut) {
+      console.info(`[commands] "${command.name}" bound to ${command.shortcut}`);
+    } else {
+      console.warn(
+        `[commands] "${command.name}" has NO shortcut — it probably clashes with a ` +
+          'browser shortcut. Assign one at chrome://extensions/shortcuts.'
+      );
+    }
+  }
+});
+
 chrome.commands?.onCommand.addListener((command) => {
   if (command !== 'open-starred-search') {
     return;

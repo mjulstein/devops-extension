@@ -19,6 +19,7 @@ interface SettingsCardProps {
   onReloadExtension: () => void;
   isLoading: boolean;
   starredPages: StarredPage[];
+  bookmarkSyncStatus: string | null;
   onUpdateStarredPage: (
     originalUrl: string,
     next: { label: string; url: string }
@@ -34,6 +35,7 @@ export function SettingsPane({
   onReloadExtension,
   isLoading,
   starredPages,
+  bookmarkSyncStatus,
   onUpdateStarredPage,
   onRemoveStarredPage,
   onMoveStarredPage
@@ -299,8 +301,14 @@ export function SettingsPane({
         Keeps a folder under Other bookmarks in step with the favorites below,
         so they also appear in address-bar autocomplete. The favorites here are
         the source of truth — edits made in the bookmark manager are overwritten
-        on the next sync.
+        on the next sync. Syncs on save, on panel open, and whenever a favorite
+        changes.
       </p>
+      {bookmarkSyncStatus ? (
+        <p className={classes.description}>
+          <strong>Bookmark mirror:</strong> {bookmarkSyncStatus}
+        </p>
+      ) : null}
       <p className={classes.description}>
         Starred Azure DevOps pages, in the order the ☆ Starred menu lists them.
         A favorite is identified by its address and search parameters.

@@ -52,7 +52,7 @@
   "commands": {
     "open-starred-search": {
       "suggested_key": {
-        "default": "Ctrl+Shift+K"
+        "default": "Alt+Shift+K"
       },
       "description": "Open the side panel and search starred Azure DevOps pages"
     }

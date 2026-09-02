@@ -64,6 +64,7 @@ export function App() {
           onSave={controller.onSaveSettings}
           onReloadExtension={controller.onReloadExtension}
           starredPages={controller.starredPages}
+          bookmarkSyncStatus={controller.bookmarkSyncStatus}
           onUpdateStarredPage={controller.onUpdateStarredPage}
           onRemoveStarredPage={controller.onRemoveStarredPage}
           onMoveStarredPage={controller.onMoveStarredPage}
