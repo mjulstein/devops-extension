@@ -7,6 +7,7 @@ export { fetchClosedParentRollup } from './fetchClosedParentRollup';
 export { fetchPullRequestActivity } from './fetchPullRequestActivity';
 export { getActiveWorkItemContext } from './getActiveWorkItemContext';
 export { createChildTask } from './createChildTask';
+export { createQuickTask } from './createQuickTask';
 export { fetchChildTasksForCurrentParent } from './fetchChildTasksForCurrentParent';
 export { setActiveWorkItemParent } from './setActiveWorkItemParent';
 export { refreshTabIcons } from './refreshTabIcons';

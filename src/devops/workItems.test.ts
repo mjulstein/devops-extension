@@ -71,7 +71,8 @@ describe('workItems.ts', () => {
         organization: '',
         project: '',
         assignedTo: '   ',
-        todoStates: []
+        todoStates: [],
+        quickTaskParentId: ''
       },
       closedDateRange: { start: '2026-08-14', end: '2026-08-21' },
       scope: 'all'
@@ -169,7 +170,8 @@ describe('workItems.ts', () => {
         organization: '',
         project: '',
         assignedTo: '   ',
-        todoStates: []
+        todoStates: [],
+        quickTaskParentId: ''
       },
       closedDateRange: {
         start: '2026-03-10',
@@ -269,7 +271,8 @@ describe('workItems.ts', () => {
         organization: '',
         project: '',
         assignedTo: '',
-        todoStates: ['Ready', 'New', 'ready']
+        todoStates: ['Ready', 'New', 'ready'],
+        quickTaskParentId: ''
       },
       closedDateRange: {
         start: '2026-03-16',
@@ -345,7 +348,8 @@ describe('workItems.ts', () => {
         organization: '',
         project: '',
         assignedTo: '',
-        todoStates: []
+        todoStates: [],
+        quickTaskParentId: ''
       },
       closedDateRange: {
         start: '2026-03-10',
@@ -382,7 +386,8 @@ describe('workItems.ts', () => {
         organization: '',
         project: '',
         assignedTo: "O'Brien",
-        todoStates: []
+        todoStates: [],
+        quickTaskParentId: ''
       },
       closedDateRange: {
         start: '2026-03-10',
@@ -448,7 +453,8 @@ describe('workItems.ts', () => {
         organization: '',
         project: '',
         assignedTo: '',
-        todoStates: []
+        todoStates: [],
+        quickTaskParentId: ''
       },
       closedDateRange: {
         start: '2026-03-16',

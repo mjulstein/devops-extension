@@ -3,5 +3,11 @@ export interface Settings {
   project: string;
   assignedTo: string;
   todoStates: string[];
+  /**
+   * Work item that quick tasks are parented to — a personal catch-all for small
+   * jobs that do not belong to real planned work. Stored as text so the field
+   * can be empty; empty disables the quick-task button.
+   */
+  quickTaskParentId: string;
 }
 

@@ -75,6 +75,8 @@ export function App() {
               : 'Panel reloaded. Click Fetch work items to load the latest data.'
           }
           onFetchWorkItems={controller.onFetchWorkItems}
+          onCreateQuickTask={controller.onCreateQuickTask}
+          canCreateQuickTask={controller.canCreateQuickTask}
           onClosedDateRangeChange={controller.onClosedDateRangeChange}
           onEnableCustomClosedEndDate={controller.onEnableCustomClosedEndDate}
           onResetClosedDateRange={controller.onResetClosedDateRange}

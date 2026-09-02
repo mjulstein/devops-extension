@@ -5,6 +5,7 @@ import type {
 } from '@/types';
 import { authFetch } from './authFetch';
 import { buildPullRequestWebUrl, deriveApproval } from './pullRequests';
+import { fetchIdentity, type DevOpsIdentity } from './identity';
 
 // The PRs tab: pull requests I am currently involved in.
 //
@@ -27,11 +28,6 @@ const THREAD_CONCURRENCY = 12;
 /** How far back "recently" reaches for comments and closed PRs. */
 export const ACTIVITY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
-interface Identity {
-  id: string;
-  displayName: string;
-}
-
 interface RawPullRequest {
   pullRequestId: number;
   title?: string;
@@ -42,46 +38,6 @@ interface RawPullRequest {
   reviewers?: unknown;
   repository?: { id?: string; name?: string };
   createdBy?: { id?: string };
-}
-
-/**
- * The signed-in identity. `connectionData` is the only endpoint reachable with
- * the extension's scopes — the profile and graph APIs both return 401 — and it
- * rejects an explicit api-version, so none is sent.
- */
-export async function fetchIdentity(
-  organization: string
-): Promise<Identity | null> {
-  const response = await authFetch(
-    `https://dev.azure.com/${encodeURIComponent(organization)}/_apis/connectionData`,
-    { method: 'GET', headers: { Accept: 'application/json' } }
-  );
-
-  if (!response.ok) {
-    return null;
-  }
-
-  const data: unknown = await response.json();
-  const user =
-    data && typeof data === 'object'
-      ? (
-          data as {
-            authenticatedUser?: { id?: unknown; providerDisplayName?: unknown };
-          }
-        ).authenticatedUser
-      : undefined;
-
-  if (!user || typeof user.id !== 'string') {
-    return null;
-  }
-
-  return {
-    id: user.id,
-    displayName:
-      typeof user.providerDisplayName === 'string'
-        ? user.providerDisplayName
-        : ''
-  };
 }
 
 function toStatus(value: unknown): PullRequestStatus {
@@ -319,7 +275,7 @@ export function activityRank(item: {
 async function toActivityItem(
   pr: RawPullRequest,
   scope: { base: string; organization: string; project: string },
-  identity: Identity,
+  identity: DevOpsIdentity,
   authoredIds: Set<number>,
   now: number
 ): Promise<PullRequestActivityItem | null> {

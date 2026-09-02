@@ -144,7 +144,7 @@ export async function fetchAuthoredWorkItems(
  *
  * Features are deliberately excluded: they are long-lived umbrellas spanning
  * many releases, so rolling a closed task all the way up to its Feature reports
- * "Frontend - Issuer Portal" as finished on the day one task closed under it.
+ * "Frontend - Portal" as finished on the day one task closed under it.
  * Improvement / Bug / PBI are the level at which work is actually delivered.
  */
 const TOP_LEVEL_CLOSED_TYPES = new Set([

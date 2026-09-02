@@ -46,6 +46,7 @@ import { navigateToWorkItem } from './navigateToWorkItem';
 import { deduplicateTabs } from './deduplicateTabs';
 import {
   createChildTask,
+  createQuickTask,
   ensureConnection,
   fetchAuthoredWorkItems,
   fetchClosedParentRollup,
@@ -665,6 +666,62 @@ export function useSidepanelController() {
     }
   }
 
+  async function onCreateQuickTask() {
+    const parentId = Number(settings.quickTaskParentId.trim());
+    if (!Number.isInteger(parentId) || parentId <= 0) {
+      setStatusMessage({
+        kind: 'error',
+        text: 'Set a quick-task parent work item id in Settings first.'
+      });
+      return;
+    }
+
+    // Read the page that was actually open when the button was clicked.
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true
+    });
+    const pageTitle = tab?.title ?? '';
+    const pageUrl = tab?.url ?? '';
+
+    if (!pageUrl) {
+      setStatusMessage({
+        kind: 'error',
+        text: 'Could not read the active tab, so there is no page to capture.'
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    setLoadingMessage('Creating quick task...');
+    try {
+      const response = await createQuickTask(
+        getTrimmedSettingsFromState(settings),
+        pageTitle,
+        pageUrl
+      );
+      if (response.ok) {
+        setStatusMessage({
+          kind: 'success',
+          text: `Created task #${response.result.id}: ${response.result.title}`
+        });
+        pushDebugLog(
+          'success',
+          `Quick task #${response.result.id} created under #${response.result.parentId}.`
+        );
+      } else {
+        setStatusMessage({ kind: 'error', text: response.error });
+        pushDebugLog('error', `Quick task failed: ${response.error}`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setStatusMessage({ kind: 'error', text: message });
+      pushDebugLog('error', `Quick task threw: ${message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   async function loadPullRequests() {
     if (pullRequests !== null || isPullRequestsLoading) {
       return;
@@ -1188,6 +1245,8 @@ export function useSidepanelController() {
   }
 
   return {
+    onCreateQuickTask,
+    canCreateQuickTask: Number(settings.quickTaskParentId.trim()) > 0,
     pullRequests,
     isPullRequestsLoading,
     pullRequestsError,
@@ -1261,7 +1320,8 @@ function getTrimmedSettingsFromState(settings: Settings): Settings {
     organization: settings.organization.trim(),
     project: settings.project.trim(),
     assignedTo: settings.assignedTo.trim(),
-    todoStates: normalizeTodoStates(settings.todoStates)
+    todoStates: normalizeTodoStates(settings.todoStates),
+    quickTaskParentId: settings.quickTaskParentId.trim()
   };
 }
 

@@ -28,6 +28,8 @@ interface StatusCardProps {
   } | null;
   preFetchHint: string | null;
   onFetchWorkItems: () => Promise<void>;
+  onCreateQuickTask: () => Promise<void>;
+  canCreateQuickTask: boolean;
   onClosedDateRangeChange: (
     key: keyof ClosedDateRange,
     value: string
@@ -61,6 +63,8 @@ export function WorkItemsPane({
   statusMessage,
   preFetchHint,
   onFetchWorkItems,
+  onCreateQuickTask,
+  canCreateQuickTask,
   onClosedDateRangeChange,
   onEnableCustomClosedEndDate,
   onResetClosedDateRange,
@@ -92,7 +96,9 @@ export function WorkItemsPane({
         <WorkItemsToolbar
           showWorkItemParentDetails={showWorkItemParentDetails}
           isActionDisabled={isActionDisabled}
+          canCreateQuickTask={canCreateQuickTask}
           onFetchWorkItems={onFetchWorkItems}
+          onCreateQuickTask={onCreateQuickTask}
           onToggleShowWorkItemParentDetails={onToggleShowWorkItemParentDetails}
         />
 

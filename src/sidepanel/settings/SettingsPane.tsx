@@ -195,6 +195,27 @@ export function SettingsPane({
       </label>
 
       <label className={classes.fieldLabel}>
+        Quick-task parent work item id
+        <input
+          className={classes.textInput}
+          type="text"
+          inputMode="numeric"
+          placeholder="e.g. 12345 (leave blank to disable)"
+          value={settings.quickTaskParentId}
+          onChange={(event) =>
+            onChange({ ...settings, quickTaskParentId: event.target.value })
+          }
+        />
+      </label>
+
+      <p className={classes.description}>
+        The work item that “+ Task from page” parents its tasks to — a personal
+        catch-all for small jobs that are not linked to planned work. The new
+        task is created in progress, assigned to you, titled after the active
+        page, and its description links back to that page.
+      </p>
+
+      <label className={classes.fieldLabel}>
         Assigned to
         <input
           className={classes.textInput}

@@ -11,6 +11,7 @@ import { fetchChildTasksForActiveParent } from './devops/childTasks';
 import { fetchPullRequestActivity } from './devops/pullRequestActivity';
 import { resolveActiveWorkItemContext } from './devops/activeParentContext';
 import { createChildTaskFromActivePage } from './devops/taskCreation';
+import { createQuickTask } from './devops/quickTask';
 import {
   fetchAuthoredWorkItems,
   fetchClosedParentRollup,
@@ -46,6 +47,14 @@ type RuntimeMessage =
   | {
       type: 'FETCH_PULL_REQUEST_ACTIVITY';
       payload: FetchWorkItemsRequest;
+    }
+  | {
+      type: 'CREATE_QUICK_TASK';
+      payload: {
+        settings: Settings;
+        pageTitle: string;
+        pageUrl: string;
+      };
     }
   | {
       type: 'GET_ACTIVE_WORK_ITEM_CONTEXT';
@@ -312,6 +321,28 @@ chrome.runtime.onMessage.addListener(
     if (message.type === 'DEVOPS_BEARER_CAPTURED') {
       void connectionService.handleBearerCaptured();
       return;
+    }
+
+    if (message.type === 'CREATE_QUICK_TASK') {
+      const { settings, pageTitle, pageUrl } = message.payload;
+      const parentId = Number(settings.quickTaskParentId.trim());
+
+      resolveWorkItemsContext(settings)
+        .then((context) =>
+          createQuickTask({
+            organization: context.organization,
+            project: context.project,
+            parentId,
+            pageTitle,
+            pageUrl,
+            assignedTo: settings.assignedTo
+          })
+        )
+        .then((result) => sendResponse({ ok: true, result }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
     }
 
     if (message.type === 'FETCH_PULL_REQUEST_ACTIVITY') {
