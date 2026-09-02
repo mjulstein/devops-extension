@@ -1,0 +1,96 @@
+.form {
+  display: grid;
+  gap: 4px;
+  margin-block-end: 10px;
+}
+
+.inputRow {
+  display: flex;
+  gap: 6px;
+}
+
+.textInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 6px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+}
+
+.submitButton {
+  font: inherit;
+  font-weight: 600;
+  padding: 4px 10px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #f6f8fa;
+  cursor: pointer;
+}
+
+.submitButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.hint {
+  font-size: 11px;
+  color: #6e7781;
+}
+
+.list {
+  display: grid;
+  gap: 2px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 2.2ch 6ch minmax(0, 1fr) 64px;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 13px;
+}
+
+.rowFinished .title,
+.rowFinished .state {
+  color: #6e7781;
+  text-decoration: line-through;
+}
+
+.pin {
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.4;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: #8b949e;
+}
+
+.pin:hover {
+  color: #0a5bd3;
+}
+
+.pinActive {
+  color: #0a5bd3;
+}
+
+.id {
+  font-variant-numeric: tabular-nums;
+  color: #0a5bd3;
+}
+
+.title,
+.state {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.state {
+  color: #57606a;
+  font-size: 12px;
+}

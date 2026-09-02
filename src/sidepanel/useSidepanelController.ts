@@ -16,6 +16,8 @@ import {
   loadActiveSidepanelTab,
   loadCachedWorkItems,
   loadHiddenChildTaskStates,
+  loadPinnedQuickTaskIds,
+  savePinnedQuickTaskIds,
   loadLastVisitedDevOpsContext,
   loadParentSuggestions,
   loadPinnedActiveWorkItemContext,
@@ -51,6 +53,7 @@ import {
   fetchAuthoredWorkItems,
   fetchClosedParentRollup,
   fetchPullRequestActivity,
+  fetchQuickTasks,
   fetchChildTasksForCurrentParent,
   fetchWorkItems,
   getActiveTabId,
@@ -61,6 +64,10 @@ import {
   type ConnectionStatus
 } from './tabMessaging';
 import type { WorkItemListTab } from './work-items/atoms/WorkItemListTabs';
+import {
+  sortQuickTasks,
+  togglePinnedId
+} from './work-items/atoms/quickTaskSorting';
 import type { PullRequestActivityItem } from '@/types';
 import type { DebugLogEntry } from './DebugConsolePane';
 import type { SidepanelTabId } from './Tabs';
@@ -129,6 +136,12 @@ export function useSidepanelController() {
   const [pullRequestsError, setPullRequestsError] = useState<string | null>(
     null
   );
+  // Quick tasks: the catch-all parent's children, in every state.
+  const [quickTasks, setQuickTasks] = useState<WorkItem[] | null>(null);
+  const [isQuickTasksLoading, setIsQuickTasksLoading] = useState(false);
+  const [quickTasksError, setQuickTasksError] = useState<string | null>(null);
+  const [pinnedQuickTaskIds, setPinnedQuickTaskIds] = useState<number[]>([]);
+  const [quickTaskTitle, setQuickTaskTitle] = useState('');
   const [hiddenTaskStates, setHiddenTaskStates] = useState<string[]>([]);
   const [closedDateRange, setClosedDateRange] = useState<ClosedDateRange>(() =>
     createDefaultClosedDateRange()
@@ -201,7 +214,8 @@ export function useSidepanelController() {
         storedPinnedContext,
         storedClosedDateRange,
         storedShowWorkItemParentDetails,
-        storedRecentFeaturesCollapsed
+        storedRecentFeaturesCollapsed,
+        storedPinnedQuickTaskIds
       ] = await Promise.all([
         loadSettings(),
         loadLastVisitedDevOpsContext(),
@@ -212,7 +226,8 @@ export function useSidepanelController() {
         loadPinnedActiveWorkItemContext(),
         loadWorkItemsClosedDateRange(),
         loadShowWorkItemParentDetails(),
-        loadRecentFeaturesCollapsed()
+        loadRecentFeaturesCollapsed(),
+        loadPinnedQuickTaskIds()
       ]);
 
       const resolvedLastVisitedContext =
@@ -260,6 +275,7 @@ export function useSidepanelController() {
 
       setActiveTab(storedActiveTab);
       setHiddenTaskStates(storedHiddenStates);
+      setPinnedQuickTaskIds(storedPinnedQuickTaskIds);
       setClosedDateRange(storedClosedDateRange);
       setIsClosedEndTodayShortcut(
         isTodayDateInputValue(storedClosedDateRange.end)
@@ -490,6 +506,7 @@ export function useSidepanelController() {
     setAuthoredItems(null);
     setClosedParentRollup(null);
     setPullRequests(null);
+    setQuickTasks(null);
     const effectiveClosedDateRange =
       options?.closedDateRange ?? closedDateRange;
     const fetchSource = options?.source ?? 'manual';
@@ -667,6 +684,10 @@ export function useSidepanelController() {
   }
 
   async function onCreateQuickTask() {
+    await runQuickTaskCreate({});
+  }
+
+  async function runQuickTaskCreate(options: { title?: string }) {
     const parentId = Number(settings.quickTaskParentId.trim());
     if (!Number.isInteger(parentId) || parentId <= 0) {
       setStatusMessage({
@@ -676,20 +697,25 @@ export function useSidepanelController() {
       return;
     }
 
-    // Read the page that was actually open when the button was clicked.
-    const [tab] = await chrome.tabs.query({
-      active: true,
-      currentWindow: true
-    });
-    const pageTitle = tab?.title ?? '';
-    const pageUrl = tab?.url ?? '';
+    // A typed title needs no page; only the page button reads the active tab.
+    let pageTitle = '';
+    let pageUrl = '';
 
-    if (!pageUrl) {
-      setStatusMessage({
-        kind: 'error',
-        text: 'Could not read the active tab, so there is no page to capture.'
+    if (!options.title) {
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true
       });
-      return;
+      pageTitle = tab?.title ?? '';
+      pageUrl = tab?.url ?? '';
+
+      if (!pageUrl) {
+        setStatusMessage({
+          kind: 'error',
+          text: 'Could not read the active tab, so there is no page to capture.'
+        });
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -698,7 +724,8 @@ export function useSidepanelController() {
       const response = await createQuickTask(
         getTrimmedSettingsFromState(settings),
         pageTitle,
-        pageUrl
+        pageUrl,
+        options.title
       );
       if (response.ok) {
         const state = response.result.state
@@ -712,6 +739,10 @@ export function useSidepanelController() {
           'success',
           `Quick task #${response.result.id} created under #${response.result.parentId}.`
         );
+        setQuickTaskTitle('');
+        // The new task belongs in the Quick list, so refresh it rather than
+        // leaving a stale view behind.
+        await loadQuickTasks(true);
       } else {
         setStatusMessage({ kind: 'error', text: response.error });
         pushDebugLog('error', `Quick task failed: ${response.error}`);
@@ -723,6 +754,52 @@ export function useSidepanelController() {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  async function loadQuickTasks(force = false) {
+    if (!force && (quickTasks !== null || isQuickTasksLoading)) {
+      return;
+    }
+
+    setIsQuickTasksLoading(true);
+    setQuickTasksError(null);
+    try {
+      const response = await fetchQuickTasks({
+        settings,
+        closedDateRange,
+        scope: 'all'
+      });
+      if (response.ok) {
+        setQuickTasks(response.result);
+        pushDebugLog(
+          'success',
+          `Quick tasks returned ${response.result.length} task(s).`
+        );
+      } else {
+        setQuickTasksError(response.error);
+        pushDebugLog('error', `Quick task fetch failed: ${response.error}`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setQuickTasksError(message);
+      pushDebugLog('error', `Quick task fetch threw: ${message}`);
+    } finally {
+      setIsQuickTasksLoading(false);
+    }
+  }
+
+  async function onCreateQuickTaskFromTitle() {
+    const title = quickTaskTitle.trim();
+    if (!title) {
+      return;
+    }
+    await runQuickTaskCreate({ title });
+  }
+
+  async function onTogglePinQuickTask(id: number) {
+    const next = togglePinnedId(pinnedQuickTaskIds, id);
+    setPinnedQuickTaskIds(next);
+    await savePinnedQuickTaskIds(next);
   }
 
   async function loadPullRequests() {
@@ -1214,6 +1291,11 @@ export function useSidepanelController() {
       return;
     }
 
+    if (tab === 'quick') {
+      await loadQuickTasks();
+      return;
+    }
+
     // Load once, lazily: the Authored list is a second query and should not
     // slow the TODO view that the panel exists to show.
     if (tab !== 'authored' || authoredItems !== null || isAuthoredLoading) {
@@ -1248,6 +1330,17 @@ export function useSidepanelController() {
   }
 
   return {
+    quickTasks:
+      quickTasks === null
+        ? null
+        : sortQuickTasks(quickTasks, pinnedQuickTaskIds),
+    isQuickTasksLoading,
+    quickTasksError,
+    pinnedQuickTaskIds,
+    quickTaskTitle,
+    onQuickTaskTitleChange: setQuickTaskTitle,
+    onCreateQuickTaskFromTitle,
+    onTogglePinQuickTask,
     onCreateQuickTask,
     canCreateQuickTask: Number(settings.quickTaskParentId.trim()) > 0,
     pullRequests,

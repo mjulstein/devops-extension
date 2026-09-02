@@ -130,6 +130,21 @@ async function route(
     case 'FETCH_PULL_REQUEST_ACTIVITY':
       return ok(scenario.pullRequestActivity);
 
+    case 'FETCH_QUICK_TASKS':
+      return ok(scenario.quickTasks);
+
+    case 'CREATE_QUICK_TASK': {
+      const { title } = (message.payload ?? {}) as { title?: string };
+      const id = nextCreatedId++;
+      return ok({
+        id,
+        title: title ?? 'Task from page',
+        state: 'In Progress',
+        url: `https://dev.azure.com/${DEV_ORGANIZATION}/${DEV_PROJECT}/_workitems/edit/${id}`,
+        parentId: 1000
+      });
+    }
+
     case 'CREATE_CHILD_TASK': {
       const { title } = (message.payload ?? {}) as { title?: string };
       const id = nextCreatedId++;

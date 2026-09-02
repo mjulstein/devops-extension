@@ -8,10 +8,11 @@ import type { RuntimeResponse } from './runtimeResponse';
 export async function createQuickTask(
   settings: Settings,
   pageTitle: string,
-  pageUrl: string
+  pageUrl: string,
+  title?: string
 ): Promise<RuntimeResponse<CreatedQuickTask>> {
   return chrome.runtime.sendMessage({
     type: 'CREATE_QUICK_TASK',
-    payload: { settings, pageTitle, pageUrl }
+    payload: { settings, pageTitle, pageUrl, title }
   });
 }

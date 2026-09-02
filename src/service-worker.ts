@@ -15,6 +15,7 @@ import { createQuickTask } from './devops/quickTask';
 import {
   fetchAuthoredWorkItems,
   fetchClosedParentRollup,
+  fetchQuickTaskItems,
   fetchWorkItems
 } from './devops/workItems';
 import { setParentForActiveWorkItem } from './devops/parentAssignment';
@@ -54,7 +55,12 @@ type RuntimeMessage =
         settings: Settings;
         pageTitle: string;
         pageUrl: string;
+        title?: string;
       };
+    }
+  | {
+      type: 'FETCH_QUICK_TASKS';
+      payload: FetchWorkItemsRequest;
     }
   | {
       type: 'GET_ACTIVE_WORK_ITEM_CONTEXT';
@@ -323,8 +329,18 @@ chrome.runtime.onMessage.addListener(
       return;
     }
 
+    if (message.type === 'FETCH_QUICK_TASKS') {
+      resolveWorkItemsContext(message.payload.settings)
+        .then((context) => fetchQuickTaskItems(message.payload, context))
+        .then((result) => sendResponse({ ok: true, result }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
     if (message.type === 'CREATE_QUICK_TASK') {
-      const { settings, pageTitle, pageUrl } = message.payload;
+      const { settings, pageTitle, pageUrl, title } = message.payload;
       const parentId = Number(settings.quickTaskParentId.trim());
 
       resolveWorkItemsContext(settings)
@@ -333,6 +349,7 @@ chrome.runtime.onMessage.addListener(
             organization: context.organization,
             project: context.project,
             parentId,
+            title,
             pageTitle,
             pageUrl,
             assignedTo: settings.assignedTo

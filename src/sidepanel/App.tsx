@@ -97,6 +97,19 @@ export function App() {
           pullRequests={controller.pullRequests}
           isPullRequestsLoading={controller.isPullRequestsLoading}
           pullRequestsError={controller.pullRequestsError}
+          quickTasks={controller.quickTasks}
+          isQuickTasksLoading={controller.isQuickTasksLoading}
+          quickTasksError={controller.quickTasksError}
+          pinnedQuickTaskIds={controller.pinnedQuickTaskIds}
+          quickTaskParentId={
+            controller.canCreateQuickTask
+              ? Number(controller.settings.quickTaskParentId.trim())
+              : null
+          }
+          quickTaskTitle={controller.quickTaskTitle}
+          onQuickTaskTitleChange={controller.onQuickTaskTitleChange}
+          onCreateQuickTaskFromTitle={controller.onCreateQuickTaskFromTitle}
+          onTogglePinQuickTask={controller.onTogglePinQuickTask}
           isActionDisabled={controller.isActionDisabled}
           linkExternal={controller.linkExternal}
         />

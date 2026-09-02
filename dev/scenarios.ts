@@ -39,6 +39,8 @@ export interface Scenario {
   closedParentRollup: WorkItem[];
   /** Lazily-loaded PRs tab contents. */
   pullRequestActivity: PullRequestActivityItem[];
+  /** Lazily-loaded Quick tab contents: catch-all tasks in every state. */
+  quickTasks: WorkItem[];
 }
 
 function url(id: number): string {
@@ -279,6 +281,35 @@ const PULL_REQUEST_ACTIVITY: PullRequestActivityItem[] = [
   })
 ];
 
+// Every state, so the tab's ordering (pinned, open, finished) is visible.
+const QUICK_TASKS: WorkItem[] = [
+  workItem({
+    id: 1300,
+    title: 'Read the ADR on provider ports',
+    state: 'In Progress',
+    lastChangedDate: daysAgo(0)
+  }),
+  workItem({
+    id: 1301,
+    title: 'Book the design review',
+    state: 'To Do',
+    lastChangedDate: daysAgo(1)
+  }),
+  workItem({
+    id: 1302,
+    title: 'Reply to the accessibility question',
+    state: 'To Do',
+    lastChangedDate: daysAgo(4)
+  }),
+  workItem({
+    id: 1303,
+    title: 'Skim the release notes',
+    state: 'Done',
+    closedDate: daysAgo(1),
+    lastChangedDate: daysAgo(1)
+  })
+];
+
 const AUTHORED: WorkItem[] = [
   workItem({
     id: 1200,
@@ -339,6 +370,7 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     authoredItems: AUTHORED,
     closedParentRollup: CLOSED_ROLLUP,
     pullRequestActivity: PULL_REQUEST_ACTIVITY,
+    quickTasks: QUICK_TASKS,
   },
   empty: {
     id: 'empty',
@@ -352,6 +384,7 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     authoredItems: AUTHORED,
     closedParentRollup: CLOSED_ROLLUP,
     pullRequestActivity: PULL_REQUEST_ACTIVITY,
+    quickTasks: QUICK_TASKS,
   },
   many: {
     id: 'many',
@@ -365,6 +398,7 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     authoredItems: AUTHORED,
     closedParentRollup: CLOSED_ROLLUP,
     pullRequestActivity: PULL_REQUEST_ACTIVITY,
+    quickTasks: QUICK_TASKS,
   },
   'reconnect-needed': {
     id: 'reconnect-needed',
@@ -378,6 +412,7 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     authoredItems: AUTHORED,
     closedParentRollup: CLOSED_ROLLUP,
     pullRequestActivity: PULL_REQUEST_ACTIVITY,
+    quickTasks: QUICK_TASKS,
   },
   error: {
     id: 'error',
@@ -392,6 +427,7 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     authoredItems: AUTHORED,
     closedParentRollup: CLOSED_ROLLUP,
     pullRequestActivity: PULL_REQUEST_ACTIVITY,
+    quickTasks: QUICK_TASKS,
   },
   slow: {
     id: 'slow',
@@ -405,6 +441,7 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     authoredItems: AUTHORED,
     closedParentRollup: CLOSED_ROLLUP,
     pullRequestActivity: PULL_REQUEST_ACTIVITY,
+    quickTasks: QUICK_TASKS,
   }
 };
 

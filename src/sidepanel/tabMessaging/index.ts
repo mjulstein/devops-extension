@@ -5,6 +5,7 @@ export { fetchWorkItems } from './fetchWorkItems';
 export { fetchAuthoredWorkItems } from './fetchAuthoredWorkItems';
 export { fetchClosedParentRollup } from './fetchClosedParentRollup';
 export { fetchPullRequestActivity } from './fetchPullRequestActivity';
+export { fetchQuickTasks } from './fetchQuickTasks';
 export { getActiveWorkItemContext } from './getActiveWorkItemContext';
 export { createChildTask } from './createChildTask';
 export { createQuickTask } from './createQuickTask';

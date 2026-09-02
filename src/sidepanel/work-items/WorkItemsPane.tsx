@@ -13,6 +13,7 @@ import {
   type WorkItemListTab
 } from './atoms/WorkItemListTabs';
 import { PullRequestList } from './atoms/PullRequestList';
+import { QuickTaskList } from './atoms/QuickTaskList';
 import { WorkItemSection } from './WorkItemSection';
 
 interface StatusCardProps {
@@ -51,6 +52,15 @@ interface StatusCardProps {
   pullRequests: PullRequestActivityItem[] | null;
   isPullRequestsLoading: boolean;
   pullRequestsError: string | null;
+  quickTasks: WorkItem[] | null;
+  isQuickTasksLoading: boolean;
+  quickTasksError: string | null;
+  pinnedQuickTaskIds: number[];
+  quickTaskParentId: number | null;
+  quickTaskTitle: string;
+  onQuickTaskTitleChange: (value: string) => void;
+  onCreateQuickTaskFromTitle: () => Promise<void>;
+  onTogglePinQuickTask: (id: number) => Promise<void>;
 }
 
 export function WorkItemsPane({
@@ -82,7 +92,16 @@ export function WorkItemsPane({
   closedRollupError,
   pullRequests,
   isPullRequestsLoading,
-  pullRequestsError
+  pullRequestsError,
+  quickTasks,
+  isQuickTasksLoading,
+  quickTasksError,
+  pinnedQuickTaskIds,
+  quickTaskParentId,
+  quickTaskTitle,
+  onQuickTaskTitleChange,
+  onCreateQuickTaskFromTitle,
+  onTogglePinQuickTask
 }: StatusCardProps) {
   const statusKindClassNames = {
     info: classes.statusInfo,
@@ -128,6 +147,7 @@ export function WorkItemsPane({
             todoCount={result.openItems.length}
             authoredCount={authoredItems?.length ?? null}
             pullRequestCount={pullRequests?.length ?? null}
+            quickTaskCount={quickTasks?.length ?? null}
             onSelectTab={onSelectListTab}
           />
 
@@ -141,6 +161,26 @@ export function WorkItemsPane({
               groupByParent={showWorkItemParentDetails}
               linkExternal={linkExternal}
             />
+          ) : activeListTab === 'quick' ? (
+            isQuickTasksLoading ? (
+              <div className={classes.loading}>Loading quick tasks…</div>
+            ) : quickTasksError ? (
+              <div className={clsx(classes.statusMessage, classes.statusError)}>
+                {quickTasksError}
+              </div>
+            ) : (
+              <QuickTaskList
+                items={quickTasks ?? []}
+                pinnedIds={pinnedQuickTaskIds}
+                parentId={quickTaskParentId}
+                title={quickTaskTitle}
+                isActionDisabled={isActionDisabled}
+                linkExternal={linkExternal}
+                onTitleChange={onQuickTaskTitleChange}
+                onCreate={onCreateQuickTaskFromTitle}
+                onTogglePin={onTogglePinQuickTask}
+              />
+            )
           ) : activeListTab === 'prs' ? (
             isPullRequestsLoading ? (
               <div className={classes.loading}>

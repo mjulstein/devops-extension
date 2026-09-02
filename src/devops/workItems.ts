@@ -28,6 +28,13 @@ export async function fetchWorkItems(
   const closedDateRange = normalizeClosedDateRange(request.closedDateRange);
   const scope = request.scope;
   const todoStates = getEffectiveTodoStates(request.settings.todoStates);
+  const quickTaskParentNumber = Number(
+    request.settings.quickTaskParentId.trim()
+  );
+  const quickTaskParentId =
+    Number.isInteger(quickTaskParentNumber) && quickTaskParentNumber > 0
+      ? quickTaskParentNumber
+      : null;
 
   if (!organization || !project) {
     throw new Error(
@@ -38,7 +45,13 @@ export async function fetchWorkItems(
   const assignedToClause = buildAssignedToClause(assignedTo);
   const openItemsPromise =
     scope === 'all'
-      ? fetchOpenItems(organization, project, assignedToClause, todoStates)
+      ? fetchOpenItems(
+          organization,
+          project,
+          assignedToClause,
+          todoStates,
+          quickTaskParentId
+        )
       : Promise.resolve([]);
   const closedItemsPromise = fetchClosedItems(
     organization,
@@ -75,8 +88,17 @@ async function fetchOpenItems(
   organization: string,
   project: string,
   assignedToClause: string,
-  todoStates: string[]
+  todoStates: string[],
+  quickTaskParentId: number | null
 ): Promise<WorkItem[]> {
+  // Quick tasks are personal odds and ends under a catch-all parent. They have
+  // their own tab, so they must not pad out the TODO list. `<>` alone would drop
+  // parentless items too, hence the explicit empty case.
+  const excludeQuickTasks =
+    quickTaskParentId === null
+      ? ''
+      : `AND ([System.Parent] <> ${quickTaskParentId} OR [System.Parent] = '')`;
+
   return fetchOpenItemsForWiql(
     organization,
     project,
@@ -88,9 +110,52 @@ async function fetchOpenItems(
         [System.TeamProject] = @project
         AND [System.AssignedTo] = ${assignedToClause}
         AND ${buildTodoStateClause(todoStates)}
+        ${excludeQuickTasks}
       ORDER BY [System.ChangedDate] DESC
     `
   );
+}
+
+/**
+ * Every task under the quick-task parent that is assigned to the user,
+ * whatever its state — unlike TODO, this list shows finished ones too so the
+ * day's small jobs stay visible until they are cleared away.
+ */
+export async function fetchQuickTaskItems(
+  request: FetchWorkItemsRequest,
+  context: WorkItemsContext
+): Promise<WorkItem[]> {
+  const organization = context.organization.trim();
+  const project = context.project.trim();
+  const parentId = Number(request.settings.quickTaskParentId.trim());
+
+  if (!organization || !project) {
+    throw new Error('Missing organization/project context for quick tasks.');
+  }
+  if (!Number.isInteger(parentId) || parentId <= 0) {
+    throw new Error('Set a quick-task parent work item id in Settings first.');
+  }
+
+  const assignedToClause = buildAssignedToClause(
+    request.settings.assignedTo.trim()
+  );
+
+  const ids = await queryWorkItemIds(
+    organization,
+    project,
+    `
+      SELECT
+        [System.Id]
+      FROM WorkItems
+      WHERE
+        [System.TeamProject] = @project
+        AND [System.Parent] = ${parentId}
+        AND [System.AssignedTo] = ${assignedToClause}
+      ORDER BY [System.ChangedDate] DESC
+    `
+  );
+
+  return fetchWorkItemDetails(ids, organization, project);
 }
 
 /**

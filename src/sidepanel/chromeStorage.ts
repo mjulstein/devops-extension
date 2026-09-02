@@ -25,6 +25,8 @@ import {
 const CACHED_WORK_ITEMS_KEY = 'cachedWorkItems';
 const ACTIVE_SIDEPANEL_TAB_KEY = 'activeSidepanelTab';
 const HIDDEN_CHILD_TASK_STATES_KEY = 'hiddenChildTaskStates';
+// Additive, browser-local: quick tasks the user pinned to the top of that tab.
+const PINNED_QUICK_TASK_IDS_KEY = 'pinnedQuickTaskIds';
 const PARENT_SUGGESTIONS_KEY = 'parentSuggestions';
 const PINNED_ACTIVE_WORK_ITEM_CONTEXT_KEY = 'pinnedActiveWorkItemContext';
 const WORK_ITEMS_CLOSED_DATE_RANGE_KEY = 'workItemsClosedDateRange';
@@ -163,6 +165,18 @@ export async function saveHiddenChildTaskStates(
   states: string[]
 ): Promise<void> {
   await chrome.storage.local.set({ [HIDDEN_CHILD_TASK_STATES_KEY]: states });
+}
+
+export async function loadPinnedQuickTaskIds(): Promise<number[]> {
+  const stored = await chrome.storage.local.get(PINNED_QUICK_TASK_IDS_KEY);
+  const value = stored[PINNED_QUICK_TASK_IDS_KEY];
+  return Array.isArray(value)
+    ? value.filter((id): id is number => typeof id === 'number')
+    : [];
+}
+
+export async function savePinnedQuickTaskIds(ids: number[]): Promise<void> {
+  await chrome.storage.local.set({ [PINNED_QUICK_TASK_IDS_KEY]: ids });
 }
 
 export async function loadParentSuggestions(): Promise<ParentSuggestionStore> {

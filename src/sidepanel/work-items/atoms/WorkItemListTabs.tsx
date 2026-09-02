@@ -1,13 +1,14 @@
 import clsx from 'clsx';
 import classes from './WorkItemListTabs.module.css';
 
-export type WorkItemListTab = 'todo' | 'authored' | 'prs';
+export type WorkItemListTab = 'todo' | 'authored' | 'prs' | 'quick';
 
 interface WorkItemListTabsProps {
   activeTab: WorkItemListTab;
   todoCount: number;
   authoredCount: number | null;
   pullRequestCount: number | null;
+  quickTaskCount: number | null;
   onSelectTab: (tab: WorkItemListTab) => void;
 }
 
@@ -16,6 +17,7 @@ export function WorkItemListTabs({
   todoCount,
   authoredCount,
   pullRequestCount,
+  quickTaskCount,
   onSelectTab
 }: WorkItemListTabsProps) {
   return (
@@ -42,6 +44,14 @@ export function WorkItemListTabs({
         isActive={activeTab === 'prs'}
         onSelect={() => {
           onSelectTab('prs');
+        }}
+      />
+      <Tab
+        label="Quick"
+        count={quickTaskCount}
+        isActive={activeTab === 'quick'}
+        onSelect={() => {
+          onSelectTab('quick');
         }}
       />
     </div>

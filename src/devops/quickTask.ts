@@ -108,6 +108,11 @@ export interface QuickTaskRequest {
   organization: string;
   project: string;
   parentId: number;
+  /**
+   * Title typed by the user. When given it wins over the page title, and no
+   * description link is written — a typed task is not about a page.
+   */
+  title?: string;
   pageTitle: string;
   pageUrl: string;
   /** Explicit assignee override; falls back to the signed-in identity. */
@@ -128,10 +133,11 @@ export async function createQuickTask(
     );
   }
 
-  const title = buildQuickTaskTitle(pageTitle);
+  const typedTitle = buildQuickTaskTitle(request.title ?? '');
+  const title = typedTitle || buildQuickTaskTitle(pageTitle);
   if (!title) {
     throw new Error(
-      'The active page has no title to use, so there is nothing to name the task.'
+      'Type a task title, or open a page with a title to capture.'
     );
   }
 
@@ -166,7 +172,10 @@ export async function createQuickTask(
     });
   }
 
-  const description = buildQuickTaskDescription(pageTitle, pageUrl);
+  // A typed task has no originating page, so it gets no link.
+  const description = typedTitle
+    ? ''
+    : buildQuickTaskDescription(pageTitle, pageUrl);
   if (description) {
     operations.push({
       op: 'add',
