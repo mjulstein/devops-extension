@@ -1,5 +1,7 @@
 import {
   ACTIVITY_WINDOW_MS,
+  activityRank,
+  isAssignedTo,
   mentionsIdentity,
   scoreInvolvement
 } from './pullRequestActivity';
@@ -10,7 +12,8 @@ const DAY = 24 * 60 * 60 * 1000;
 const NOBODY = {
   authoredByMe: false,
   commentedByMe: false,
-  mentionsMe: false
+  mentionsMe: false,
+  assignedToMe: false
 };
 
 function score(overrides: Partial<Parameters<typeof scoreInvolvement>[0]>) {
@@ -131,6 +134,25 @@ describe('scoreInvolvement', () => {
     });
   });
 
+  describe('assigned to me', () => {
+    it('includes an open PR assigned to me even with no comment or mention', () => {
+      expect(
+        score({ involvement: { ...NOBODY, assignedToMe: true } }).include
+      ).toBe(true);
+    });
+
+    // A merged PR needs nothing from me, however it was assigned.
+    it('excludes a completed PR that was assigned to me', () => {
+      expect(
+        score({
+          status: 'completed',
+          involvement: { ...NOBODY, assignedToMe: true },
+          closedAt: NOW - 2 * DAY
+        }).include
+      ).toBe(false);
+    });
+  });
+
   it('treats the window boundary as inside', () => {
     expect(
       score({
@@ -178,5 +200,71 @@ describe('mentionsIdentity', () => {
     expect(mentionsIdentity('@ someone', { id: 'x', displayName: '' })).toBe(
       false
     );
+  });
+});
+
+describe('isAssignedTo', () => {
+  const ME = 'ea65b156-52af-6953-9838-0039bb53ad32';
+
+  it('detects me among the reviewers', () => {
+    expect(isAssignedTo([{ id: 'other' }, { id: ME }], ME)).toBe(true);
+  });
+
+  it('is false when I am not a reviewer', () => {
+    expect(isAssignedTo([{ id: 'other' }], ME)).toBe(false);
+  });
+
+  it('tolerates malformed reviewers', () => {
+    expect(isAssignedTo(undefined, ME)).toBe(false);
+    expect(isAssignedTo([null, 7, {}], ME)).toBe(false);
+  });
+});
+
+describe('activityRank', () => {
+  const open = (involvement: Partial<typeof NOBODY> = {}) => ({
+    status: 'active' as const,
+    involvement: { ...NOBODY, ...involvement }
+  });
+
+  // Someone is waiting on my review, so these lead the list.
+  it('ranks an open PR assigned to me first', () => {
+    expect(activityRank(open({ assignedToMe: true }))).toBe(0);
+  });
+
+  it('ranks other open PRs after those', () => {
+    expect(activityRank(open({ authoredByMe: true }))).toBe(1);
+  });
+
+  it('ranks closed and abandoned PRs last', () => {
+    expect(
+      activityRank({
+        status: 'completed',
+        involvement: { ...NOBODY, assignedToMe: true }
+      })
+    ).toBe(2);
+    expect(
+      activityRank({
+        status: 'abandoned',
+        involvement: { ...NOBODY, assignedToMe: true }
+      })
+    ).toBe(2);
+  });
+
+  it('orders a mixed list assigned-open, open, closed', () => {
+    const items = [
+      {
+        status: 'completed' as const,
+        involvement: { ...NOBODY, authoredByMe: true }
+      },
+      open({ authoredByMe: true }),
+      open({ assignedToMe: true })
+    ];
+    expect(
+      [...items].sort((a, b) => activityRank(a) - activityRank(b))
+    ).toEqual([
+      open({ assignedToMe: true }),
+      open({ authoredByMe: true }),
+      { status: 'completed', involvement: { ...NOBODY, authoredByMe: true } }
+    ]);
   });
 });

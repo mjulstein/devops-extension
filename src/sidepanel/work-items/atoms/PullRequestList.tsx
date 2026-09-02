@@ -64,6 +64,12 @@ function PullRequestRow({
         </span>
         <span className={classes.meta}>
           {/* Why this PR is in the list — the whole point of the tab. */}
+          {/* Assigned first: it is why the row is at the top of the list. */}
+          {item.involvement.assignedToMe && item.status === 'active' && (
+            <span className={clsx(classes.tag, classes.tagAssigned)}>
+              assigned to me
+            </span>
+          )}
           {item.involvement.authoredByMe && (
             <span className={clsx(classes.tag, classes.tagMine)}>mine</span>
           )}

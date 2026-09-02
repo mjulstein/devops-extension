@@ -7,6 +7,8 @@ export interface PullRequestInvolvement {
   authoredByMe: boolean;
   commentedByMe: boolean;
   mentionsMe: boolean;
+  /** I am a reviewer — the PR is assigned to me for review. */
+  assignedToMe: boolean;
 }
 
 export interface PullRequestActivityItem {

@@ -56,6 +56,12 @@
   color: #57606a;
 }
 
+.tagAssigned {
+  background: #0a5bd3;
+  color: #fff;
+  font-weight: 600;
+}
+
 .tagMine {
   background: #ddf4e4;
   color: #1a7f37;

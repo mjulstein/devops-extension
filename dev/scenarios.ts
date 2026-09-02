@@ -229,42 +229,53 @@ function activityPr(
     involvement: {
       authoredByMe: false,
       commentedByMe: false,
-      mentionsMe: false
+      mentionsMe: false,
+      assignedToMe: false
     },
     ...overrides
   };
 }
 
 const PULL_REQUEST_ACTIVITY: PullRequestActivityItem[] = [
+  activityPr(41960, {
+    title: 'Waiting on my review — assigned to me',
+    repoName: 'web-frontend',
+    involvement: {
+      authoredByMe: false,
+      commentedByMe: false,
+      mentionsMe: false,
+      assignedToMe: true
+    }
+  }),
   activityPr(41943, {
     title: 'Add a bulk-upload modal',
     approval: 'approved',
-    involvement: { authoredByMe: true, commentedByMe: true, mentionsMe: false }
+    involvement: { authoredByMe: true, commentedByMe: true, mentionsMe: false, assignedToMe: false }
   }),
   activityPr(41310, {
     title: 'Fix a duplicated React key',
     repoName: 'reporting-frontend',
-    involvement: { authoredByMe: false, commentedByMe: true, mentionsMe: false },
+    involvement: { authoredByMe: false, commentedByMe: true, mentionsMe: false, assignedToMe: false },
     lastCommentedAt: Date.now() - 3 * 86400000
   }),
   activityPr(41631, {
     title: 'Delete a retired endpoint',
     repoName: 'portal-api',
     isDraft: true,
-    involvement: { authoredByMe: false, commentedByMe: false, mentionsMe: true }
+    involvement: { authoredByMe: false, commentedByMe: false, mentionsMe: true, assignedToMe: false }
   }),
   activityPr(41824, {
     title: 'Upgrade the design system package',
     repoName: 'lending-frontend',
     status: 'completed',
     approval: 'approved',
-    involvement: { authoredByMe: true, commentedByMe: false, mentionsMe: false }
+    involvement: { authoredByMe: true, commentedByMe: false, mentionsMe: false, assignedToMe: false }
   }),
   activityPr(41892, {
     title: 'Prepare the auth module for extraction',
     repoName: 'portal-frontend',
     status: 'abandoned',
-    involvement: { authoredByMe: true, commentedByMe: false, mentionsMe: false }
+    involvement: { authoredByMe: true, commentedByMe: false, mentionsMe: false, assignedToMe: false }
   })
 ];
 

@@ -125,7 +125,10 @@ export function scoreInvolvement(options: {
   const include =
     (involvement.authoredByMe && (isOpen || movedRecently)) ||
     commentedRecently ||
-    (isOpen && (involvement.commentedByMe || involvement.mentionsMe));
+    (isOpen &&
+      (involvement.assignedToMe ||
+        involvement.commentedByMe ||
+        involvement.mentionsMe));
 
   // Rank by the freshest thing that concerns me, falling back to the PR's own
   // timeline so an untouched authored PR still sorts sensibly.
@@ -136,6 +139,23 @@ export function scoreInvolvement(options: {
   );
 
   return { include, lastActivityAt };
+}
+
+/**
+ * True when the identity is a reviewer on the pull request — Azure DevOps'
+ * notion of "assigned to me for review". Read from the `reviewers` array that
+ * the PR list already returns, so this costs no extra request.
+ */
+export function isAssignedTo(reviewers: unknown, identityId: string): boolean {
+  if (!Array.isArray(reviewers)) {
+    return false;
+  }
+  return reviewers.some(
+    (reviewer) =>
+      reviewer &&
+      typeof reviewer === 'object' &&
+      (reviewer as { id?: unknown }).id === identityId
+  );
 }
 
 /**
@@ -280,6 +300,22 @@ export async function fetchPullRequestActivity(
   });
 }
 
+/**
+ * Sort bucket. Lower sorts first.
+ *   0 — open and assigned to me for review (someone is waiting on me)
+ *   1 — open
+ *   2 — closed or abandoned
+ */
+export function activityRank(item: {
+  status: PullRequestStatus;
+  involvement: PullRequestInvolvement;
+}): number {
+  if (item.status !== 'active') {
+    return 2;
+  }
+  return item.involvement.assignedToMe ? 0 : 1;
+}
+
 async function toActivityItem(
   pr: RawPullRequest,
   scope: { base: string; organization: string; project: string },
@@ -327,7 +363,8 @@ async function toActivityItem(
   const involvement: PullRequestInvolvement = {
     authoredByMe: authoredIds.has(pr.pullRequestId),
     commentedByMe,
-    mentionsMe
+    mentionsMe,
+    assignedToMe: isAssignedTo(pr.reviewers, identity.id)
   };
 
   const { include, lastActivityAt } = scoreInvolvement({
