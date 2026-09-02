@@ -53,3 +53,8 @@
   margin: 12px 0;
 }
 
+
+.sectionHeading {
+  margin-block: 12px 2px;
+  font-size: 13px;
+}

@@ -17,6 +17,8 @@ import {
   loadCachedWorkItems,
   loadHiddenChildTaskStates,
   loadPinnedQuickTaskIds,
+  loadStarredPages,
+  saveStarredPages,
   savePinnedQuickTaskIds,
   loadLastVisitedDevOpsContext,
   loadParentSuggestions,
@@ -68,10 +70,19 @@ import {
   sortQuickTasks,
   togglePinnedId
 } from './work-items/atoms/quickTaskSorting';
+import {
+  isPageStarred,
+  moveStarredPage,
+  removeStarredPage,
+  toggleStarredPage,
+  updateStarredPage,
+  type StarredPage
+} from './starredPages';
 import type { PullRequestActivityItem } from '@/types';
 import type { DebugLogEntry } from './DebugConsolePane';
 import type { SidepanelTabId } from './Tabs';
 import { tryCreateLastVisitedDevOpsContext } from '../devops/lastVisitedContext';
+import { isAzureDevOpsUrl } from './tabMessaging/isAzureDevOpsUrl';
 
 interface StatusMessage {
   kind: 'info' | 'success' | 'error';
@@ -142,6 +153,13 @@ export function useSidepanelController() {
   const [quickTasksError, setQuickTasksError] = useState<string | null>(null);
   const [pinnedQuickTaskIds, setPinnedQuickTaskIds] = useState<number[]>([]);
   const [quickTaskTitle, setQuickTaskTitle] = useState('');
+  // Starred Azure DevOps pages, plus the active tab so the menu knows whether
+  // the current page can be starred.
+  const [starredPages, setStarredPages] = useState<StarredPage[]>([]);
+  const [activePage, setActivePage] = useState<{
+    url: string;
+    title: string;
+  } | null>(null);
   const [hiddenTaskStates, setHiddenTaskStates] = useState<string[]>([]);
   const [closedDateRange, setClosedDateRange] = useState<ClosedDateRange>(() =>
     createDefaultClosedDateRange()
@@ -215,7 +233,8 @@ export function useSidepanelController() {
         storedClosedDateRange,
         storedShowWorkItemParentDetails,
         storedRecentFeaturesCollapsed,
-        storedPinnedQuickTaskIds
+        storedPinnedQuickTaskIds,
+        storedStarredPages
       ] = await Promise.all([
         loadSettings(),
         loadLastVisitedDevOpsContext(),
@@ -227,7 +246,8 @@ export function useSidepanelController() {
         loadWorkItemsClosedDateRange(),
         loadShowWorkItemParentDetails(),
         loadRecentFeaturesCollapsed(),
-        loadPinnedQuickTaskIds()
+        loadPinnedQuickTaskIds(),
+        loadStarredPages()
       ]);
 
       const resolvedLastVisitedContext =
@@ -276,6 +296,7 @@ export function useSidepanelController() {
       setActiveTab(storedActiveTab);
       setHiddenTaskStates(storedHiddenStates);
       setPinnedQuickTaskIds(storedPinnedQuickTaskIds);
+      setStarredPages(storedStarredPages);
       setClosedDateRange(storedClosedDateRange);
       setIsClosedEndTodayShortcut(
         isTodayDateInputValue(storedClosedDateRange.end)
@@ -373,6 +394,9 @@ export function useSidepanelController() {
       }
 
       void refreshActiveWorkItemContext();
+      // The Starred menu offers to star the *current* page, so it has to track
+      // tab changes even while an item is pinned.
+      void refreshActivePage();
     };
 
     const onTabUpdated = (
@@ -381,6 +405,10 @@ export function useSidepanelController() {
       tab: chrome.tabs.Tab
     ) => {
       void refreshActiveTabLinkMode();
+
+      if (tab.active && (changeInfo.status === 'complete' || changeInfo.url)) {
+        void refreshActivePage();
+      }
 
       if (isActiveItemPinned || !tab.active) {
         return;
@@ -391,6 +419,7 @@ export function useSidepanelController() {
       }
     };
 
+    void refreshActivePage();
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onVisibilityChange);
     chrome.tabs.onActivated.addListener(onTabActivated);
@@ -794,6 +823,68 @@ export function useSidepanelController() {
       return;
     }
     await runQuickTaskCreate({ title });
+  }
+
+  async function refreshActivePage() {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true
+    });
+    setActivePage(tab?.url ? { url: tab.url, title: tab.title ?? '' } : null);
+  }
+
+  async function onToggleStarActivePage() {
+    // Read the tab at click time rather than trusting cached state.
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true
+    });
+    if (!tab?.url || !isAzureDevOpsUrl(tab.url)) {
+      setStatusMessage({
+        kind: 'error',
+        text: 'Only Azure DevOps pages can be starred.'
+      });
+      return;
+    }
+    const next = toggleStarredPage(starredPages, tab.url, tab.title ?? '');
+    setStarredPages(next);
+    setActivePage({ url: tab.url, title: tab.title ?? '' });
+    await saveStarredPages(next);
+  }
+
+  async function onOpenStarredPage(url: string) {
+    // Reuse a tab already showing the page instead of piling up duplicates.
+    const tabs = await chrome.tabs.query({});
+    const existing = tabs.find((tab) => tab.url?.split('#')[0] === url);
+    if (existing?.id != null) {
+      await chrome.tabs.update(existing.id, { active: true });
+      if (existing.windowId != null) {
+        await chrome.windows.update(existing.windowId, { focused: true });
+      }
+      return;
+    }
+    await chrome.tabs.create({ url });
+  }
+
+  async function onUpdateStarredPage(
+    originalUrl: string,
+    next: { label: string; url: string }
+  ) {
+    const updated = updateStarredPage(starredPages, originalUrl, next);
+    setStarredPages(updated);
+    await saveStarredPages(updated);
+  }
+
+  async function onRemoveStarredPage(url: string) {
+    const updated = removeStarredPage(starredPages, url);
+    setStarredPages(updated);
+    await saveStarredPages(updated);
+  }
+
+  async function onMoveStarredPage(url: string, direction: -1 | 1) {
+    const updated = moveStarredPage(starredPages, url, direction);
+    setStarredPages(updated);
+    await saveStarredPages(updated);
   }
 
   async function onTogglePinQuickTask(id: number) {
@@ -1330,6 +1421,15 @@ export function useSidepanelController() {
   }
 
   return {
+    starredPages,
+    canStarActivePage: isAzureDevOpsUrl(activePage?.url),
+    isActivePageStarred: isPageStarred(starredPages, activePage?.url),
+    onToggleStarActivePage,
+    onOpenStarredPage,
+    onUpdateStarredPage,
+    onRemoveStarredPage,
+    onMoveStarredPage,
+    refreshActivePage,
     quickTasks:
       quickTasks === null
         ? null

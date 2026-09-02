@@ -1,0 +1,70 @@
+.section {
+  display: grid;
+  gap: 6px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: start;
+  padding-block-end: 6px;
+  border-block-end: 1px solid #eaeef2;
+}
+
+.fields {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.textInput {
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 6px;
+  border: 1px solid #d0d7de;
+  border-radius: 5px;
+  min-width: 0;
+}
+
+.urlInput {
+  font-size: 11px;
+  color: #57606a;
+}
+
+.actions {
+  display: flex;
+  gap: 2px;
+}
+
+.iconButton {
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  padding: 3px 6px;
+  border: 1px solid #d0d7de;
+  border-radius: 5px;
+  background: #f6f8fa;
+  cursor: pointer;
+  color: #57606a;
+}
+
+.iconButton:hover:not(:disabled) {
+  border-color: #8b949e;
+  color: #24292f;
+}
+
+.iconButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.remove:hover {
+  border-color: #b42318;
+  color: #b42318;
+}
+
+.empty {
+  font-size: 12px;
+  color: #6e7781;
+}

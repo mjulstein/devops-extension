@@ -1,0 +1,91 @@
+.wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.trigger {
+  font: inherit;
+  font-size: 12px;
+  width: 100%;
+  text-align: start;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #f6f8fa;
+  cursor: pointer;
+}
+
+.trigger:hover {
+  border-color: #8b949e;
+}
+
+.star {
+  color: #9a6700;
+}
+
+.count {
+  color: #6e7781;
+}
+
+.caret {
+  margin-inline-start: auto;
+  color: #6e7781;
+}
+
+.menu {
+  position: absolute;
+  z-index: 20;
+  inset-inline: 0;
+  inset-block-start: calc(100% + 4px);
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgb(31 35 40 / 15%);
+}
+
+.item {
+  font: inherit;
+  font-size: 12px;
+  display: block;
+  width: 100%;
+  text-align: start;
+  padding: 5px 6px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item:hover {
+  background: #f3f4f6;
+}
+
+.itemUrl {
+  display: block;
+  font-size: 10px;
+  color: #6e7781;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toggleRow {
+  border-block-end: 1px solid #eaeef2;
+  margin-block-end: 4px;
+  padding-block-end: 4px;
+}
+
+.empty {
+  font-size: 11px;
+  color: #6e7781;
+  padding: 6px;
+}

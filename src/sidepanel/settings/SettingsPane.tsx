@@ -9,6 +9,8 @@ import {
 } from '@/sidepanel/tabMessaging';
 import { loadLastVisitedDevOpsContext } from '@/sidepanel/chromeStorage';
 import classes from './SettingsCard.module.css';
+import { FavoritesEditor } from './FavoritesEditor';
+import type { StarredPage } from '../starredPages';
 
 interface SettingsCardProps {
   settings: Settings;
@@ -16,6 +18,13 @@ interface SettingsCardProps {
   onSave: () => Promise<void>;
   onReloadExtension: () => void;
   isLoading: boolean;
+  starredPages: StarredPage[];
+  onUpdateStarredPage: (
+    originalUrl: string,
+    next: { label: string; url: string }
+  ) => Promise<void>;
+  onRemoveStarredPage: (url: string) => Promise<void>;
+  onMoveStarredPage: (url: string, direction: -1 | 1) => Promise<void>;
 }
 
 export function SettingsPane({
@@ -23,7 +32,11 @@ export function SettingsPane({
   onChange,
   onSave,
   onReloadExtension,
-  isLoading
+  isLoading,
+  starredPages,
+  onUpdateStarredPage,
+  onRemoveStarredPage,
+  onMoveStarredPage
 }: SettingsCardProps) {
   const [todoStatesText, setTodoStatesText] = useState(() =>
     settings.todoStates.join(', ')
@@ -248,6 +261,18 @@ export function SettingsPane({
         Leave Assigned to empty to use the current signed-in Azure DevOps user
         (@me).
       </p>
+
+      <h3 className={classes.sectionHeading}>Favorites</h3>
+      <p className={classes.description}>
+        Starred Azure DevOps pages, in the order the ☆ Starred menu lists them.
+        A favorite is identified by its address and search parameters.
+      </p>
+      <FavoritesEditor
+        pages={starredPages}
+        onUpdate={onUpdateStarredPage}
+        onRemove={onRemoveStarredPage}
+        onMove={onMoveStarredPage}
+      />
 
       <div className={classes.buttonRow}>
         <button

@@ -2,6 +2,7 @@ import { DebugConsolePane } from './DebugConsolePane';
 import { SettingsPane } from './settings';
 import { ActiveWorkItemBanner } from './atoms/ActiveWorkItemBanner';
 import { DeduplicateTabsButton } from './atoms/DeduplicateTabsButton';
+import { StarredPagesMenu } from './atoms/StarredPagesMenu';
 import { ReconnectBanner } from './atoms/ReconnectBanner';
 import classes from './App.module.css';
 import { Tabs } from './Tabs';
@@ -15,12 +16,14 @@ export function App() {
   return (
     <div className={classes.wrap}>
       <header className={classes.bannerRow}>
-        <ActiveWorkItemBanner
-          heading={controller.activeItemHeading}
-          isPinned={controller.isActiveItemPinned}
-          onClick={() => {
-            void controller.onActiveItemBannerClick();
-          }}
+        {/* The active-item banner used to live here; it now sits at the top of
+            the Active item tab, where it is actually relevant. */}
+        <StarredPagesMenu
+          pages={controller.starredPages}
+          canStarActivePage={controller.canStarActivePage}
+          isActivePageStarred={controller.isActivePageStarred}
+          onToggleStarActivePage={controller.onToggleStarActivePage}
+          onOpenStarredPage={controller.onOpenStarredPage}
         />
         <DeduplicateTabsButton
           onClick={() => {
@@ -56,6 +59,10 @@ export function App() {
           onChange={controller.onChangeSettings}
           onSave={controller.onSaveSettings}
           onReloadExtension={controller.onReloadExtension}
+          starredPages={controller.starredPages}
+          onUpdateStarredPage={controller.onUpdateStarredPage}
+          onRemoveStarredPage={controller.onRemoveStarredPage}
+          onMoveStarredPage={controller.onMoveStarredPage}
           isLoading={controller.isLoading}
         />
       ) : null}
@@ -116,31 +123,40 @@ export function App() {
       ) : null}
 
       {controller.activeTab === 'work-item' ? (
-        <WorkItemPane
-          taskTitle={controller.taskTitle}
-          onTaskTitleChange={controller.onTaskTitleChange}
-          onCreateTask={controller.onCreateTaskFromCurrentWorkItem}
-          parentWorkItemId={controller.parentWorkItemId}
-          isParentDetected={Boolean(controller.parentWorkItemId)}
-          createdTasks={controller.visibleChildTasks}
-          selectedTaskId={controller.selectedTaskId}
-          onSelectTask={controller.onSelectTask}
-          availableTaskStates={controller.availableTaskStates}
-          hiddenTaskStates={controller.hiddenTaskStates}
-          onToggleTaskStateFilter={controller.onToggleTaskStateFilter}
-          isActionDisabled={controller.isActionDisabled}
-          statusMessage={controller.createTaskStatusMessage}
-          recentFeatureSuggestions={controller.recentFeatureSuggestions}
-          recentParentableSuggestions={controller.recentParentableSuggestions}
-          onSetFeatureParent={controller.onSetFeatureParent}
-          onReparentSelectedTask={controller.onReparentSelectedTask}
-          onTogglePinSuggestedParent={controller.onTogglePinSuggestedParent}
-          isRecentFeaturesCollapsed={controller.isRecentFeaturesCollapsed}
-          onToggleRecentFeaturesCollapsed={
-            controller.onToggleRecentFeaturesCollapsed
-          }
-          linkExternal={controller.linkExternal}
-        />
+        <>
+          <ActiveWorkItemBanner
+            heading={controller.activeItemHeading}
+            isPinned={controller.isActiveItemPinned}
+            onClick={() => {
+              void controller.onActiveItemBannerClick();
+            }}
+          />
+          <WorkItemPane
+            taskTitle={controller.taskTitle}
+            onTaskTitleChange={controller.onTaskTitleChange}
+            onCreateTask={controller.onCreateTaskFromCurrentWorkItem}
+            parentWorkItemId={controller.parentWorkItemId}
+            isParentDetected={Boolean(controller.parentWorkItemId)}
+            createdTasks={controller.visibleChildTasks}
+            selectedTaskId={controller.selectedTaskId}
+            onSelectTask={controller.onSelectTask}
+            availableTaskStates={controller.availableTaskStates}
+            hiddenTaskStates={controller.hiddenTaskStates}
+            onToggleTaskStateFilter={controller.onToggleTaskStateFilter}
+            isActionDisabled={controller.isActionDisabled}
+            statusMessage={controller.createTaskStatusMessage}
+            recentFeatureSuggestions={controller.recentFeatureSuggestions}
+            recentParentableSuggestions={controller.recentParentableSuggestions}
+            onSetFeatureParent={controller.onSetFeatureParent}
+            onReparentSelectedTask={controller.onReparentSelectedTask}
+            onTogglePinSuggestedParent={controller.onTogglePinSuggestedParent}
+            isRecentFeaturesCollapsed={controller.isRecentFeaturesCollapsed}
+            onToggleRecentFeaturesCollapsed={
+              controller.onToggleRecentFeaturesCollapsed
+            }
+            linkExternal={controller.linkExternal}
+          />
+        </>
       ) : null}
 
       <DebugConsolePane

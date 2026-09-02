@@ -1,4 +1,5 @@
 import { defaultSettings } from './defaultSettings';
+import type { StarredPage } from './starredPages';
 import {
   applyClosedDateRangeOverrides,
   createClosedDateRangeOverrides
@@ -27,6 +28,8 @@ const ACTIVE_SIDEPANEL_TAB_KEY = 'activeSidepanelTab';
 const HIDDEN_CHILD_TASK_STATES_KEY = 'hiddenChildTaskStates';
 // Additive, browser-local: quick tasks the user pinned to the top of that tab.
 const PINNED_QUICK_TASK_IDS_KEY = 'pinnedQuickTaskIds';
+// Additive, browser-local: Azure DevOps pages the user starred as shortcuts.
+const STARRED_PAGES_KEY = 'starredPages';
 const PARENT_SUGGESTIONS_KEY = 'parentSuggestions';
 const PINNED_ACTIVE_WORK_ITEM_CONTEXT_KEY = 'pinnedActiveWorkItemContext';
 const WORK_ITEMS_CLOSED_DATE_RANGE_KEY = 'workItemsClosedDateRange';
@@ -177,6 +180,35 @@ export async function loadPinnedQuickTaskIds(): Promise<number[]> {
 
 export async function savePinnedQuickTaskIds(ids: number[]): Promise<void> {
   await chrome.storage.local.set({ [PINNED_QUICK_TASK_IDS_KEY]: ids });
+}
+
+export async function loadStarredPages(): Promise<StarredPage[]> {
+  const stored = await chrome.storage.local.get(STARRED_PAGES_KEY);
+  const value = stored[STARRED_PAGES_KEY];
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  // Tolerate partial entries rather than dropping the whole list.
+  return value.flatMap((entry): StarredPage[] => {
+    if (!entry || typeof entry !== 'object') {
+      return [];
+    }
+    const { url, label, starredAt } = entry as Record<string, unknown>;
+    if (typeof url !== 'string' || !url) {
+      return [];
+    }
+    return [
+      {
+        url,
+        label: typeof label === 'string' && label ? label : url,
+        starredAt: typeof starredAt === 'number' ? starredAt : 0
+      }
+    ];
+  });
+}
+
+export async function saveStarredPages(pages: StarredPage[]): Promise<void> {
+  await chrome.storage.local.set({ [STARRED_PAGES_KEY]: pages });
 }
 
 export async function loadParentSuggestions(): Promise<ParentSuggestionStore> {
