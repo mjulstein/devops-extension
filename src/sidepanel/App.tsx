@@ -2,6 +2,7 @@ import { DebugConsolePane } from './DebugConsolePane';
 import { SettingsPane } from './settings';
 import { ActiveWorkItemBanner } from './atoms/ActiveWorkItemBanner';
 import { DeduplicateTabsButton } from './atoms/DeduplicateTabsButton';
+import { StarPageToggle } from './atoms/StarPageToggle';
 import { StarredPagesMenu } from './atoms/StarredPagesMenu';
 import { ReconnectBanner } from './atoms/ReconnectBanner';
 import classes from './App.module.css';
@@ -18,11 +19,13 @@ export function App() {
       <header className={classes.bannerRow}>
         {/* The active-item banner used to live here; it now sits at the top of
             the Active item tab, where it is actually relevant. */}
+        <StarPageToggle
+          canStar={controller.canStarActivePage}
+          isStarred={controller.isActivePageStarred}
+          onToggle={controller.onToggleStarActivePage}
+        />
         <StarredPagesMenu
-          pages={controller.starredPages}
-          canStarActivePage={controller.canStarActivePage}
-          isActivePageStarred={controller.isActivePageStarred}
-          onToggleStarActivePage={controller.onToggleStarActivePage}
+          pages={controller.openableStarredPages}
           onOpenStarredPage={controller.onOpenStarredPage}
         />
         <DeduplicateTabsButton

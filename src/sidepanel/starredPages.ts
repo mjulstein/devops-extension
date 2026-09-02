@@ -69,6 +69,23 @@ export function toggleStarredPage(
   return [{ url, label: trimmed || url, starredAt: now }, ...pages];
 }
 
+/**
+ * The pages the menu should offer to open.
+ *
+ * The page you are already looking at is excluded: the menu exists to get you
+ * somewhere else, and an entry that navigates nowhere is just noise. Whether the
+ * current page is starred is shown by the toggle beside the menu instead.
+ */
+export function listOpenablePages(
+  pages: StarredPage[],
+  currentUrl: string | undefined
+): StarredPage[] {
+  const current = normalizePageUrl(currentUrl);
+  return current === null
+    ? pages
+    : pages.filter((page) => page.url !== current);
+}
+
 /** Applies an edit from the favorites editor, keyed by the original url. */
 export function updateStarredPage(
   pages: StarredPage[],

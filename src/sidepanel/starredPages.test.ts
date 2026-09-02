@@ -1,5 +1,6 @@
 import {
   isPageStarred,
+  listOpenablePages,
   moveStarredPage,
   normalizePageUrl,
   removeStarredPage,
@@ -182,5 +183,40 @@ describe('moveStarredPage', () => {
     expect(moveStarredPage(pages, 'https://x.invalid/a', -1)).toBe(pages);
     expect(moveStarredPage(pages, 'https://x.invalid/c', 1)).toBe(pages);
     expect(moveStarredPage(pages, 'https://x.invalid/zz', 1)).toBe(pages);
+  });
+});
+
+describe('listOpenablePages', () => {
+  const pages = [
+    page('https://x.invalid/a?q=1', 'A'),
+    page('https://x.invalid/b', 'B')
+  ];
+
+  // The menu is for going elsewhere; an entry for the current page does nothing.
+  it('excludes the page currently open', () => {
+    expect(
+      listOpenablePages(pages, 'https://x.invalid/a?q=1').map((p) => p.label)
+    ).toEqual(['B']);
+  });
+
+  it('excludes it regardless of the hash', () => {
+    expect(
+      listOpenablePages(pages, 'https://x.invalid/a?q=1#frag').map(
+        (p) => p.label
+      )
+    ).toEqual(['B']);
+  });
+
+  it('keeps everything when the current page is not starred', () => {
+    expect(
+      listOpenablePages(pages, 'https://x.invalid/zzz').map((p) => p.label)
+    ).toEqual(['A', 'B']);
+  });
+
+  it('keeps everything when there is no usable current url', () => {
+    expect(listOpenablePages(pages, undefined)).toEqual(pages);
+    expect(listOpenablePages(pages, 'chrome-extension://abc/x.html')).toEqual(
+      pages
+    );
   });
 });

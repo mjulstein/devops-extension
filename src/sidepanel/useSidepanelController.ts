@@ -72,6 +72,7 @@ import {
 } from './work-items/atoms/quickTaskSorting';
 import {
   isPageStarred,
+  listOpenablePages,
   moveStarredPage,
   removeStarredPage,
   toggleStarredPage,
@@ -1422,6 +1423,7 @@ export function useSidepanelController() {
 
   return {
     starredPages,
+    openableStarredPages: listOpenablePages(starredPages, activePage?.url),
     canStarActivePage: isAzureDevOpsUrl(activePage?.url),
     isActivePageStarred: isPageStarred(starredPages, activePage?.url),
     onToggleStarActivePage,

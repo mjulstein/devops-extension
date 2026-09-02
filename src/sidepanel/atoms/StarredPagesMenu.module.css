@@ -23,9 +23,6 @@
   border-color: #8b949e;
 }
 
-.star {
-  color: #9a6700;
-}
 
 .count {
   color: #6e7781;
@@ -78,11 +75,6 @@
   text-overflow: ellipsis;
 }
 
-.toggleRow {
-  border-block-end: 1px solid #eaeef2;
-  margin-block-end: 4px;
-  padding-block-end: 4px;
-}
 
 .empty {
   font-size: 11px;

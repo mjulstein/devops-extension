@@ -4,19 +4,16 @@ import classes from './StarredPagesMenu.module.css';
 import type { StarredPage } from '../starredPages';
 
 interface StarredPagesMenuProps {
+  /**
+   * Favorites to offer, already excluding the page currently open — starring is
+   * the neighbouring toggle's job, not this menu's.
+   */
   pages: StarredPage[];
-  /** Whether the active tab is an Azure DevOps page that can be starred. */
-  canStarActivePage: boolean;
-  isActivePageStarred: boolean;
-  onToggleStarActivePage: () => Promise<void>;
   onOpenStarredPage: (url: string) => Promise<void>;
 }
 
 export function StarredPagesMenu({
   pages,
-  canStarActivePage,
-  isActivePageStarred,
-  onToggleStarActivePage,
   onOpenStarredPage
 }: StarredPagesMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -55,9 +52,6 @@ export function StarredPagesMenu({
         onClick={() => setIsOpen((open) => !open)}
         title="Starred Azure DevOps pages"
       >
-        <span aria-hidden="true" className={classes.star}>
-          {pages.length > 0 ? '★' : '☆'}
-        </span>
         Starred
         <span className={classes.count}>{pages.length || ''}</span>
         <span aria-hidden="true" className={classes.caret}>
@@ -67,29 +61,8 @@ export function StarredPagesMenu({
 
       {isOpen && (
         <div className={classes.menu} role="menu">
-          <div className={classes.toggleRow}>
-            <button
-              type="button"
-              role="menuitem"
-              className={classes.item}
-              disabled={!canStarActivePage}
-              title={
-                canStarActivePage
-                  ? 'Star or unstar the page in the active tab'
-                  : 'The active tab is not an Azure DevOps page'
-              }
-              onClick={() => {
-                void onToggleStarActivePage();
-              }}
-            >
-              {isActivePageStarred ? '★ Unstar this page' : '☆ Star this page'}
-            </button>
-          </div>
-
           {pages.length === 0 ? (
-            <p className={classes.empty}>
-              Nothing starred yet. Open an Azure DevOps page and star it.
-            </p>
+            <p className={classes.empty}>No other favorites to open.</p>
           ) : (
             pages.map((page) => (
               <button
