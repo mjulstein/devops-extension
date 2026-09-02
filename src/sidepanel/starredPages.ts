@@ -46,6 +46,100 @@ export function isPageStarred(
   return url !== null && pages.some((page) => page.url === url);
 }
 
+function normalizeLabel(label: string): string {
+  return label.replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+/**
+ * Fragments of a URL that could tell two same-titled pages apart, best first.
+ *
+ * Azure DevOps titles repeat constantly — every board is "Boards", every query
+ * view is "Queries" — while the URL is what actually differs. Path segments are
+ * tried from the end because that is where the specific part lives
+ * (for example .../_boards/board/t/Frontend/Stories -> "Stories"), then the
+ * query string, which separates two saved queries at the same path.
+ */
+export function labelHintsFromUrl(url: string): string[] {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return [];
+  }
+
+  const hints: string[] = [];
+  const segments = parsed.pathname
+    .split('/')
+    .map((segment) => decodeURIComponent(segment).trim())
+    .filter(Boolean);
+
+  for (const segment of [...segments].reverse()) {
+    hints.push(segment);
+  }
+  if (parsed.search.length > 1) {
+    hints.push(parsed.search.slice(1));
+  }
+  hints.push(parsed.host);
+
+  return hints;
+}
+
+/**
+ * A label that is not already taken by another favorite.
+ *
+ * Duplicate titles with different URLs are common, and a list of identical
+ * names cannot be used. The first URL fragment that actually distinguishes it is
+ * appended in parentheses; if none does, a counter is, so the result is always
+ * unique rather than merely usually unique.
+ */
+export function buildDistinctLabel(
+  pages: StarredPage[],
+  url: string,
+  label: string
+): string {
+  const base = label.replace(/\s+/g, ' ').trim() || url;
+  const taken = new Set(pages.map((page) => normalizeLabel(page.label)));
+
+  if (!taken.has(normalizeLabel(base))) {
+    return base;
+  }
+
+  // Only fragments the colliding pages do NOT share can distinguish anything.
+  // Two boards both end in "Stories", so appending "Stories" would produce a
+  // second uninformative entry; what separates them is "Frontend" vs "Backend".
+  const prefix = `${normalizeLabel(base)} (`;
+  const collidingHints = new Set(
+    pages
+      .filter((page) => {
+        const existing = normalizeLabel(page.label);
+        return existing === normalizeLabel(base) || existing.startsWith(prefix);
+      })
+      .flatMap((page) => labelHintsFromUrl(page.url).map(normalizeLabel))
+  );
+
+  for (const hint of labelHintsFromUrl(url)) {
+    const normalizedHint = normalizeLabel(hint);
+    // A hint already inside the title adds nothing to read.
+    if (normalizeLabel(base).includes(normalizedHint)) {
+      continue;
+    }
+    if (collidingHints.has(normalizedHint)) {
+      continue;
+    }
+    const candidate = `${base} (${hint})`;
+    if (!taken.has(normalizeLabel(candidate))) {
+      return candidate;
+    }
+  }
+
+  for (let suffix = 2; ; suffix += 1) {
+    const candidate = `${base} (${suffix})`;
+    if (!taken.has(normalizeLabel(candidate))) {
+      return candidate;
+    }
+  }
+}
+
 /**
  * Adds or removes a star. Newest first, so a freshly starred page is easy to
  * find in the menu.
@@ -65,8 +159,10 @@ export function toggleStarredPage(
     return pages.filter((page) => page.url !== url);
   }
 
-  const trimmed = label.replace(/\s+/g, ' ').trim();
-  return [{ url, label: trimmed || url, starredAt: now }, ...pages];
+  return [
+    { url, label: buildDistinctLabel(pages, url, label), starredAt: now },
+    ...pages
+  ];
 }
 
 /**

@@ -1,5 +1,7 @@
 import {
+  buildDistinctLabel,
   isPageStarred,
+  labelHintsFromUrl,
   listOpenablePages,
   moveStarredPage,
   normalizePageUrl,
@@ -218,5 +220,145 @@ describe('listOpenablePages', () => {
     expect(listOpenablePages(pages, 'chrome-extension://abc/x.html')).toEqual(
       pages
     );
+  });
+});
+
+describe('labelHintsFromUrl', () => {
+  // Path segments from the end first: that is where the specific part lives.
+  it('offers path segments deepest first, then the query, then the host', () => {
+    expect(
+      labelHintsFromUrl(
+        'https://dev.azure.com/org/proj/_boards/board/t/Frontend/Stories?x=1'
+      )
+    ).toEqual([
+      'Stories',
+      'Frontend',
+      't',
+      'board',
+      '_boards',
+      'proj',
+      'org',
+      'x=1',
+      'dev.azure.com'
+    ]);
+  });
+
+  it('decodes escaped segments', () => {
+    expect(labelHintsFromUrl('https://x.invalid/my%20team')[0]).toBe('my team');
+  });
+
+  it('returns nothing for an unparseable url', () => {
+    expect(labelHintsFromUrl('nope')).toEqual([]);
+  });
+});
+
+describe('buildDistinctLabel', () => {
+  it('leaves a unique title alone', () => {
+    expect(
+      buildDistinctLabel(
+        [page('https://x.invalid/a', 'Boards')],
+        'https://x.invalid/b',
+        'Queries'
+      )
+    ).toBe('Queries');
+  });
+
+  // The whole point: two boards both titled "Boards" must be tellable apart.
+  it('appends the distinguishing path segment on a duplicate title', () => {
+    expect(
+      buildDistinctLabel(
+        [
+          page(
+            'https://dev.azure.com/o/p/_boards/board/t/Backend/Stories',
+            'Boards'
+          )
+        ],
+        'https://dev.azure.com/o/p/_boards/board/t/Frontend/Stories',
+        'Boards'
+      )
+    ).toBe('Boards (Frontend)');
+  });
+
+  it('skips a hint already present in the title', () => {
+    expect(
+      buildDistinctLabel(
+        [page('https://x.invalid/a/Stories', 'Stories')],
+        'https://x.invalid/b/Stories',
+        'Stories'
+      )
+    ).toBe('Stories (b)');
+  });
+
+  // Same path, different query — the query is what separates them.
+  it('falls back to the query string when paths match', () => {
+    expect(
+      buildDistinctLabel(
+        [page('https://x.invalid/_queries/query/?wiql=a', 'Queries')],
+        'https://x.invalid/_queries/query/?wiql=b',
+        'Queries'
+      )
+    ).toBe('Queries (wiql=b)');
+  });
+
+  it('is case and whitespace insensitive when detecting duplicates', () => {
+    expect(
+      buildDistinctLabel(
+        [page('https://x.invalid/a', '  BOARDS  ')],
+        'https://x.invalid/zz',
+        'Boards'
+      )
+    ).toBe('Boards (zz)');
+  });
+
+  it('does not collide with an existing disambiguated label', () => {
+    expect(
+      buildDistinctLabel(
+        [
+          page('https://x.invalid/a/Stories', 'Boards'),
+          page('https://x.invalid/b', 'Boards (Stories)')
+        ],
+        'https://x.invalid/c/Stories',
+        'Boards'
+      )
+    ).toBe('Boards (c)');
+  });
+
+  // Guarantees uniqueness rather than merely usually achieving it.
+  it('falls back to a counter when no url fragment helps', () => {
+    expect(
+      buildDistinctLabel(
+        [
+          page('https://x.invalid/a', 'Boards'),
+          page('https://x.invalid/b', 'Boards (a)')
+        ],
+        'https://x.invalid/a',
+        'Boards'
+      )
+    ).toBe('Boards (2)');
+  });
+
+  it('uses the url as the label when there is no title at all', () => {
+    expect(buildDistinctLabel([], 'https://x.invalid/a', '   ')).toBe(
+      'https://x.invalid/a'
+    );
+  });
+});
+
+describe('toggleStarredPage disambiguation', () => {
+  it('stores a distinguished label for a duplicate title', () => {
+    const existing = [
+      page(
+        'https://dev.azure.com/o/p/_boards/board/t/Backend/Stories',
+        'Boards'
+      )
+    ];
+    const result = toggleStarredPage(
+      existing,
+      'https://dev.azure.com/o/p/_boards/board/t/Frontend/Stories',
+      'Boards',
+      NOW
+    );
+    expect(result[0]?.label).toBe('Boards (Frontend)');
+    expect(result[1]?.label).toBe('Boards');
   });
 });
