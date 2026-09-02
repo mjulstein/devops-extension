@@ -120,6 +120,8 @@ export function App() {
           onQuickTaskTitleChange={controller.onQuickTaskTitleChange}
           onCreateQuickTaskFromTitle={controller.onCreateQuickTaskFromTitle}
           onTogglePinQuickTask={controller.onTogglePinQuickTask}
+          quickTaskArchiveId={controller.quickTaskArchiveId}
+          onArchiveQuickTask={controller.onArchiveQuickTask}
           isActionDisabled={controller.isActionDisabled}
           linkExternal={controller.linkExternal}
         />

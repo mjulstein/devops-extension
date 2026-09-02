@@ -5,5 +5,6 @@ export const defaultSettings: Settings = {
   project: '',
   assignedTo: '',
   todoStates: [],
-  quickTaskParentId: ''
+  quickTaskParentId: '',
+  quickTaskArchiveId: ''
 };

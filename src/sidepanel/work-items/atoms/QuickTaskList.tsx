@@ -15,6 +15,9 @@ interface QuickTaskListProps {
   onTitleChange: (value: string) => void;
   onCreate: () => Promise<void>;
   onTogglePin: (id: number) => Promise<void>;
+  /** null when no archive work item is configured, which hides the action. */
+  archiveId: number | null;
+  onArchive: (id: number) => Promise<void>;
 }
 
 export function QuickTaskList({
@@ -26,7 +29,9 @@ export function QuickTaskList({
   linkExternal,
   onTitleChange,
   onCreate,
-  onTogglePin
+  onTogglePin,
+  archiveId,
+  onArchive
 }: QuickTaskListProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const pinned = new Set(pinnedIds);
@@ -80,14 +85,12 @@ export function QuickTaskList({
         <div className={classes.list} role="list">
           {items.map((item) => {
             const isPinned = pinned.has(item.id);
+            const isFinished = isFinishedState(item.state);
             return (
               <div
                 key={item.id}
                 role="listitem"
-                className={clsx(
-                  classes.row,
-                  isFinishedState(item.state) && classes.rowFinished
-                )}
+                className={clsx(classes.row, isFinished && classes.rowFinished)}
               >
                 <button
                   type="button"
@@ -113,6 +116,22 @@ export function QuickTaskList({
                 <span className={classes.state} title={item.state}>
                   {item.state}
                 </span>
+                {/* Only finished tasks can be archived — an open one still
+                    belongs in the list. */}
+                {isFinished && archiveId !== null ? (
+                  <button
+                    type="button"
+                    className={classes.archive}
+                    title={`Archive under #${archiveId}`}
+                    onClick={() => {
+                      void onArchive(item.id);
+                    }}
+                  >
+                    ⇥
+                  </button>
+                ) : (
+                  <span aria-hidden="true" />
+                )}
               </div>
             );
           })}

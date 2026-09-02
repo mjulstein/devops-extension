@@ -61,6 +61,8 @@ interface StatusCardProps {
   onQuickTaskTitleChange: (value: string) => void;
   onCreateQuickTaskFromTitle: () => Promise<void>;
   onTogglePinQuickTask: (id: number) => Promise<void>;
+  quickTaskArchiveId: number | null;
+  onArchiveQuickTask: (id: number) => Promise<void>;
 }
 
 export function WorkItemsPane({
@@ -101,7 +103,9 @@ export function WorkItemsPane({
   quickTaskTitle,
   onQuickTaskTitleChange,
   onCreateQuickTaskFromTitle,
-  onTogglePinQuickTask
+  onTogglePinQuickTask,
+  quickTaskArchiveId,
+  onArchiveQuickTask
 }: StatusCardProps) {
   const statusKindClassNames = {
     info: classes.statusInfo,
@@ -179,6 +183,8 @@ export function WorkItemsPane({
                 onTitleChange={onQuickTaskTitleChange}
                 onCreate={onCreateQuickTaskFromTitle}
                 onTogglePin={onTogglePinQuickTask}
+                archiveId={quickTaskArchiveId}
+                onArchive={onArchiveQuickTask}
               />
             )
           ) : activeListTab === 'prs' ? (

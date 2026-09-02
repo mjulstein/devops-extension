@@ -50,6 +50,7 @@ import { navigateToWorkItem } from './navigateToWorkItem';
 import { deduplicateTabs } from './deduplicateTabs';
 import {
   createChildTask,
+  archiveQuickTask,
   createQuickTask,
   ensureConnection,
   fetchAuthoredWorkItems,
@@ -888,6 +889,39 @@ export function useSidepanelController() {
     await saveStarredPages(updated);
   }
 
+  async function onArchiveQuickTask(id: number) {
+    const archiveId = Number(settings.quickTaskArchiveId.trim());
+    if (!Number.isInteger(archiveId) || archiveId <= 0) {
+      setStatusMessage({
+        kind: 'error',
+        text: 'Set a quick-task archive work item id in Settings first.'
+      });
+      return;
+    }
+
+    try {
+      const response = await archiveQuickTask(
+        getTrimmedSettingsFromState(settings),
+        id
+      );
+      if (response.ok) {
+        pushDebugLog(
+          'success',
+          `Archived quick task #${id} under #${archiveId}.`
+        );
+        // It is no longer a child of the quick-task parent, so refetch.
+        await loadQuickTasks(true);
+      } else {
+        setStatusMessage({ kind: 'error', text: response.error });
+        pushDebugLog('error', `Archiving #${id} failed: ${response.error}`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setStatusMessage({ kind: 'error', text: message });
+      pushDebugLog('error', `Archiving #${id} threw: ${message}`);
+    }
+  }
+
   async function onTogglePinQuickTask(id: number) {
     const next = togglePinnedId(pinnedQuickTaskIds, id);
     setPinnedQuickTaskIds(next);
@@ -1443,6 +1477,11 @@ export function useSidepanelController() {
     onQuickTaskTitleChange: setQuickTaskTitle,
     onCreateQuickTaskFromTitle,
     onTogglePinQuickTask,
+    onArchiveQuickTask,
+    quickTaskArchiveId:
+      Number(settings.quickTaskArchiveId.trim()) > 0
+        ? Number(settings.quickTaskArchiveId.trim())
+        : null,
     onCreateQuickTask,
     canCreateQuickTask: Number(settings.quickTaskParentId.trim()) > 0,
     pullRequests,
@@ -1519,7 +1558,8 @@ function getTrimmedSettingsFromState(settings: Settings): Settings {
     project: settings.project.trim(),
     assignedTo: settings.assignedTo.trim(),
     todoStates: normalizeTodoStates(settings.todoStates),
-    quickTaskParentId: settings.quickTaskParentId.trim()
+    quickTaskParentId: settings.quickTaskParentId.trim(),
+    quickTaskArchiveId: settings.quickTaskArchiveId.trim()
   };
 }
 

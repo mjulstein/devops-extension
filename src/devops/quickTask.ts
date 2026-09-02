@@ -3,6 +3,7 @@ import { authFetch } from './authFetch';
 import { fetchIdentity } from './identity';
 import { getNumericIdFromResponse } from './typeGuards';
 import { getWorkItemDetails } from './workItemDetails';
+import { reparentWorkItem } from './reparentWorkItem';
 
 // "Quick task": one click turns whatever page you are looking at into a task
 // under a fixed catch-all work item, already in progress and assigned to you.
@@ -300,4 +301,33 @@ async function transitionState(
     );
     return false;
   }
+}
+
+/**
+ * Moves a finished quick task under the archive work item.
+ *
+ * The Quick tab lists the children of the quick-task parent, so re-parenting is
+ * what "archiving" means here: the task keeps its history and stays findable
+ * under the archive item, but stops crowding the day's list. Consolidating many
+ * finished tasks under one archive item is the point — the alternative is
+ * deleting them or letting the list grow forever.
+ */
+export async function archiveQuickTask(options: {
+  organization: string;
+  project: string;
+  taskId: number;
+  archiveId: number;
+}): Promise<void> {
+  const { organization, project, taskId, archiveId } = options;
+
+  if (!organization || !project) {
+    throw new Error('Missing organization/project context for archiving.');
+  }
+  if (!Number.isInteger(archiveId) || archiveId <= 0) {
+    throw new Error(
+      'Set a quick-task archive work item id in Settings before archiving.'
+    );
+  }
+
+  await reparentWorkItem(organization, project, taskId, archiveId);
 }

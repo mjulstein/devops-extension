@@ -221,6 +221,26 @@ export function SettingsPane({
         />
       </label>
 
+      <label className={classes.fieldLabel}>
+        Quick-task archive work item id
+        <input
+          className={classes.textInput}
+          type="text"
+          inputMode="numeric"
+          placeholder="e.g. 12346 (leave blank to disable archiving)"
+          value={settings.quickTaskArchiveId}
+          onChange={(event) =>
+            onChange({ ...settings, quickTaskArchiveId: event.target.value })
+          }
+        />
+      </label>
+
+      <p className={classes.description}>
+        Finished quick tasks can be archived under this work item, which
+        consolidates them out of the Quick list without deleting them. The
+        archive button only appears on completed tasks.
+      </p>
+
       <p className={classes.description}>
         The work item that “+ Task from page” parents its tasks to — a personal
         catch-all for small jobs that are not linked to planned work. The new

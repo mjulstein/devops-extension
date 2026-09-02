@@ -133,6 +133,12 @@ async function route(
     case 'FETCH_QUICK_TASKS':
       return ok(scenario.quickTasks);
 
+    case 'ARCHIVE_QUICK_TASK': {
+      const { taskId } = (message.payload ?? {}) as { taskId?: number };
+      console.info('[dev-harness] archived quick task', taskId);
+      return ok(taskId ?? 0);
+    }
+
     case 'CREATE_QUICK_TASK': {
       const { title } = (message.payload ?? {}) as { title?: string };
       const id = nextCreatedId++;

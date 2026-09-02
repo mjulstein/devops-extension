@@ -9,5 +9,10 @@ export interface Settings {
    * can be empty; empty disables the quick-task button.
    */
   quickTaskParentId: string;
+  /**
+   * Work item that finished quick tasks are moved under, to keep the Quick list
+   * to what is still live. Empty hides the archive action.
+   */
+  quickTaskArchiveId: string;
 }
 

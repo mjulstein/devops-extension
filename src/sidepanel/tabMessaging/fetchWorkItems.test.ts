@@ -25,7 +25,8 @@ describe('fetchWorkItems.test.ts', () => {
         project: '',
         assignedTo: 'User Name',
         todoStates: [],
-        quickTaskParentId: ''
+        quickTaskParentId: '',
+        quickTaskArchiveId: ''
       },
       closedDateRange: {
         start: '2026-03-10',
@@ -69,7 +70,8 @@ describe('fetchWorkItems.test.ts', () => {
           project: '',
           assignedTo: 'User Name',
           todoStates: [],
-          quickTaskParentId: ''
+          quickTaskParentId: '',
+          quickTaskArchiveId: ''
         },
         closedDateRange: {
           start: '2026-03-10',
@@ -92,7 +94,8 @@ describe('fetchWorkItems.test.ts', () => {
         project: '',
         assignedTo: 'User Name',
         todoStates: [],
-        quickTaskParentId: ''
+        quickTaskParentId: '',
+        quickTaskArchiveId: ''
       },
       closedDateRange: {
         start: '2026-03-10',
