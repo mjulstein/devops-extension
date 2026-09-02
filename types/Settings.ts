@@ -14,5 +14,11 @@ export interface Settings {
    * to what is still live. Empty hides the archive action.
    */
   quickTaskArchiveId: string;
+  /**
+   * Bookmarks folder that favorites are mirrored into, so they also appear in
+   * omnibox autocomplete. Empty disables the mirror — the name is the user's to
+   * choose and is never assumed.
+   */
+  bookmarkFolderName: string;
 }
 

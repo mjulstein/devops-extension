@@ -9,7 +9,8 @@
     "tabs",
     "storage",
     "scripting",
-    "webRequest"
+    "webRequest",
+    "bookmarks"
   ],
   "host_permissions": [
     "https://dev.azure.com/*",
@@ -47,5 +48,13 @@
   ],
   "action": {
     "default_title": "DevOps Daily Export"
+  },
+  "commands": {
+    "open-starred-search": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+K"
+      },
+      "description": "Open the side panel and search starred Azure DevOps pages"
+    }
   }
 }

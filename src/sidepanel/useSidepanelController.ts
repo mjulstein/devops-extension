@@ -71,6 +71,7 @@ import {
   sortQuickTasks,
   togglePinnedId
 } from './work-items/atoms/quickTaskSorting';
+import { syncFavoritesToBookmarks } from './bookmarkSync';
 import {
   isPageStarred,
   listOpenablePages,
@@ -162,6 +163,9 @@ export function useSidepanelController() {
     url: string;
     title: string;
   } | null>(null);
+  // Bumped when the keyboard shortcut fires, so the menu opens and focuses its
+  // search. A counter, so pressing it twice works.
+  const [starredFocusRequest, setStarredFocusRequest] = useState(0);
   const [hiddenTaskStates, setHiddenTaskStates] = useState<string[]>([]);
   const [closedDateRange, setClosedDateRange] = useState<ClosedDateRange>(() =>
     createDefaultClosedDateRange()
@@ -421,6 +425,17 @@ export function useSidepanelController() {
       }
     };
 
+    const onRuntimeMessage = (message: unknown) => {
+      if (
+        message &&
+        typeof message === 'object' &&
+        (message as { type?: unknown }).type === 'FOCUS_STARRED_SEARCH'
+      ) {
+        setStarredFocusRequest((count) => count + 1);
+      }
+    };
+    chrome.runtime.onMessage.addListener(onRuntimeMessage);
+
     void refreshActivePage();
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onVisibilityChange);
@@ -428,6 +443,7 @@ export function useSidepanelController() {
     chrome.tabs.onUpdated.addListener(onTabUpdated);
 
     return () => {
+      chrome.runtime.onMessage.removeListener(onRuntimeMessage);
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       chrome.tabs.onActivated.removeListener(onTabActivated);
@@ -827,6 +843,25 @@ export function useSidepanelController() {
     await runQuickTaskCreate({ title });
   }
 
+  /**
+   * Persists favorites and mirrors them into bookmarks. Everything that changes
+   * favorites goes through here, so the projection cannot drift.
+   */
+  async function commitStarredPages(next: StarredPage[]) {
+    setStarredPages(next);
+    await saveStarredPages(next);
+    const plan = await syncFavoritesToBookmarks(
+      settings.bookmarkFolderName,
+      next
+    );
+    if (plan) {
+      pushDebugLog(
+        'info',
+        `Bookmark mirror: +${plan.create.length} ~${plan.update.length} -${plan.remove.length}.`
+      );
+    }
+  }
+
   async function refreshActivePage() {
     const [tab] = await chrome.tabs.query({
       active: true,
@@ -849,9 +884,8 @@ export function useSidepanelController() {
       return;
     }
     const next = toggleStarredPage(starredPages, tab.url, tab.title ?? '');
-    setStarredPages(next);
     setActivePage({ url: tab.url, title: tab.title ?? '' });
-    await saveStarredPages(next);
+    await commitStarredPages(next);
   }
 
   async function onOpenStarredPage(url: string) {
@@ -872,21 +906,17 @@ export function useSidepanelController() {
     originalUrl: string,
     next: { label: string; url: string }
   ) {
-    const updated = updateStarredPage(starredPages, originalUrl, next);
-    setStarredPages(updated);
-    await saveStarredPages(updated);
+    await commitStarredPages(
+      updateStarredPage(starredPages, originalUrl, next)
+    );
   }
 
   async function onRemoveStarredPage(url: string) {
-    const updated = removeStarredPage(starredPages, url);
-    setStarredPages(updated);
-    await saveStarredPages(updated);
+    await commitStarredPages(removeStarredPage(starredPages, url));
   }
 
   async function onMoveStarredPage(url: string, direction: -1 | 1) {
-    const updated = moveStarredPage(starredPages, url, direction);
-    setStarredPages(updated);
-    await saveStarredPages(updated);
+    await commitStarredPages(moveStarredPage(starredPages, url, direction));
   }
 
   async function onArchiveQuickTask(id: number) {
@@ -1458,6 +1488,7 @@ export function useSidepanelController() {
   return {
     starredPages,
     openableStarredPages: listOpenablePages(starredPages, activePage?.url),
+    starredFocusRequest,
     canStarActivePage: isAzureDevOpsUrl(activePage?.url),
     isActivePageStarred: isPageStarred(starredPages, activePage?.url),
     onToggleStarActivePage,
@@ -1559,7 +1590,8 @@ function getTrimmedSettingsFromState(settings: Settings): Settings {
     assignedTo: settings.assignedTo.trim(),
     todoStates: normalizeTodoStates(settings.todoStates),
     quickTaskParentId: settings.quickTaskParentId.trim(),
-    quickTaskArchiveId: settings.quickTaskArchiveId.trim()
+    quickTaskArchiveId: settings.quickTaskArchiveId.trim(),
+    bookmarkFolderName: settings.bookmarkFolderName.trim()
   };
 }
 

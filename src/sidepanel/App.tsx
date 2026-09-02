@@ -26,6 +26,7 @@ export function App() {
         />
         <StarredPagesMenu
           pages={controller.openableStarredPages}
+          focusRequest={controller.starredFocusRequest}
           onOpenStarredPage={controller.onOpenStarredPage}
         />
         <DeduplicateTabsButton

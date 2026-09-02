@@ -28,6 +28,40 @@ import { startBearerObserver } from './devops/auth/bearerObserver';
 // minting regardless of which realm issued the call.
 startBearerObserver();
 
+// Ctrl+Shift+K (user-configurable in chrome://extensions/shortcuts): open the
+// side panel and put the cursor in the starred-pages search. Opening the panel
+// from a command handler is allowed because the command counts as a user
+// gesture.
+chrome.commands?.onCommand.addListener((command) => {
+  if (command !== 'open-starred-search') {
+    return;
+  }
+
+  void (async () => {
+    try {
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true
+      });
+      if (tab?.windowId != null) {
+        await chrome.sidePanel.open({ windowId: tab.windowId });
+      }
+      // The panel may have only just started, so retry briefly rather than
+      // firing once into a listener that does not exist yet.
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        try {
+          await chrome.runtime.sendMessage({ type: 'FOCUS_STARRED_SEARCH' });
+          return;
+        } catch {
+          await new Promise((resolve) => setTimeout(resolve, 150));
+        }
+      }
+    } catch (error) {
+      console.warn('[commands] could not open the starred search', error);
+    }
+  })();
+});
+
 type RuntimeMessage =
   | {
       type: 'PING_SERVICE_WORKER';

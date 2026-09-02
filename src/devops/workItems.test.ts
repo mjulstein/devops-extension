@@ -73,7 +73,8 @@ describe('workItems.ts', () => {
         assignedTo: '   ',
         todoStates: [],
         quickTaskParentId: '',
-        quickTaskArchiveId: ''
+        quickTaskArchiveId: '',
+        bookmarkFolderName: ''
       },
       closedDateRange: { start: '2026-08-14', end: '2026-08-21' },
       scope: 'all'
@@ -173,7 +174,8 @@ describe('workItems.ts', () => {
         assignedTo: '   ',
         todoStates: [],
         quickTaskParentId: '',
-        quickTaskArchiveId: ''
+        quickTaskArchiveId: '',
+        bookmarkFolderName: ''
       },
       closedDateRange: {
         start: '2026-03-10',
@@ -275,7 +277,8 @@ describe('workItems.ts', () => {
         assignedTo: '',
         todoStates: ['Ready', 'New', 'ready'],
         quickTaskParentId: '',
-        quickTaskArchiveId: ''
+        quickTaskArchiveId: '',
+        bookmarkFolderName: ''
       },
       closedDateRange: {
         start: '2026-03-16',
@@ -353,7 +356,8 @@ describe('workItems.ts', () => {
         assignedTo: '',
         todoStates: [],
         quickTaskParentId: '',
-        quickTaskArchiveId: ''
+        quickTaskArchiveId: '',
+        bookmarkFolderName: ''
       },
       closedDateRange: {
         start: '2026-03-10',
@@ -392,7 +396,8 @@ describe('workItems.ts', () => {
         assignedTo: "O'Brien",
         todoStates: [],
         quickTaskParentId: '',
-        quickTaskArchiveId: ''
+        quickTaskArchiveId: '',
+        bookmarkFolderName: ''
       },
       closedDateRange: {
         start: '2026-03-10',
@@ -460,7 +465,8 @@ describe('workItems.ts', () => {
         assignedTo: '',
         todoStates: [],
         quickTaskParentId: '',
-        quickTaskArchiveId: ''
+        quickTaskArchiveId: '',
+        bookmarkFolderName: ''
       },
       closedDateRange: {
         start: '2026-03-16',

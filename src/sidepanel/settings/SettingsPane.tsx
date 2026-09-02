@@ -283,6 +283,24 @@ export function SettingsPane({
       </p>
 
       <h3 className={classes.sectionHeading}>Favorites</h3>
+      <label className={classes.fieldLabel}>
+        Mirror favorites into bookmarks folder
+        <input
+          className={classes.textInput}
+          type="text"
+          placeholder="Folder name (leave blank to disable)"
+          value={settings.bookmarkFolderName}
+          onChange={(event) =>
+            onChange({ ...settings, bookmarkFolderName: event.target.value })
+          }
+        />
+      </label>
+      <p className={classes.description}>
+        Keeps a folder under Other bookmarks in step with the favorites below,
+        so they also appear in address-bar autocomplete. The favorites here are
+        the source of truth — edits made in the bookmark manager are overwritten
+        on the next sync.
+      </p>
       <p className={classes.description}>
         Starred Azure DevOps pages, in the order the ☆ Starred menu lists them.
         A favorite is identified by its address and search parameters.

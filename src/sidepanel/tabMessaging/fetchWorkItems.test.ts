@@ -26,7 +26,8 @@ describe('fetchWorkItems.test.ts', () => {
         assignedTo: 'User Name',
         todoStates: [],
         quickTaskParentId: '',
-        quickTaskArchiveId: ''
+        quickTaskArchiveId: '',
+        bookmarkFolderName: ''
       },
       closedDateRange: {
         start: '2026-03-10',
@@ -71,7 +72,8 @@ describe('fetchWorkItems.test.ts', () => {
           assignedTo: 'User Name',
           todoStates: [],
           quickTaskParentId: '',
-          quickTaskArchiveId: ''
+          quickTaskArchiveId: '',
+          bookmarkFolderName: ''
         },
         closedDateRange: {
           start: '2026-03-10',
@@ -95,7 +97,8 @@ describe('fetchWorkItems.test.ts', () => {
         assignedTo: 'User Name',
         todoStates: [],
         quickTaskParentId: '',
-        quickTaskArchiveId: ''
+        quickTaskArchiveId: '',
+        bookmarkFolderName: ''
       },
       closedDateRange: {
         start: '2026-03-10',

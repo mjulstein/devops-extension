@@ -6,5 +6,6 @@ export const defaultSettings: Settings = {
   assignedTo: '',
   todoStates: [],
   quickTaskParentId: '',
-  quickTaskArchiveId: ''
+  quickTaskArchiveId: '',
+  bookmarkFolderName: ''
 };

@@ -81,3 +81,14 @@
   color: #6e7781;
   padding: 6px;
 }
+
+.search {
+  font: inherit;
+  font-size: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  margin-block-end: 4px;
+  border: 1px solid #d0d7de;
+  border-radius: 5px;
+}
