@@ -701,9 +701,12 @@ export function useSidepanelController() {
         pageUrl
       );
       if (response.ok) {
+        const state = response.result.state
+          ? ` (${response.result.state})`
+          : '';
         setStatusMessage({
           kind: 'success',
-          text: `Created task #${response.result.id}: ${response.result.title}`
+          text: `Created task #${response.result.id}${state}: ${response.result.title}`
         });
         pushDebugLog(
           'success',

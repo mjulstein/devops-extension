@@ -1,4 +1,8 @@
-import { buildQuickTaskDescription, buildQuickTaskTitle } from './quickTask';
+import {
+  buildQuickTaskDescription,
+  buildQuickTaskTitle,
+  pickInProgressState
+} from './quickTask';
 import { parseIdentity } from './identity';
 
 describe('buildQuickTaskTitle', () => {
@@ -100,5 +104,41 @@ describe('parseIdentity', () => {
     ).toBeNull();
     expect(parseIdentity({})).toBeNull();
     expect(parseIdentity(null)).toBeNull();
+  });
+});
+
+describe('pickInProgressState', () => {
+  // The state is discovered by category so a process that renames its
+  // in-progress state still works.
+  const scrumStates = [
+    { name: 'To Do', category: 'Proposed' },
+    { name: 'In Progress', category: 'InProgress' },
+    { name: 'Done', category: 'Completed' },
+    { name: 'Removed', category: 'Removed' }
+  ];
+
+  it('picks the InProgress-category state', () => {
+    expect(pickInProgressState(scrumStates)).toBe('In Progress');
+  });
+
+  it('picks a differently named state in the same category', () => {
+    expect(
+      pickInProgressState([
+        { name: 'New', category: 'Proposed' },
+        { name: 'Active', category: 'InProgress' }
+      ])
+    ).toBe('Active');
+  });
+
+  it('returns null when no state is in progress', () => {
+    expect(
+      pickInProgressState([{ name: 'New', category: 'Proposed' }])
+    ).toBeNull();
+  });
+
+  it('tolerates malformed input', () => {
+    expect(pickInProgressState(undefined)).toBeNull();
+    expect(pickInProgressState([null, 3, {}])).toBeNull();
+    expect(pickInProgressState([{ category: 'InProgress' }])).toBeNull();
   });
 });
