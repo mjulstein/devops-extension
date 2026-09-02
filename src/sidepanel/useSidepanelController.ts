@@ -71,7 +71,10 @@ import {
   sortQuickTasks,
   togglePinnedId
 } from './work-items/atoms/quickTaskSorting';
-import { syncFavoritesToBookmarks } from './bookmarkSync';
+import {
+  isBookmarkSyncPlanEmpty,
+  syncFavoritesToBookmarks
+} from './bookmarkSync';
 import {
   isPageStarred,
   listOpenablePages,
@@ -166,6 +169,9 @@ export function useSidepanelController() {
   // Bumped when the keyboard shortcut fires, so the menu opens and focuses its
   // search. A counter, so pressing it twice works.
   const [starredFocusRequest, setStarredFocusRequest] = useState(0);
+  const [bookmarkSyncStatus, setBookmarkSyncStatus] = useState<string | null>(
+    null
+  );
   const [hiddenTaskStates, setHiddenTaskStates] = useState<string[]>([]);
   const [closedDateRange, setClosedDateRange] = useState<ClosedDateRange>(() =>
     createDefaultClosedDateRange()
@@ -303,6 +309,12 @@ export function useSidepanelController() {
       setHiddenTaskStates(storedHiddenStates);
       setPinnedQuickTaskIds(storedPinnedQuickTaskIds);
       setStarredPages(storedStarredPages);
+      // Bring the folder up to date on open: favorites may have changed in
+      // another window, or the folder may never have been written.
+      void mirrorToBookmarks(
+        storedStarredPages,
+        storedSettings.bookmarkFolderName
+      );
       setClosedDateRange(storedClosedDateRange);
       setIsClosedEndTodayShortcut(
         isTodayDateInputValue(storedClosedDateRange.end)
@@ -477,6 +489,10 @@ export function useSidepanelController() {
       `Saved settings for ${settings.organization.trim() || '(auto org)'}/${settings.project.trim() || '(auto project)'}.`
     );
     setStatusMessage({ kind: 'success', text: 'Settings saved.' });
+
+    // Naming the folder is exactly when the mirror should appear; waiting for
+    // the next star would make it look broken.
+    await mirrorToBookmarks(starredPages, settings.bookmarkFolderName);
   }
 
   function onReloadExtension() {
@@ -850,16 +866,43 @@ export function useSidepanelController() {
   async function commitStarredPages(next: StarredPage[]) {
     setStarredPages(next);
     await saveStarredPages(next);
-    const plan = await syncFavoritesToBookmarks(
-      settings.bookmarkFolderName,
-      next
-    );
-    if (plan) {
-      pushDebugLog(
-        'info',
-        `Bookmark mirror: +${plan.create.length} ~${plan.update.length} -${plan.remove.length}.`
-      );
+    await mirrorToBookmarks(next, settings.bookmarkFolderName);
+  }
+
+  /**
+   * Projects favorites into the bookmarks folder and records the outcome, so
+   * Settings can say whether the mirror is actually doing anything. Without that
+   * the feature is invisible until you happen to look in the bookmark manager.
+   */
+  async function mirrorToBookmarks(
+    favorites: StarredPage[],
+    folderName: string
+  ) {
+    const name = folderName.trim();
+    if (!name) {
+      setBookmarkSyncStatus(null);
+      return;
     }
+
+    if (!chrome.bookmarks?.getChildren) {
+      const message =
+        'Bookmarks permission not granted — reload the extension and accept it.';
+      setBookmarkSyncStatus(message);
+      pushDebugLog('error', `Bookmark mirror: ${message}`);
+      return;
+    }
+
+    const plan = await syncFavoritesToBookmarks(name, favorites);
+    if (!plan) {
+      setBookmarkSyncStatus(`Could not write the "${name}" folder.`);
+      return;
+    }
+
+    const summary = isBookmarkSyncPlanEmpty(plan)
+      ? `“${name}” already matches ${favorites.length} favorite(s).`
+      : `“${name}”: added ${plan.create.length}, renamed ${plan.update.length}, removed ${plan.remove.length}.`;
+    setBookmarkSyncStatus(summary);
+    pushDebugLog('info', `Bookmark mirror ${summary}`);
   }
 
   async function refreshActivePage() {
@@ -1487,6 +1530,7 @@ export function useSidepanelController() {
 
   return {
     starredPages,
+    bookmarkSyncStatus,
     openableStarredPages: listOpenablePages(starredPages, activePage?.url),
     starredFocusRequest,
     canStarActivePage: isAzureDevOpsUrl(activePage?.url),

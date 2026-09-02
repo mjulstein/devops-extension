@@ -5,6 +5,7 @@ import {
   listOpenablePages,
   moveStarredPage,
   normalizePageUrl,
+  rankFavorites,
   removeStarredPage,
   toggleStarredPage,
   updateStarredPage,
@@ -360,5 +361,63 @@ describe('toggleStarredPage disambiguation', () => {
     );
     expect(result[0]?.label).toBe('Boards (Frontend)');
     expect(result[1]?.label).toBe('Boards');
+  });
+});
+
+describe('rankFavorites', () => {
+  const pages = [
+    page('https://dev.azure.com/o/p/_queries/boards-report', 'Weekly report'),
+    page(
+      'https://dev.azure.com/o/p/_boards/board/t/Backend/Stories',
+      'Boards (Backend)'
+    ),
+    page(
+      'https://dev.azure.com/o/p/_boards/board/t/Frontend/Stories',
+      'My boards view'
+    )
+  ];
+
+  it('returns everything for an empty query', () => {
+    expect(rankFavorites(pages, '  ')).toEqual(pages);
+  });
+
+  // Title beats address: the first entry only matches in its URL.
+  it('ranks title matches above address matches', () => {
+    expect(rankFavorites(pages, 'boards').map((p) => p.label)).toEqual([
+      'Boards (Backend)',
+      'My boards view',
+      'Weekly report'
+    ]);
+  });
+
+  it('ranks a title prefix above a title substring', () => {
+    const result = rankFavorites(pages, 'boards');
+    expect(result[0]?.label).toBe('Boards (Backend)');
+    expect(result[1]?.label).toBe('My boards view');
+  });
+
+  it('is case insensitive', () => {
+    expect(rankFavorites(pages, 'BACKEND')[0]?.label).toBe('Boards (Backend)');
+  });
+
+  it('still finds address-only matches', () => {
+    expect(rankFavorites(pages, '_queries').map((p) => p.label)).toEqual([
+      'Weekly report'
+    ]);
+  });
+
+  it('drops non-matches', () => {
+    expect(rankFavorites(pages, 'zzzz')).toEqual([]);
+  });
+
+  it('keeps the user ordering within a rank', () => {
+    const same = [
+      page('https://x.invalid/a', 'Alpha one'),
+      page('https://x.invalid/b', 'Alpha two')
+    ];
+    expect(rankFavorites(same, 'alpha').map((p) => p.label)).toEqual([
+      'Alpha one',
+      'Alpha two'
+    ]);
   });
 });

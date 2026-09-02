@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import classes from './StarredPagesMenu.module.css';
-import type { StarredPage } from '../starredPages';
+import { rankFavorites, type StarredPage } from '../starredPages';
 
 interface StarredPagesMenuProps {
   /**
@@ -24,65 +24,99 @@ export function StarredPagesMenu({
 }: StarredPagesMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
+  // Which row the keyboard is on. Reset whenever the result set changes, so it
+  // can never point past the end of the list.
+  const [highlight, setHighlight] = useState(0);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
+  const itemElementsRef = useRef<(HTMLButtonElement | null)[]>([]);
 
-  // Match on label and address: the address is often what you remember.
-  const visible = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) {
-      return pages;
+  // Title matches rank above address matches — see rankFavorites.
+  const visible = useMemo(() => rankFavorites(pages, query), [pages, query]);
+
+  function open() {
+    setIsOpen(true);
+    setQuery('');
+    setHighlight(0);
+  }
+
+  function close() {
+    setIsOpen(false);
+  }
+
+  async function openPage(url: string) {
+    close();
+    await onOpenStarredPage(url);
+  }
+
+  // The search box is the point of the menu, so it takes focus however the menu
+  // was opened — mouse or shortcut. Deferred a frame because the input does not
+  // exist until the render that opens the menu has committed.
+  useEffect(() => {
+    if (!isOpen) {
+      return;
     }
-    return pages.filter(
-      (page) =>
-        page.label.toLowerCase().includes(needle) ||
-        page.url.toLowerCase().includes(needle)
-    );
-  }, [pages, query]);
+    const frame = requestAnimationFrame(() => {
+      searchRef.current?.focus();
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  }, [isOpen]);
 
+  // A second press of the shortcut re-opens and clears the previous search.
   useEffect(() => {
     if (focusRequest === 0) {
       return;
     }
-    // Opening and focusing are deferred a frame apart: the search input does not
-    // exist until the render that opens the menu has committed, so focusing in
-    // the same tick would find nothing.
-    let focusFrame = 0;
-    const openFrame = requestAnimationFrame(() => {
-      setIsOpen(true);
-      setQuery('');
-      focusFrame = requestAnimationFrame(() => {
-        searchRef.current?.focus();
-      });
-    });
+    const frame = requestAnimationFrame(open);
     return () => {
-      cancelAnimationFrame(openFrame);
-      cancelAnimationFrame(focusFrame);
+      cancelAnimationFrame(frame);
     };
   }, [focusRequest]);
 
-  // A dropdown in a 360px panel must not linger once attention moves on.
   useEffect(() => {
     if (!isOpen) {
       return;
     }
     function onDocumentPointerDown(event: MouseEvent) {
       if (!wrapRef.current?.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        setIsOpen(false);
+        close();
       }
     }
     document.addEventListener('mousedown', onDocumentPointerDown);
-    document.addEventListener('keydown', onKeyDown);
     return () => {
       document.removeEventListener('mousedown', onDocumentPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
     };
   }, [isOpen]);
+
+  /** Arrow keys move the highlight; Enter opens it; Escape closes. */
+  function onNavigationKeyDown(event: React.KeyboardEvent) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      close();
+      return;
+    }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (visible.length === 0) {
+        return;
+      }
+      const delta = event.key === 'ArrowDown' ? 1 : -1;
+      const next = (highlight + delta + visible.length) % visible.length;
+      setHighlight(next);
+      // Keep the highlighted row in view in a short, scrollable menu.
+      itemElementsRef.current[next]?.scrollIntoView({ block: 'nearest' });
+      return;
+    }
+    if (event.key === 'Enter') {
+      const target = visible[highlight] ?? visible[0];
+      if (target) {
+        event.preventDefault();
+        void openPage(target.url);
+      }
+    }
+  }
 
   return (
     <div className={classes.wrap} ref={wrapRef}>
@@ -91,7 +125,7 @@ export function StarredPagesMenu({
         className={classes.trigger}
         aria-expanded={isOpen}
         aria-haspopup="menu"
-        onClick={() => setIsOpen((open) => !open)}
+        onClick={() => (isOpen ? close() : open())}
         title="Starred Azure DevOps pages"
       >
         Starred
@@ -110,17 +144,13 @@ export function StarredPagesMenu({
             value={query}
             placeholder="Search favorites"
             aria-label="Search favorites"
-            onChange={(event) => setQuery(event.target.value)}
-            onKeyDown={(event) => {
-              // Enter opens the best match, so the shortcut can be used without
-              // ever touching the mouse.
-              if (event.key === 'Enter' && visible[0]) {
-                event.preventDefault();
-                setIsOpen(false);
-                void onOpenStarredPage(visible[0].url);
-              }
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setHighlight(0);
             }}
+            onKeyDown={onNavigationKeyDown}
           />
+
           {visible.length === 0 ? (
             <p className={classes.empty}>
               {pages.length === 0
@@ -128,16 +158,23 @@ export function StarredPagesMenu({
                 : 'Nothing matches that search.'}
             </p>
           ) : (
-            visible.map((page) => (
+            visible.map((page, index) => (
               <button
                 key={page.url}
                 type="button"
                 role="menuitem"
-                className={clsx(classes.item)}
+                ref={(element) => {
+                  itemElementsRef.current[index] = element;
+                }}
+                className={clsx(
+                  classes.item,
+                  index === highlight && classes.itemHighlighted
+                )}
                 title={page.url}
+                onMouseEnter={() => setHighlight(index)}
+                onKeyDown={onNavigationKeyDown}
                 onClick={() => {
-                  setIsOpen(false);
-                  void onOpenStarredPage(page.url);
+                  void openPage(page.url);
                 }}
               >
                 {page.label}

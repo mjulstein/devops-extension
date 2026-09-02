@@ -223,3 +223,46 @@ export function moveStarredPage(
   [next[index], next[target]] = [next[target], next[index]];
   return next;
 }
+
+/**
+ * Orders favorites for a search box.
+ *
+ * The title is what you think in, so title matches always beat address matches,
+ * and a title that *starts* with what you typed beats one that merely contains
+ * it. Without that ranking, typing a board name can surface an unrelated
+ * favorite whose URL happens to contain the letters, which makes the box feel
+ * arbitrary. Ties keep the user's own ordering.
+ */
+export function rankFavorites(
+  pages: StarredPage[],
+  query: string
+): StarredPage[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) {
+    return pages;
+  }
+
+  const scored: { page: StarredPage; rank: number; index: number }[] = [];
+
+  pages.forEach((page, index) => {
+    const label = page.label.toLowerCase();
+    const url = page.url.toLowerCase();
+
+    let rank: number | null = null;
+    if (label.startsWith(needle)) {
+      rank = 0;
+    } else if (label.includes(needle)) {
+      rank = 1;
+    } else if (url.includes(needle)) {
+      rank = 2;
+    }
+
+    if (rank !== null) {
+      scored.push({ page, rank, index });
+    }
+  });
+
+  return scored
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map((entry) => entry.page);
+}
