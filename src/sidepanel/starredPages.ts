@@ -266,3 +266,32 @@ export function rankFavorites(
     .sort((a, b) => a.rank - b.rank || a.index - b.index)
     .map((entry) => entry.page);
 }
+
+/**
+ * Cleans up edited favorites at commit time.
+ *
+ * Trimming belongs here and not on every keystroke: doing it as the user types
+ * makes a trailing space impossible to enter, because it is removed again before
+ * the next character arrives.
+ */
+export function sanitizeStarredPages(pages: StarredPage[]): StarredPage[] {
+  const seen = new Set<string>();
+  const result: StarredPage[] = [];
+
+  for (const page of pages) {
+    const normalized = normalizePageUrl(page.url);
+    // An unusable address would be lost on reload, so the entry is dropped
+    // rather than silently kept in a broken state.
+    if (normalized === null || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    result.push({
+      ...page,
+      url: normalized,
+      label: page.label.replace(/\s+/g, ' ').trim() || normalized
+    });
+  }
+
+  return result;
+}

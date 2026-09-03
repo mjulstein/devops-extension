@@ -1,4 +1,6 @@
 import {
+  collectFolderParentCandidates,
+  findFolderByName,
   isBookmarkSyncPlanEmpty,
   planBookmarkSync,
   type BookmarkNode
@@ -89,5 +91,85 @@ describe('planBookmarkSync', () => {
 
   it('is empty for no favorites and an empty folder', () => {
     expect(isBookmarkSyncPlanEmpty(planBookmarkSync([], []))).toBe(true);
+  });
+});
+
+describe('collectFolderParentCandidates', () => {
+  // Root ids differ between browsers, so they are discovered rather than
+  // assumed — hardcoding Chrome's "2" made the mirror fail in Edge.
+  const tree = [
+    {
+      id: '0',
+      title: '',
+      children: [
+        { id: '1', title: 'Bookmarks bar' },
+        { id: '2', title: 'Other bookmarks' },
+        { id: '3', title: 'Mobile bookmarks' }
+      ]
+    }
+  ];
+
+  it('offers the root folders, later ones first', () => {
+    expect(collectFolderParentCandidates(tree)).toEqual(['3', '2', '1']);
+  });
+
+  it('skips leaf bookmarks among the roots', () => {
+    expect(
+      collectFolderParentCandidates([
+        {
+          id: '0',
+          title: '',
+          children: [
+            { id: '1', title: 'Bar' },
+            { id: '9', title: 'A link', url: 'https://x.invalid' }
+          ]
+        }
+      ])
+    ).toEqual(['1']);
+  });
+
+  it('accepts a tree given without a wrapping root', () => {
+    expect(
+      collectFolderParentCandidates([{ id: '5', title: 'Favourites' }])
+    ).toEqual(['5']);
+  });
+
+  it('returns nothing for an empty tree', () => {
+    expect(collectFolderParentCandidates([])).toEqual([]);
+  });
+});
+
+describe('findFolderByName', () => {
+  const tree = [
+    {
+      id: '0',
+      title: '',
+      children: [
+        {
+          id: '1',
+          title: 'Bookmarks bar',
+          children: [{ id: '4', title: 'mjuops', children: [] }]
+        },
+        { id: '2', title: 'Other bookmarks', children: [] }
+      ]
+    }
+  ];
+
+  // Reuse the folder wherever the user has moved it, rather than making a second.
+  it('finds a nested folder by name', () => {
+    expect(findFolderByName(tree, 'mjuops')).toBe('4');
+  });
+
+  it('ignores bookmarks that merely share the title', () => {
+    expect(
+      findFolderByName(
+        [{ id: '9', title: 'mjuops', url: 'https://x.invalid' }],
+        'mjuops'
+      )
+    ).toBeNull();
+  });
+
+  it('returns null when absent', () => {
+    expect(findFolderByName(tree, 'nope')).toBeNull();
   });
 });
