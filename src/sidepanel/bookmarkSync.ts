@@ -85,25 +85,88 @@ export function isBookmarkSyncPlanEmpty(plan: BookmarkSyncPlan): boolean {
   );
 }
 
-/** "Other bookmarks" — where a tool-managed folder belongs, not the bar. */
-const OTHER_BOOKMARKS_ID = '2';
+export interface BookmarkTreeNode extends BookmarkNode {
+  children?: BookmarkTreeNode[];
+}
 
-async function findOrCreateFolder(folderName: string): Promise<string | null> {
-  if (!chrome.bookmarks?.getChildren) {
-    return null;
+/**
+ * Folder ids that a new folder could be created under, best first.
+ *
+ * Root folder ids are NOT stable across browsers — "2" is Other Bookmarks in
+ * Chrome but Edge numbers its roots differently, and hardcoding it made the
+ * mirror fail with a useless error there. So the roots are discovered from the
+ * tree and tried in turn. Later roots come first because the bar is usually
+ * first and a tool-managed folder does not belong on the bar.
+ */
+export function collectFolderParentCandidates(
+  tree: BookmarkTreeNode[]
+): string[] {
+  const roots = tree[0]?.children ?? tree;
+  return roots
+    .filter((node) => !node.url && node.id)
+    .map((node) => node.id)
+    .reverse();
+}
+
+/** Finds a folder with this name anywhere in the tree. */
+export function findFolderByName(
+  tree: BookmarkTreeNode[],
+  folderName: string
+): string | null {
+  const stack = [...tree];
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (!node) {
+      continue;
+    }
+    if (!node.url && node.title === folderName && node.id) {
+      return node.id;
+    }
+    if (node.children) {
+      stack.push(...node.children);
+    }
   }
-  const children = await chrome.bookmarks.getChildren(OTHER_BOOKMARKS_ID);
-  const existing = children.find(
-    (child) => !child.url && child.title === folderName
-  );
+  return null;
+}
+
+export type BookmarkSyncResult =
+  | { ok: true; plan: BookmarkSyncPlan }
+  | { ok: false; error: string };
+
+async function findOrCreateFolder(
+  folderName: string
+): Promise<{ id: string } | { error: string }> {
+  const tree = await chrome.bookmarks.getTree();
+
+  // Reuse the folder if it already exists, wherever the user has moved it to.
+  const existing = findFolderByName(tree, folderName);
   if (existing) {
-    return existing.id;
+    return { id: existing };
   }
-  const created = await chrome.bookmarks.create({
-    parentId: OTHER_BOOKMARKS_ID,
-    title: folderName
-  });
-  return created.id;
+
+  const candidates = collectFolderParentCandidates(tree);
+  if (candidates.length === 0) {
+    return { error: 'No writable bookmarks folder was found.' };
+  }
+
+  const failures: string[] = [];
+  for (const parentId of candidates) {
+    try {
+      const created = await chrome.bookmarks.create({
+        parentId,
+        title: folderName
+      });
+      return { id: created.id };
+    } catch (error) {
+      failures.push(
+        `${parentId}: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  return {
+    error: `Could not create the folder in any root (${failures.join('; ')}).`
+  };
 }
 
 /**
@@ -113,23 +176,25 @@ async function findOrCreateFolder(folderName: string): Promise<string | null> {
 export async function syncFavoritesToBookmarks(
   folderName: string,
   favorites: StarredPage[]
-): Promise<BookmarkSyncPlan | null> {
+): Promise<BookmarkSyncResult> {
   const name = folderName.trim();
   if (!name) {
-    return null;
+    return { ok: false, error: 'No folder name is set.' };
   }
-  if (!chrome.bookmarks?.getChildren) {
-    console.warn(
-      '[bookmarkSync] chrome.bookmarks unavailable — the "bookmarks" permission may be missing.'
-    );
-    return null;
+  if (!chrome.bookmarks?.getTree) {
+    return {
+      ok: false,
+      error:
+        'The bookmarks permission is not granted. Reload the extension on chrome://extensions and accept it.'
+    };
   }
 
   try {
-    const folderId = await findOrCreateFolder(name);
-    if (!folderId) {
-      return null;
+    const folder = await findOrCreateFolder(name);
+    if ('error' in folder) {
+      return { ok: false, error: folder.error };
     }
+    const folderId = folder.id;
 
     const children = await chrome.bookmarks.getChildren(folderId);
     const plan = planBookmarkSync(children, favorites);
@@ -148,9 +213,13 @@ export async function syncFavoritesToBookmarks(
         .catch(() => undefined);
     }
 
-    return plan;
+    return { ok: true, plan };
   } catch (error) {
-    console.warn('[bookmarkSync] sync failed', error);
-    return null;
+    // Surface the browser's own message: "cannot write to it" with no reason is
+    // exactly what made this undiagnosable.
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error)
+    };
   }
 }

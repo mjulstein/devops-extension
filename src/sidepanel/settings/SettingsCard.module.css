@@ -58,3 +58,35 @@
   margin-block: 12px 2px;
   font-size: 13px;
 }
+
+/* Long explanations are collapsed by default: they are worth having once, but
+   they push the fields you came for off a 360px panel. */
+.help {
+  margin-block: 2px 8px;
+  font-size: 12px;
+  color: #57606a;
+}
+
+.helpSummary {
+  cursor: pointer;
+  color: #57606a;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.helpSummary:hover {
+  color: #24292f;
+}
+
+.helpBody {
+  margin-block-start: 4px;
+}
+
+/* Two related ids read better as a pair than stacked. */
+.fieldRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: end;
+}

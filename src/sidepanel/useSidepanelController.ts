@@ -78,10 +78,7 @@ import {
 import {
   isPageStarred,
   listOpenablePages,
-  moveStarredPage,
-  removeStarredPage,
   toggleStarredPage,
-  updateStarredPage,
   type StarredPage
 } from './starredPages';
 import type { PullRequestActivityItem } from '@/types';
@@ -884,20 +881,15 @@ export function useSidepanelController() {
       return;
     }
 
-    if (!chrome.bookmarks?.getChildren) {
-      const message =
-        'Bookmarks permission not granted — reload the extension and accept it.';
-      setBookmarkSyncStatus(message);
-      pushDebugLog('error', `Bookmark mirror: ${message}`);
+    const result = await syncFavoritesToBookmarks(name, favorites);
+
+    if (!result.ok) {
+      setBookmarkSyncStatus(result.error);
+      pushDebugLog('error', `Bookmark mirror failed: ${result.error}`);
       return;
     }
 
-    const plan = await syncFavoritesToBookmarks(name, favorites);
-    if (!plan) {
-      setBookmarkSyncStatus(`Could not write the "${name}" folder.`);
-      return;
-    }
-
+    const { plan } = result;
     const summary = isBookmarkSyncPlanEmpty(plan)
       ? `“${name}” already matches ${favorites.length} favorite(s).`
       : `“${name}”: added ${plan.create.length}, renamed ${plan.update.length}, removed ${plan.remove.length}.`;
@@ -945,21 +937,9 @@ export function useSidepanelController() {
     await chrome.tabs.create({ url });
   }
 
-  async function onUpdateStarredPage(
-    originalUrl: string,
-    next: { label: string; url: string }
-  ) {
-    await commitStarredPages(
-      updateStarredPage(starredPages, originalUrl, next)
-    );
-  }
-
-  async function onRemoveStarredPage(url: string) {
-    await commitStarredPages(removeStarredPage(starredPages, url));
-  }
-
-  async function onMoveStarredPage(url: string, direction: -1 | 1) {
-    await commitStarredPages(moveStarredPage(starredPages, url, direction));
+  async function onSaveStarredPages(next: StarredPage[]) {
+    await commitStarredPages(next);
+    setStatusMessage({ kind: 'success', text: 'Favorites saved.' });
   }
 
   async function onArchiveQuickTask(id: number) {
@@ -1537,9 +1517,7 @@ export function useSidepanelController() {
     isActivePageStarred: isPageStarred(starredPages, activePage?.url),
     onToggleStarActivePage,
     onOpenStarredPage,
-    onUpdateStarredPage,
-    onRemoveStarredPage,
-    onMoveStarredPage,
+    onSaveStarredPages,
     refreshActivePage,
     quickTasks:
       quickTasks === null

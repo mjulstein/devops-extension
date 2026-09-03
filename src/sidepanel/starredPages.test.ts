@@ -7,6 +7,7 @@ import {
   normalizePageUrl,
   rankFavorites,
   removeStarredPage,
+  sanitizeStarredPages,
   toggleStarredPage,
   updateStarredPage,
   type StarredPage
@@ -419,5 +420,50 @@ describe('rankFavorites', () => {
       'Alpha one',
       'Alpha two'
     ]);
+  });
+});
+
+describe('sanitizeStarredPages', () => {
+  // Trimming on every keystroke is what made a trailing space impossible to
+  // type, so it only happens here, at commit time.
+  it('trims and collapses labels', () => {
+    expect(
+      sanitizeStarredPages([page('https://x.invalid/a', '  Two   words  ')])[0]
+        ?.label
+    ).toBe('Two words');
+  });
+
+  it('normalises addresses', () => {
+    expect(
+      sanitizeStarredPages([page('https://x.invalid/a/?q=1#frag', 'A')])[0]?.url
+    ).toBe('https://x.invalid/a?q=1');
+  });
+
+  it('falls back to the address when the label is emptied', () => {
+    expect(
+      sanitizeStarredPages([page('https://x.invalid/a', '   ')])[0]?.label
+    ).toBe('https://x.invalid/a');
+  });
+
+  it('drops entries whose address is unusable', () => {
+    expect(sanitizeStarredPages([page('not a url', 'Broken')])).toEqual([]);
+  });
+
+  it('drops duplicates that normalise to the same address', () => {
+    expect(
+      sanitizeStarredPages([
+        page('https://x.invalid/a', 'First'),
+        page('https://x.invalid/a/', 'Second')
+      ]).map((p) => p.label)
+    ).toEqual(['First']);
+  });
+
+  it('preserves order and other fields', () => {
+    const result = sanitizeStarredPages([
+      page('https://x.invalid/b', 'B'),
+      page('https://x.invalid/a', 'A')
+    ]);
+    expect(result.map((p) => p.label)).toEqual(['B', 'A']);
+    expect(result[0]?.starredAt).toBe(NOW);
   });
 });

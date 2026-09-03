@@ -10,6 +10,7 @@ import {
 import { loadLastVisitedDevOpsContext } from '@/sidepanel/chromeStorage';
 import classes from './SettingsCard.module.css';
 import { FavoritesEditor } from './FavoritesEditor';
+import { SettingsHelp } from './SettingsHelp';
 import type { StarredPage } from '../starredPages';
 
 interface SettingsCardProps {
@@ -20,12 +21,7 @@ interface SettingsCardProps {
   isLoading: boolean;
   starredPages: StarredPage[];
   bookmarkSyncStatus: string | null;
-  onUpdateStarredPage: (
-    originalUrl: string,
-    next: { label: string; url: string }
-  ) => Promise<void>;
-  onRemoveStarredPage: (url: string) => Promise<void>;
-  onMoveStarredPage: (url: string, direction: -1 | 1) => Promise<void>;
+  onSaveStarredPages: (pages: StarredPage[]) => Promise<void>;
 }
 
 export function SettingsPane({
@@ -36,9 +32,7 @@ export function SettingsPane({
   isLoading,
   starredPages,
   bookmarkSyncStatus,
-  onUpdateStarredPage,
-  onRemoveStarredPage,
-  onMoveStarredPage
+  onSaveStarredPages
 }: SettingsCardProps) {
   const [todoStatesText, setTodoStatesText] = useState(() =>
     settings.todoStates.join(', ')
@@ -177,11 +171,14 @@ export function SettingsPane({
 
   return (
     <section className={classes.card}>
-      <p className={classes.description}>
-        Organization/project auto-fill from the last visited dev.azure.com
-        project URL when empty. You can override them here and saved values stay
-        until you change them.
-      </p>
+      <SettingsHelp summary="About organization and project">
+        <p>
+          Organization/project auto-fill from the last visited dev.azure.com
+          project URL when empty. You can override them here and saved values
+          stay until you change them. Leave Assigned to empty to use the current
+          signed-in Azure DevOps user.
+        </p>
+      </SettingsHelp>
 
       <label className={classes.fieldLabel}>
         Organization
@@ -209,46 +206,51 @@ export function SettingsPane({
         />
       </label>
 
-      <label className={classes.fieldLabel}>
-        Quick-task parent work item id
-        <input
-          className={classes.textInput}
-          type="text"
-          inputMode="numeric"
-          placeholder="e.g. 12345 (leave blank to disable)"
-          value={settings.quickTaskParentId}
-          onChange={(event) =>
-            onChange({ ...settings, quickTaskParentId: event.target.value })
-          }
-        />
-      </label>
+      <div className={classes.fieldRow}>
+        <label className={classes.fieldLabel}>
+          Quick-task parent id
+          <input
+            className={classes.textInput}
+            type="text"
+            inputMode="numeric"
+            placeholder="e.g. 12345"
+            value={settings.quickTaskParentId}
+            onChange={(event) =>
+              onChange({ ...settings, quickTaskParentId: event.target.value })
+            }
+          />
+        </label>
 
-      <label className={classes.fieldLabel}>
-        Quick-task archive work item id
-        <input
-          className={classes.textInput}
-          type="text"
-          inputMode="numeric"
-          placeholder="e.g. 12346 (leave blank to disable archiving)"
-          value={settings.quickTaskArchiveId}
-          onChange={(event) =>
-            onChange({ ...settings, quickTaskArchiveId: event.target.value })
-          }
-        />
-      </label>
+        <label className={classes.fieldLabel}>
+          Archive id
+          <input
+            className={classes.textInput}
+            type="text"
+            inputMode="numeric"
+            placeholder="e.g. 12346"
+            value={settings.quickTaskArchiveId}
+            onChange={(event) =>
+              onChange({ ...settings, quickTaskArchiveId: event.target.value })
+            }
+          />
+        </label>
+      </div>
 
-      <p className={classes.description}>
-        Finished quick tasks can be archived under this work item, which
-        consolidates them out of the Quick list without deleting them. The
-        archive button only appears on completed tasks.
-      </p>
-
-      <p className={classes.description}>
-        The work item that “+ Task from page” parents its tasks to — a personal
-        catch-all for small jobs that are not linked to planned work. The new
-        task is created in progress, assigned to you, titled after the active
-        page, and its description links back to that page.
-      </p>
+      <SettingsHelp summary="About quick tasks">
+        <p>
+          The parent is a personal catch-all for small jobs not linked to
+          planned work. “+ Task from page” creates a task under it, in progress,
+          assigned to you, titled after the active page, with a description
+          linking back to that page. Quick tasks are kept out of the TODO tab
+          and listed in Quick instead.
+        </p>
+        <p>
+          Finished quick tasks can be archived under the archive item, which
+          consolidates them out of the Quick list without deleting them. The
+          archive button only appears on completed tasks. Leave either id blank
+          to disable that half.
+        </p>
+      </SettingsHelp>
 
       <label className={classes.fieldLabel}>
         Assigned to
@@ -279,12 +281,6 @@ export function SettingsPane({
         </span>
       </label>
 
-      <p className={classes.description}>
-        Leave Assigned to empty to use the current signed-in Azure DevOps user
-        (@me).
-      </p>
-
-      <h3 className={classes.sectionHeading}>Favorites</h3>
       <label className={classes.fieldLabel}>
         Mirror favorites into bookmarks folder
         <input
@@ -297,28 +293,24 @@ export function SettingsPane({
           }
         />
       </label>
-      <p className={classes.description}>
-        Keeps a folder under Other bookmarks in step with the favorites below,
-        so they also appear in address-bar autocomplete. The favorites here are
-        the source of truth — edits made in the bookmark manager are overwritten
-        on the next sync. Syncs on save, on panel open, and whenever a favorite
-        changes.
-      </p>
+      <SettingsHelp summary="About the bookmark mirror">
+        <p>
+          Keeps a bookmarks folder in step with the favorites below, so they
+          also appear in address-bar autocomplete. The folder is found wherever
+          it already is, or created under one of the bookmark roots.
+        </p>
+        <p>
+          The favorites here are the source of truth — edits made in the
+          bookmark manager are overwritten on the next sync, which runs on save,
+          on panel open, and whenever a favorite changes.
+        </p>
+      </SettingsHelp>
       {bookmarkSyncStatus ? (
         <p className={classes.description}>
           <strong>Bookmark mirror:</strong> {bookmarkSyncStatus}
         </p>
       ) : null}
-      <p className={classes.description}>
-        Starred Azure DevOps pages, in the order the ☆ Starred menu lists them.
-        A favorite is identified by its address and search parameters.
-      </p>
-      <FavoritesEditor
-        pages={starredPages}
-        onUpdate={onUpdateStarredPage}
-        onRemove={onRemoveStarredPage}
-        onMove={onMoveStarredPage}
-      />
+      <FavoritesEditor pages={starredPages} onSave={onSaveStarredPages} />
 
       <div className={classes.buttonRow}>
         <button
@@ -343,10 +335,13 @@ export function SettingsPane({
 
       <hr className={classes.separator} />
 
-      <p className={classes.description}>
-        Re-scrape the Azure DevOps section icons from the live page and persist
-        them for instant loading. The active tab must be an Azure DevOps page.
-      </p>
+      <SettingsHelp summary="About tab icons">
+        <p>
+          Re-scrape the Azure DevOps section icons from the live page and
+          persist them for instant loading. The active tab must be an Azure
+          DevOps page.
+        </p>
+      </SettingsHelp>
 
       <div className={classes.buttonRow}>
         <button
