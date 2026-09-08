@@ -63,6 +63,9 @@ interface StatusCardProps {
   onTogglePinQuickTask: (id: number) => Promise<void>;
   quickTaskArchiveId: number | null;
   onArchiveQuickTask: (id: number) => Promise<void>;
+  createdQuickTask: { id: number; url: string } | null;
+  onOpenCreatedQuickTask: () => Promise<void>;
+  onDismissCreatedQuickTask: () => void;
 }
 
 export function WorkItemsPane({
@@ -105,7 +108,10 @@ export function WorkItemsPane({
   onCreateQuickTaskFromTitle,
   onTogglePinQuickTask,
   quickTaskArchiveId,
-  onArchiveQuickTask
+  onArchiveQuickTask,
+  createdQuickTask,
+  onOpenCreatedQuickTask,
+  onDismissCreatedQuickTask
 }: StatusCardProps) {
   const statusKindClassNames = {
     info: classes.statusInfo,
@@ -124,6 +130,30 @@ export function WorkItemsPane({
           onCreateQuickTask={onCreateQuickTask}
           onToggleShowWorkItemParentDetails={onToggleShowWorkItemParentDetails}
         />
+
+        {!!createdQuickTask && (
+          <div className={classes.createdNotice}>
+            <button
+              type="button"
+              className={classes.createdLink}
+              title="Open the new task in a new tab"
+              onClick={() => {
+                void onOpenCreatedQuickTask();
+              }}
+            >
+              Created #{createdQuickTask.id}
+            </button>
+            <button
+              type="button"
+              className={classes.createdDismiss}
+              title="Dismiss"
+              aria-label="Dismiss the created-task notice"
+              onClick={onDismissCreatedQuickTask}
+            >
+              ×
+            </button>
+          </div>
+        )}
 
         {isLoading && <div className={classes.loading}>{loadingMessage}</div>}
 
@@ -166,59 +196,86 @@ export function WorkItemsPane({
               linkExternal={linkExternal}
             />
           ) : activeListTab === 'quick' ? (
-            isQuickTasksLoading ? (
-              <div className={classes.loading}>Loading quick tasks…</div>
-            ) : quickTasksError ? (
-              <div className={clsx(classes.statusMessage, classes.statusError)}>
-                {quickTasksError}
-              </div>
-            ) : (
-              <QuickTaskList
-                items={quickTasks ?? []}
-                pinnedIds={pinnedQuickTaskIds}
-                parentId={quickTaskParentId}
-                title={quickTaskTitle}
-                isActionDisabled={isActionDisabled}
-                linkExternal={linkExternal}
-                onTitleChange={onQuickTaskTitleChange}
-                onCreate={onCreateQuickTaskFromTitle}
-                onTogglePin={onTogglePinQuickTask}
-                archiveId={quickTaskArchiveId}
-                onArchive={onArchiveQuickTask}
-              />
-            )
+            <>
+              {!!quickTasksError && (
+                <div
+                  className={clsx(classes.statusMessage, classes.statusError)}
+                >
+                  {quickTasksError}
+                </div>
+              )}
+              {quickTasks === null && isQuickTasksLoading ? (
+                <div className={classes.loading}>Loading quick tasks…</div>
+              ) : (
+                <div
+                  className={clsx(isQuickTasksLoading && classes.refreshing)}
+                >
+                  <QuickTaskList
+                    items={quickTasks ?? []}
+                    pinnedIds={pinnedQuickTaskIds}
+                    parentId={quickTaskParentId}
+                    title={quickTaskTitle}
+                    isActionDisabled={isActionDisabled}
+                    linkExternal={linkExternal}
+                    onTitleChange={onQuickTaskTitleChange}
+                    onCreate={onCreateQuickTaskFromTitle}
+                    onTogglePin={onTogglePinQuickTask}
+                    archiveId={quickTaskArchiveId}
+                    onArchive={onArchiveQuickTask}
+                  />
+                </div>
+              )}
+            </>
           ) : activeListTab === 'prs' ? (
-            isPullRequestsLoading ? (
-              <div className={classes.loading}>
-                Scanning pull-request comments…
-              </div>
-            ) : pullRequestsError ? (
-              <div className={clsx(classes.statusMessage, classes.statusError)}>
-                {pullRequestsError}
-              </div>
-            ) : (
-              <PullRequestList
-                items={pullRequests ?? []}
-                emptyText="No pull requests you authored, commented on recently, or were mentioned in."
-                linkExternal={linkExternal}
-              />
-            )
-          ) : isAuthoredLoading ? (
-            <div className={classes.loading}>Loading authored items…</div>
-          ) : authoredError ? (
-            <div className={clsx(classes.statusMessage, classes.statusError)}>
-              {authoredError}
-            </div>
+            <>
+              {!!pullRequestsError && (
+                <div
+                  className={clsx(classes.statusMessage, classes.statusError)}
+                >
+                  {pullRequestsError}
+                </div>
+              )}
+              {pullRequests === null && isPullRequestsLoading ? (
+                <div className={classes.loading}>
+                  Scanning pull-request comments…
+                </div>
+              ) : (
+                <div
+                  className={clsx(isPullRequestsLoading && classes.refreshing)}
+                >
+                  <PullRequestList
+                    items={pullRequests ?? []}
+                    emptyText="No pull requests you authored, commented on recently, or were mentioned in."
+                    linkExternal={linkExternal}
+                  />
+                </div>
+              )}
+            </>
           ) : (
-            <WorkItemSection
-              title="Authored"
-              showTitle={false}
-              emptyText="No open items you authored and are not assigned to."
-              items={authoredItems ?? []}
-              showState={true}
-              groupByParent={showWorkItemParentDetails}
-              linkExternal={linkExternal}
-            />
+            <>
+              {!!authoredError && (
+                <div
+                  className={clsx(classes.statusMessage, classes.statusError)}
+                >
+                  {authoredError}
+                </div>
+              )}
+              {authoredItems === null && isAuthoredLoading ? (
+                <div className={classes.loading}>Loading authored items…</div>
+              ) : (
+                <div className={clsx(isAuthoredLoading && classes.refreshing)}>
+                  <WorkItemSection
+                    title="Authored"
+                    showTitle={false}
+                    emptyText="No open items you authored and are not assigned to."
+                    items={authoredItems ?? []}
+                    showState={true}
+                    groupByParent={showWorkItemParentDetails}
+                    linkExternal={linkExternal}
+                  />
+                </div>
+              )}
+            </>
           )}
         </section>
       )}
@@ -234,23 +291,32 @@ export function WorkItemsPane({
             onResetClosedDateRange={onResetClosedDateRange}
           />
           {showWorkItemParentDetails ? (
-            isClosedRollupLoading ? (
-              <div className={classes.loading}>Loading finished items…</div>
-            ) : closedRollupError ? (
-              <div className={clsx(classes.statusMessage, classes.statusError)}>
-                {closedRollupError}
-              </div>
-            ) : (
-              <WorkItemSection
-                title="Closed"
-                emptyText="Nothing finished in this range — every item still has open work."
-                items={closedParentRollup ?? []}
-                showState={false}
-                groupByClosedDate={true}
-                onRefetchClosedDay={onRefetchClosedDay}
-                linkExternal={linkExternal}
-              />
-            )
+            <>
+              {!!closedRollupError && (
+                <div
+                  className={clsx(classes.statusMessage, classes.statusError)}
+                >
+                  {closedRollupError}
+                </div>
+              )}
+              {closedParentRollup === null && isClosedRollupLoading ? (
+                <div className={classes.loading}>Loading finished items…</div>
+              ) : (
+                <div
+                  className={clsx(isClosedRollupLoading && classes.refreshing)}
+                >
+                  <WorkItemSection
+                    title="Closed"
+                    emptyText="Nothing finished in this range — every item still has open work."
+                    items={closedParentRollup ?? []}
+                    showState={false}
+                    groupByClosedDate={true}
+                    onRefetchClosedDay={onRefetchClosedDay}
+                    linkExternal={linkExternal}
+                  />
+                </div>
+              )}
+            </>
           ) : (
             <WorkItemSection
               title="Closed"

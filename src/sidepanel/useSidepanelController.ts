@@ -72,6 +72,13 @@ import {
   togglePinnedId
 } from './work-items/atoms/quickTaskSorting';
 import {
+  ALL_STALE_LISTS,
+  NO_STALE_LISTS,
+  markFresh,
+  needsReload,
+  type StaleLists
+} from './work-items/atoms/staleLists';
+import {
   isBookmarkSyncPlanEmpty,
   syncFavoritesToBookmarks
 } from './bookmarkSync';
@@ -156,6 +163,14 @@ export function useSidepanelController() {
   const [quickTasksError, setQuickTasksError] = useState<string | null>(null);
   const [pinnedQuickTaskIds, setPinnedQuickTaskIds] = useState<number[]>([]);
   const [quickTaskTitle, setQuickTaskTitle] = useState('');
+  // Lists the last refetch invalidated. They keep their rows on screen and
+  // refresh in place, so a list never blanks out while loading.
+  const [staleLists, setStaleLists] = useState<StaleLists>(NO_STALE_LISTS);
+  // The task the last quick-task creation produced, kept as a one-click link.
+  const [createdQuickTask, setCreatedQuickTask] = useState<{
+    id: number;
+    url: string;
+  } | null>(null);
   // Starred Azure DevOps pages, plus the active tab so the menu knows whether
   // the current page can be starred.
   const [starredPages, setStarredPages] = useState<StarredPage[]>([]);
@@ -562,11 +577,9 @@ export function useSidepanelController() {
 
     // The lazily-loaded lists are derived from the same query parameters, so a
     // refetch invalidates them rather than leaving a stale Authored count or a
-    // rollup computed for a different date range.
-    setAuthoredItems(null);
-    setClosedParentRollup(null);
-    setPullRequests(null);
-    setQuickTasks(null);
+    // rollup computed for a different date range. They are marked stale, not
+    // cleared: rows the user can already see stay put until the refresh lands.
+    setStaleLists(ALL_STALE_LISTS);
     const effectiveClosedDateRange =
       options?.closedDateRange ?? closedDateRange;
     const fetchSource = options?.source ?? 'manual';
@@ -648,6 +661,13 @@ export function useSidepanelController() {
               : `Updated closed work items for ${effectiveClosedDateRange.start} through ${effectiveClosedDateRange.end}.`
       });
       void saveCachedWorkItems(nextResult).catch(() => undefined);
+
+      // What is on screen refreshes itself, so a fetch updates the visible
+      // lists instead of waiting for a tab to be reselected.
+      void refreshActiveListTab();
+      if (showWorkItemParentDetails) {
+        void loadClosedParentRollup();
+      }
     } catch (error) {
       if (fetchSequence !== workItemsFetchSequenceRef.current) {
         return;
@@ -669,6 +689,38 @@ export function useSidepanelController() {
       if (fetchSequence === workItemsFetchSequenceRef.current) {
         setIsLoading(false);
       }
+    }
+  }
+
+  /** Opens the just-created quick task in a new tab and drops the notice. */
+  async function onOpenCreatedQuickTask() {
+    const created = createdQuickTask;
+    if (!created) {
+      return;
+    }
+
+    setCreatedQuickTask(null);
+    await chrome.tabs.create({ url: created.url });
+  }
+
+  function onDismissCreatedQuickTask() {
+    setCreatedQuickTask(null);
+  }
+
+  /** Reloads whichever lazy list the active tab shows, if it went stale. */
+  async function refreshActiveListTab() {
+    if (activeListTab === 'quick') {
+      await loadQuickTasks();
+      return;
+    }
+
+    if (activeListTab === 'prs') {
+      await loadPullRequests();
+      return;
+    }
+
+    if (activeListTab === 'authored') {
+      await loadAuthoredItems();
     }
   }
 
@@ -788,13 +840,13 @@ export function useSidepanelController() {
         options.title
       );
       if (response.ok) {
-        const state = response.result.state
-          ? ` (${response.result.state})`
-          : '';
-        setStatusMessage({
-          kind: 'success',
-          text: `Created task #${response.result.id}${state}: ${response.result.title}`
+        // The notice is deliberately terse and clickable: the point is to reach
+        // the new task in one click, not to read its details in the panel.
+        setCreatedQuickTask({
+          id: response.result.id,
+          url: response.result.url
         });
+        setStatusMessage(null);
         pushDebugLog(
           'success',
           `Quick task #${response.result.id} created under #${response.result.parentId}.`
@@ -804,6 +856,7 @@ export function useSidepanelController() {
         // leaving a stale view behind.
         await loadQuickTasks(true);
       } else {
+        setCreatedQuickTask(null);
         setStatusMessage({ kind: 'error', text: response.error });
         pushDebugLog('error', `Quick task failed: ${response.error}`);
       }
@@ -817,7 +870,14 @@ export function useSidepanelController() {
   }
 
   async function loadQuickTasks(force = false) {
-    if (!force && (quickTasks !== null || isQuickTasksLoading)) {
+    if (
+      !needsReload({
+        data: quickTasks,
+        isLoading: isQuickTasksLoading,
+        isStale: staleLists.quick,
+        force
+      })
+    ) {
       return;
     }
 
@@ -831,6 +891,7 @@ export function useSidepanelController() {
       });
       if (response.ok) {
         setQuickTasks(response.result);
+        setStaleLists((current) => markFresh(current, 'quick'));
         pushDebugLog(
           'success',
           `Quick tasks returned ${response.result.length} task(s).`
@@ -981,8 +1042,15 @@ export function useSidepanelController() {
     await savePinnedQuickTaskIds(next);
   }
 
-  async function loadPullRequests() {
-    if (pullRequests !== null || isPullRequestsLoading) {
+  async function loadPullRequests(force = false) {
+    if (
+      !needsReload({
+        data: pullRequests,
+        isLoading: isPullRequestsLoading,
+        isStale: staleLists.prs,
+        force
+      })
+    ) {
       return;
     }
 
@@ -996,6 +1064,7 @@ export function useSidepanelController() {
       });
       if (response.ok) {
         setPullRequests(response.result);
+        setStaleLists((current) => markFresh(current, 'prs'));
         pushDebugLog(
           'success',
           `Pull-request activity returned ${response.result.length} PR(s).`
@@ -1013,8 +1082,15 @@ export function useSidepanelController() {
     }
   }
 
-  async function loadClosedParentRollup() {
-    if (closedParentRollup !== null || isClosedRollupLoading) {
+  async function loadClosedParentRollup(force = false) {
+    if (
+      !needsReload({
+        data: closedParentRollup,
+        isLoading: isClosedRollupLoading,
+        isStale: staleLists.closedRollup,
+        force
+      })
+    ) {
       return;
     }
 
@@ -1028,6 +1104,7 @@ export function useSidepanelController() {
       });
       if (response.ok) {
         setClosedParentRollup(response.result);
+        setStaleLists((current) => markFresh(current, 'closedRollup'));
         pushDebugLog(
           'success',
           `Closed rollup returned ${response.result.length} finished item(s).`
@@ -1475,9 +1552,22 @@ export function useSidepanelController() {
       return;
     }
 
-    // Load once, lazily: the Authored list is a second query and should not
-    // slow the TODO view that the panel exists to show.
-    if (tab !== 'authored' || authoredItems !== null || isAuthoredLoading) {
+    if (tab === 'authored') {
+      await loadAuthoredItems();
+    }
+  }
+
+  // Loaded lazily: the Authored list is a second query and should not slow the
+  // TODO view that the panel exists to show.
+  async function loadAuthoredItems(force = false) {
+    if (
+      !needsReload({
+        data: authoredItems,
+        isLoading: isAuthoredLoading,
+        isStale: staleLists.authored,
+        force
+      })
+    ) {
       return;
     }
 
@@ -1491,6 +1581,7 @@ export function useSidepanelController() {
       });
       if (response.ok) {
         setAuthoredItems(response.result);
+        setStaleLists((current) => markFresh(current, 'authored'));
         pushDebugLog(
           'success',
           `Authored fetch returned ${response.result.length} item(s).`
@@ -1536,6 +1627,9 @@ export function useSidepanelController() {
         ? Number(settings.quickTaskArchiveId.trim())
         : null,
     onCreateQuickTask,
+    createdQuickTask,
+    onOpenCreatedQuickTask,
+    onDismissCreatedQuickTask,
     canCreateQuickTask: Number(settings.quickTaskParentId.trim()) > 0,
     pullRequests,
     isPullRequestsLoading,
