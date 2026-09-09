@@ -5,7 +5,7 @@ export type WorkItemListTab = 'todo' | 'authored' | 'prs' | 'quick';
 
 interface WorkItemListTabsProps {
   activeTab: WorkItemListTab;
-  todoCount: number;
+  todoCount: number | null;
   authoredCount: number | null;
   pullRequestCount: number | null;
   quickTaskCount: number | null;

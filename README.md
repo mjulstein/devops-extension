@@ -155,11 +155,17 @@ npm test
    `Assigned to` empty to use `@me`.
 4. Use the new **TODO states** field to extend the TODO section beyond the
    default To Do/In Progress filter (enter each state name separated by commas).
-5. Click **Fetch work items**.
-6. Adjust the closed-date range inputs to refresh closed items for a specific window, or use **Reset to default** to restore the default today-to-7-days-ago range.
-7. Optionally enable **Show task parent details** to display each task's parent summary inline.
-8. Use the per-day refetch button beside any closed-date heading to reload only that day.
-9. Open the **Active item** tab to create child tasks. The tab resolves context from the last visited Azure DevOps work-item view (or the pinned item if set), so it can continue working even when a non-DevOps tab is active.
+5. Click a list tab — **TODO**, **Quick**, **Authored**, or **PRs** — to load it.
+   Selecting a tab is also how you refresh it; rows you can already see stay on
+   screen and pulse yellow while the refresh runs.
+6. On the **Quick** tab, the button beside the input creates a task: leave the
+   input empty to capture the page you are on, or type a title to use that
+   instead. A **Created #id** link appears under the tabs and opens the new task
+   in a new tab.
+7. Adjust the closed-date range inputs to refresh closed items for a specific window, or use **Reset to default** to restore the default today-to-7-days-ago range.
+8. Optionally enable **Show task parent details** to display each task's parent summary inline.
+9. Use the per-day refetch button beside any closed-date heading to reload only that day.
+10. Open the **Active item** tab to create child tasks. The tab resolves context from the last visited Azure DevOps work-item view (or the pinned item if set), so it can continue working even when a non-DevOps tab is active.
 
 The extension queries Azure DevOps with its runtime-minted PAT (over HTTP Basic auth) and displays matching work items in the side panel.
 

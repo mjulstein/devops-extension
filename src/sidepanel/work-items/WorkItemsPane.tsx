@@ -28,7 +28,6 @@ interface StatusCardProps {
     text: string;
   } | null;
   preFetchHint: string | null;
-  onFetchWorkItems: () => Promise<void>;
   onCreateQuickTask: () => Promise<void>;
   canCreateQuickTask: boolean;
   onClosedDateRangeChange: (
@@ -66,6 +65,7 @@ interface StatusCardProps {
   createdQuickTask: { id: number; url: string } | null;
   onOpenCreatedQuickTask: () => Promise<void>;
   onDismissCreatedQuickTask: () => void;
+  onDismissStatusMessage: () => void;
 }
 
 export function WorkItemsPane({
@@ -77,7 +77,6 @@ export function WorkItemsPane({
   showWorkItemParentDetails,
   statusMessage,
   preFetchHint,
-  onFetchWorkItems,
   onCreateQuickTask,
   canCreateQuickTask,
   onClosedDateRangeChange,
@@ -111,7 +110,8 @@ export function WorkItemsPane({
   onArchiveQuickTask,
   createdQuickTask,
   onOpenCreatedQuickTask,
-  onDismissCreatedQuickTask
+  onDismissCreatedQuickTask,
+  onDismissStatusMessage
 }: StatusCardProps) {
   const statusKindClassNames = {
     info: classes.statusInfo,
@@ -124,12 +124,47 @@ export function WorkItemsPane({
       <section className={classes.card}>
         <WorkItemsToolbar
           showWorkItemParentDetails={showWorkItemParentDetails}
-          isActionDisabled={isActionDisabled}
-          canCreateQuickTask={canCreateQuickTask}
-          onFetchWorkItems={onFetchWorkItems}
-          onCreateQuickTask={onCreateQuickTask}
           onToggleShowWorkItemParentDetails={onToggleShowWorkItemParentDetails}
         />
+
+        {!!preFetchHint && (
+          <div className={clsx(classes.statusMessage, classes.statusWarning)}>
+            {preFetchHint}
+          </div>
+        )}
+      </section>
+      <section className={classes.card}>
+        <WorkItemListTabs
+          activeTab={activeListTab}
+          todoCount={result?.openItems.length ?? null}
+          authoredCount={authoredItems?.length ?? null}
+          pullRequestCount={pullRequests?.length ?? null}
+          quickTaskCount={quickTasks?.length ?? null}
+          onSelectTab={onSelectListTab}
+        />
+
+        {isLoading && <div className={classes.loading}>{loadingMessage}</div>}
+
+        {!!statusMessage && (
+          <div
+            className={clsx(
+              classes.statusMessage,
+              classes.dismissible,
+              statusKindClassNames[statusMessage.kind]
+            )}
+          >
+            <span>{statusMessage.text}</span>
+            <button
+              type="button"
+              className={classes.dismiss}
+              title="Dismiss"
+              aria-label="Dismiss this message"
+              onClick={onDismissStatusMessage}
+            >
+              ×
+            </button>
+          </div>
+        )}
 
         {!!createdQuickTask && (
           <div className={classes.createdNotice}>
@@ -155,130 +190,99 @@ export function WorkItemsPane({
           </div>
         )}
 
-        {isLoading && <div className={classes.loading}>{loadingMessage}</div>}
-
-        {!!preFetchHint && (
-          <div className={clsx(classes.statusMessage, classes.statusWarning)}>
-            {preFetchHint}
-          </div>
-        )}
-
-        {!!statusMessage && (
-          <div
-            className={clsx(
-              classes.statusMessage,
-              statusKindClassNames[statusMessage.kind]
+        {activeListTab === 'todo' ? (
+          result === null ? (
+            <p>Click TODO to load your work items.</p>
+          ) : (
+            <div className={clsx(isLoading && classes.refreshing)}>
+              <WorkItemSection
+                title="TODO"
+                showTitle={false}
+                emptyText="No open items."
+                items={result.openItems}
+                showState={true}
+                groupByParent={showWorkItemParentDetails}
+                linkExternal={linkExternal}
+              />
+            </div>
+          )
+        ) : activeListTab === 'quick' ? (
+          <>
+            {!!quickTasksError && (
+              <div className={clsx(classes.statusMessage, classes.statusError)}>
+                {quickTasksError}
+              </div>
             )}
-          >
-            {statusMessage.text}
-          </div>
+            {quickTasks === null && isQuickTasksLoading ? (
+              <div className={classes.loading}>Loading quick tasks…</div>
+            ) : (
+              <div className={clsx(isQuickTasksLoading && classes.refreshing)}>
+                <QuickTaskList
+                  items={quickTasks ?? []}
+                  pinnedIds={pinnedQuickTaskIds}
+                  parentId={quickTaskParentId}
+                  title={quickTaskTitle}
+                  isActionDisabled={isActionDisabled}
+                  linkExternal={linkExternal}
+                  onTitleChange={onQuickTaskTitleChange}
+                  onCreate={onCreateQuickTaskFromTitle}
+                  onCreateFromPage={onCreateQuickTask}
+                  canCreateFromPage={canCreateQuickTask}
+                  onTogglePin={onTogglePinQuickTask}
+                  archiveId={quickTaskArchiveId}
+                  onArchive={onArchiveQuickTask}
+                />
+              </div>
+            )}
+          </>
+        ) : activeListTab === 'prs' ? (
+          <>
+            {!!pullRequestsError && (
+              <div className={clsx(classes.statusMessage, classes.statusError)}>
+                {pullRequestsError}
+              </div>
+            )}
+            {pullRequests === null && isPullRequestsLoading ? (
+              <div className={classes.loading}>
+                Scanning pull-request comments…
+              </div>
+            ) : (
+              <div
+                className={clsx(isPullRequestsLoading && classes.refreshing)}
+              >
+                <PullRequestList
+                  items={pullRequests ?? []}
+                  emptyText="No pull requests you authored, commented on recently, or were mentioned in."
+                  linkExternal={linkExternal}
+                />
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {!!authoredError && (
+              <div className={clsx(classes.statusMessage, classes.statusError)}>
+                {authoredError}
+              </div>
+            )}
+            {authoredItems === null && isAuthoredLoading ? (
+              <div className={classes.loading}>Loading authored items…</div>
+            ) : (
+              <div className={clsx(isAuthoredLoading && classes.refreshing)}>
+                <WorkItemSection
+                  title="Authored"
+                  showTitle={false}
+                  emptyText="No open items you authored and are not assigned to."
+                  items={authoredItems ?? []}
+                  showState={true}
+                  groupByParent={showWorkItemParentDetails}
+                  linkExternal={linkExternal}
+                />
+              </div>
+            )}
+          </>
         )}
       </section>
-      {result && (
-        <section className={classes.card}>
-          <WorkItemListTabs
-            activeTab={activeListTab}
-            todoCount={result.openItems.length}
-            authoredCount={authoredItems?.length ?? null}
-            pullRequestCount={pullRequests?.length ?? null}
-            quickTaskCount={quickTasks?.length ?? null}
-            onSelectTab={onSelectListTab}
-          />
-
-          {activeListTab === 'todo' ? (
-            <WorkItemSection
-              title="TODO"
-              showTitle={false}
-              emptyText="No open items."
-              items={result.openItems}
-              showState={true}
-              groupByParent={showWorkItemParentDetails}
-              linkExternal={linkExternal}
-            />
-          ) : activeListTab === 'quick' ? (
-            <>
-              {!!quickTasksError && (
-                <div
-                  className={clsx(classes.statusMessage, classes.statusError)}
-                >
-                  {quickTasksError}
-                </div>
-              )}
-              {quickTasks === null && isQuickTasksLoading ? (
-                <div className={classes.loading}>Loading quick tasks…</div>
-              ) : (
-                <div
-                  className={clsx(isQuickTasksLoading && classes.refreshing)}
-                >
-                  <QuickTaskList
-                    items={quickTasks ?? []}
-                    pinnedIds={pinnedQuickTaskIds}
-                    parentId={quickTaskParentId}
-                    title={quickTaskTitle}
-                    isActionDisabled={isActionDisabled}
-                    linkExternal={linkExternal}
-                    onTitleChange={onQuickTaskTitleChange}
-                    onCreate={onCreateQuickTaskFromTitle}
-                    onTogglePin={onTogglePinQuickTask}
-                    archiveId={quickTaskArchiveId}
-                    onArchive={onArchiveQuickTask}
-                  />
-                </div>
-              )}
-            </>
-          ) : activeListTab === 'prs' ? (
-            <>
-              {!!pullRequestsError && (
-                <div
-                  className={clsx(classes.statusMessage, classes.statusError)}
-                >
-                  {pullRequestsError}
-                </div>
-              )}
-              {pullRequests === null && isPullRequestsLoading ? (
-                <div className={classes.loading}>
-                  Scanning pull-request comments…
-                </div>
-              ) : (
-                <div
-                  className={clsx(isPullRequestsLoading && classes.refreshing)}
-                >
-                  <PullRequestList
-                    items={pullRequests ?? []}
-                    emptyText="No pull requests you authored, commented on recently, or were mentioned in."
-                    linkExternal={linkExternal}
-                  />
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              {!!authoredError && (
-                <div
-                  className={clsx(classes.statusMessage, classes.statusError)}
-                >
-                  {authoredError}
-                </div>
-              )}
-              {authoredItems === null && isAuthoredLoading ? (
-                <div className={classes.loading}>Loading authored items…</div>
-              ) : (
-                <div className={clsx(isAuthoredLoading && classes.refreshing)}>
-                  <WorkItemSection
-                    title="Authored"
-                    showTitle={false}
-                    emptyText="No open items you authored and are not assigned to."
-                    items={authoredItems ?? []}
-                    showState={true}
-                    groupByParent={showWorkItemParentDetails}
-                    linkExternal={linkExternal}
-                  />
-                </div>
-              )}
-            </>
-          )}
-        </section>
-      )}
 
       {result && (
         <section className={classes.card}>

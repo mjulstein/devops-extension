@@ -69,7 +69,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - `src/sidepanel/navigateToWorkItem.ts` — shared Azure DevOps work-item navigation helper used by links and task buttons to reuse matching tabs when possible
 - `src/sidepanel/{atoms,useSidepanelController}.ts*` — shared shell atoms plus the side-panel orchestration hook used by `App.tsx`
 - `src/sidepanel/workItemsDateRange.ts` — default closed-date range and validation helpers for the Work items tab
-- `src/sidepanel/work-items/*` + `src/sidepanel/work-items/atoms/*` — work-items tab layout plus smaller toolbar/date-range/row/group atoms and helper tests
+- `src/sidepanel/work-items/*` + `src/sidepanel/work-items/atoms/*` — work-items tab layout plus smaller toolbar/tab-strip/date-range/row/list atoms and helper tests. Selecting a list tab is the refresh gesture: each tab refetches its own data, so there is no separate fetch button
 - `src/sidepanel/work-item/*` + `src/sidepanel/work-item/atoms/*` — active-item tab layout plus smaller task/suggestion/pin atoms and helper tests
 - `src/sidepanel/settings/*` — settings tab components (`SettingsCard`) with colocated `*.module.css` files and `index.ts` entry export
 - `src/sidepanel/{chromeStorage,defaultSettings}.ts` — side panel storage/defaults helpers, including cached work-items results plus browser-local closed-date range and parent-detail toggle state

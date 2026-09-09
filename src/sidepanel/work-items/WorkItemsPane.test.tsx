@@ -37,7 +37,6 @@ function renderPane(overrides: Record<string, unknown> = {}) {
       showWorkItemParentDetails={false}
       statusMessage={null}
       preFetchHint={null}
-      onFetchWorkItems={asyncNoop}
       onCreateQuickTask={asyncNoop}
       canCreateQuickTask={true}
       onClosedDateRangeChange={asyncNoop}
@@ -72,6 +71,7 @@ function renderPane(overrides: Record<string, unknown> = {}) {
       createdQuickTask={null}
       onOpenCreatedQuickTask={asyncNoop}
       onDismissCreatedQuickTask={noop}
+      onDismissStatusMessage={noop}
       {...overrides}
     />
   );
@@ -113,5 +113,27 @@ describe('WorkItemsPane loading behaviour', () => {
 
   it('renders no created notice when nothing was just created', () => {
     expect(renderPane()).not.toContain('Created #');
+  });
+});
+
+describe('WorkItemsPane chrome', () => {
+  it('offers no fetch button, since selecting a tab refetches', () => {
+    expect(renderPane()).not.toContain('Fetch work items');
+  });
+
+  it('keeps the tab strip reachable before the first fetch', () => {
+    const markup = renderPane({ result: null, activeListTab: 'todo' });
+
+    expect(markup).toContain('TODO');
+    expect(markup).toContain('Click TODO to load your work items.');
+  });
+
+  it('gives the status message a dismiss control under the tabs', () => {
+    const markup = renderPane({
+      statusMessage: { kind: 'success', text: 'Fetched 12 work item(s).' }
+    });
+
+    expect(markup).toContain('Fetched 12 work item(s).');
+    expect(markup).toContain('aria-label="Dismiss this message"');
   });
 });

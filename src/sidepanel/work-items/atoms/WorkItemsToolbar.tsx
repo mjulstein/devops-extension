@@ -3,48 +3,18 @@ import classes from './WorkItemsToolbar.module.css';
 
 interface WorkItemsToolbarProps {
   showWorkItemParentDetails: boolean;
-  isActionDisabled: boolean;
-  canCreateQuickTask: boolean;
-  onFetchWorkItems: () => Promise<void>;
-  onCreateQuickTask: () => Promise<void>;
   onToggleShowWorkItemParentDetails: () => Promise<void>;
 }
 
+// There is no fetch button: selecting a tab refetches that tab, which makes a
+// separate button redundant. Creating a quick task lives beside the quick-task
+// input, next to the title it uses.
 export function WorkItemsToolbar({
   showWorkItemParentDetails,
-  isActionDisabled,
-  canCreateQuickTask,
-  onFetchWorkItems,
-  onCreateQuickTask,
   onToggleShowWorkItemParentDetails
 }: WorkItemsToolbarProps) {
   return (
     <div className={classes.row}>
-      <button
-        className={classes.button}
-        onClick={() => {
-          void onFetchWorkItems();
-        }}
-        disabled={isActionDisabled}
-      >
-        Fetch work items
-      </button>
-
-      <button
-        className={classes.button}
-        onClick={() => {
-          void onCreateQuickTask();
-        }}
-        disabled={isActionDisabled || !canCreateQuickTask}
-        title={
-          canCreateQuickTask
-            ? 'Create an in-progress task from the current page, under the quick-task parent'
-            : 'Set a quick-task parent work item id in Settings to enable this'
-        }
-      >
-        + Task from page
-      </button>
-
       <label className={clsx(classes.checkboxToggle, classes.parentToggle)}>
         <input
           className={classes.checkboxInput}

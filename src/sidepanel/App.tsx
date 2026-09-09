@@ -82,9 +82,8 @@ export function App() {
           preFetchHint={
             controller.hasFetchedOnce
               ? null
-              : 'Panel reloaded. Click Fetch work items to load the latest data.'
+              : 'Panel reloaded. Click a tab to load the latest data.'
           }
-          onFetchWorkItems={controller.onFetchWorkItems}
           onCreateQuickTask={controller.onCreateQuickTask}
           canCreateQuickTask={controller.canCreateQuickTask}
           onClosedDateRangeChange={controller.onClosedDateRangeChange}
@@ -125,6 +124,7 @@ export function App() {
           createdQuickTask={controller.createdQuickTask}
           onOpenCreatedQuickTask={controller.onOpenCreatedQuickTask}
           onDismissCreatedQuickTask={controller.onDismissCreatedQuickTask}
+          onDismissStatusMessage={controller.onDismissStatusMessage}
           isActionDisabled={controller.isActionDisabled}
           linkExternal={controller.linkExternal}
         />

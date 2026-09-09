@@ -24,7 +24,11 @@ void chrome.storage.local
         organization: DEV_ORGANIZATION,
         project: DEV_PROJECT,
         assignedTo: '',
-        todoStates: ['To Do', 'In Progress']
+        todoStates: ['To Do', 'In Progress'],
+        // Placeholder ids so the quick-task create/archive actions are
+        // reachable in the harness. Never real work-item ids.
+        quickTaskParentId: '9000',
+        quickTaskArchiveId: '9100'
       });
     }
   });

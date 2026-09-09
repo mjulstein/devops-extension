@@ -703,25 +703,25 @@ export function useSidepanelController() {
     await chrome.tabs.create({ url: created.url });
   }
 
+  function onDismissStatusMessage() {
+    setStatusMessage(null);
+  }
+
   function onDismissCreatedQuickTask() {
     setCreatedQuickTask(null);
   }
 
-  /** Reloads whichever lazy list the active tab shows, if it went stale. */
+  /**
+   * Reloads whichever lazy list the active tab shows, if it went stale. TODO is
+   * skipped: its rows come from the fetch that triggers this, so reloading it
+   * here would fetch twice.
+   */
   async function refreshActiveListTab() {
-    if (activeListTab === 'quick') {
-      await loadQuickTasks();
+    if (activeListTab === 'todo') {
       return;
     }
 
-    if (activeListTab === 'prs') {
-      await loadPullRequests();
-      return;
-    }
-
-    if (activeListTab === 'authored') {
-      await loadAuthoredItems();
-    }
+    await loadListTab(activeListTab);
   }
 
   async function onClosedDateRangeChange(
@@ -1539,21 +1539,32 @@ export function useSidepanelController() {
       ? `${activeItemHeading} (task #${activeWorkItemContext.viewedTaskId})`
       : activeItemHeading;
 
+  // Selecting a tab is the refresh gesture now that the toolbar has no fetch
+  // button, so every tab refetches its own data on click — including TODO,
+  // whose rows come from the main work-items query.
   async function onSelectListTab(tab: WorkItemListTab) {
     setActiveListTab(tab);
+    await loadListTab(tab, true);
+  }
+
+  async function loadListTab(tab: WorkItemListTab, force = false) {
+    if (tab === 'todo') {
+      await onFetchWorkItems({ source: 'todo tab' });
+      return;
+    }
 
     if (tab === 'prs') {
-      await loadPullRequests();
+      await loadPullRequests(force);
       return;
     }
 
     if (tab === 'quick') {
-      await loadQuickTasks();
+      await loadQuickTasks(force);
       return;
     }
 
     if (tab === 'authored') {
-      await loadAuthoredItems();
+      await loadAuthoredItems(force);
     }
   }
 
@@ -1630,6 +1641,7 @@ export function useSidepanelController() {
     createdQuickTask,
     onOpenCreatedQuickTask,
     onDismissCreatedQuickTask,
+    onDismissStatusMessage,
     canCreateQuickTask: Number(settings.quickTaskParentId.trim()) > 0,
     pullRequests,
     isPullRequestsLoading,

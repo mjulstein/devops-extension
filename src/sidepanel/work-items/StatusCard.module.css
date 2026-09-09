@@ -92,3 +92,26 @@
   padding: 4px;
   line-height: 1;
 }
+
+/* A message that lives under the tabs, with its dismiss cross in the corner. */
+.dismissible {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dismiss {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 2px;
+  color: #4b5563;
+  flex: 0 0 auto;
+}
+
+.dismiss:hover {
+  color: #111827;
+}

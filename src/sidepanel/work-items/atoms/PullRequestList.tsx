@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import clsx from 'clsx';
 import type { PullRequestActivityItem } from '@/types';
 import { Link } from '@/sidepanel/Link';
@@ -10,27 +11,58 @@ const MARKS: Record<PullRequestActivityItem['approval'], string> = {
   'no-vote': '⇅'
 };
 
+/**
+ * Rows shown before the list is truncated. The list is sorted so the PRs that
+ * need attention come first, which makes a cap safe: the tail is history.
+ */
+export const DEFAULT_PULL_REQUEST_ROW_LIMIT = 20;
+
 interface PullRequestListProps {
   items: PullRequestActivityItem[];
   emptyText: string;
   linkExternal: boolean;
+  rowLimit?: number;
 }
 
 export function PullRequestList({
   items,
   emptyText,
-  linkExternal
+  linkExternal,
+  rowLimit = DEFAULT_PULL_REQUEST_ROW_LIMIT
 }: PullRequestListProps) {
+  const [showAll, setShowAll] = useState(false);
+
   if (items.length === 0) {
     return <p>{emptyText}</p>;
   }
 
+  const isTruncated = !showAll && items.length > rowLimit;
+  const visible = isTruncated ? items.slice(0, rowLimit) : items;
+  const hiddenCount = items.length - visible.length;
+
   return (
-    <div className={classes.list} role="list">
-      {items.map((item) => (
-        <PullRequestRow key={item.id} item={item} linkExternal={linkExternal} />
-      ))}
-    </div>
+    <>
+      <div className={classes.list} role="list">
+        {visible.map((item) => (
+          <PullRequestRow
+            key={item.id}
+            item={item}
+            linkExternal={linkExternal}
+          />
+        ))}
+      </div>
+      {isTruncated && (
+        <button
+          type="button"
+          className={classes.showAll}
+          onClick={() => {
+            setShowAll(true);
+          }}
+        >
+          Show {hiddenCount} more
+        </button>
+      )}
+    </>
   );
 }
 

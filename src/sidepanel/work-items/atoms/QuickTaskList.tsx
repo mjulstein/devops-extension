@@ -13,7 +13,12 @@ interface QuickTaskListProps {
   isActionDisabled: boolean;
   linkExternal: boolean;
   onTitleChange: (value: string) => void;
+  /** Creates a task titled from the input. */
   onCreate: () => Promise<void>;
+  /** Creates a task titled from the current page, used when the input is empty. */
+  onCreateFromPage: () => Promise<void>;
+  /** False when no quick-task parent is configured, which disables creating. */
+  canCreateFromPage: boolean;
   onTogglePin: (id: number) => Promise<void>;
   /** null when no archive work item is configured, which hides the action. */
   archiveId: number | null;
@@ -29,20 +34,38 @@ export function QuickTaskList({
   linkExternal,
   onTitleChange,
   onCreate,
+  onCreateFromPage,
+  canCreateFromPage,
   onTogglePin,
   archiveId,
   onArchive
 }: QuickTaskListProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const pinned = new Set(pinnedIds);
+  const typedTitle = title.trim();
+  // One button, two jobs: an empty input means "capture the page I am on",
+  // anything typed means "use what I typed".
+  const createsFromPage = typedTitle.length === 0;
+  const canCreate =
+    !isActionDisabled &&
+    parentId !== null &&
+    (createsFromPage ? canCreateFromPage : true);
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    await onCreate();
+  async function create() {
+    if (!canCreate) {
+      return;
+    }
+
+    await (createsFromPage ? onCreateFromPage() : onCreate());
     // Keep focus so several tasks can be typed in a row.
     globalThis.setTimeout(() => {
       inputRef.current?.focus();
     }, 0);
+  }
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await create();
   }
 
   return (
@@ -59,23 +82,29 @@ export function QuickTaskList({
             ref={inputRef}
             type="text"
             value={title}
-            placeholder="Type a quick task and press Enter"
+            placeholder="Type a quick task, or leave empty for this page"
             disabled={isActionDisabled || parentId === null}
             onChange={(event) => onTitleChange(event.target.value)}
           />
           <button
             type="submit"
             className={classes.submitButton}
-            disabled={isActionDisabled || parentId === null || !title.trim()}
-            title="Create quick task"
+            disabled={!canCreate}
+            title={
+              parentId === null
+                ? 'Set a quick-task parent work item id in Settings to enable this'
+                : createsFromPage
+                  ? 'Create an in-progress task from the current page'
+                  : `Create an in-progress task titled "${typedTitle}"`
+            }
           >
-            +
+            {createsFromPage ? '+ page' : '+'}
           </button>
         </div>
         <div className={classes.hint}>
           {parentId === null
             ? 'Set a quick-task parent work item id in Settings to enable this.'
-            : `Created in progress under #${parentId} and assigned to you.`}
+            : `Created in progress under #${parentId} and assigned to you. An empty box captures the current page.`}
         </div>
       </form>
 

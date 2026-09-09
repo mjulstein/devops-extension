@@ -1,6 +1,10 @@
+/* The PR tab is the longest list in the panel, so it scrolls inside its own
+   box rather than pushing the closed-items card off the bottom. */
 .list {
   display: grid;
   gap: 4px;
+  max-height: 420px;
+  overflow-y: auto;
 }
 
 .row {
@@ -87,4 +91,19 @@
 
 .draft {
   color: #6e7781;
+}
+
+.showAll {
+  margin-top: 8px;
+  border: 0;
+  background: #eef1f5;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  color: #374151;
+}
+
+.showAll:hover {
+  background: #e2e7ee;
 }
