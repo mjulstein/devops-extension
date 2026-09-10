@@ -1,4 +1,22 @@
+// State codes for the pairs the generic rule cannot separate. Taking the first
+// two letters collapses Committed/Completed, Resolved/Removed and Done/Doing —
+// and the first two of those also share a colour, so nothing would tell them
+// apart. A short code is only useful while it stays unambiguous.
+const STATE_CODE_OVERRIDES: Record<string, string> = {
+  committed: 'CM',
+  completed: 'CP',
+  resolved: 'RS',
+  removed: 'RM',
+  done: 'DN',
+  doing: 'DG'
+};
+
 export function abbreviateTaskState(state: string): string {
+  const override = STATE_CODE_OVERRIDES[state.trim().toLowerCase()];
+  if (override) {
+    return override;
+  }
+
   const parts = state.trim().split(/\s+/).filter(Boolean);
 
   if (!parts.length) {

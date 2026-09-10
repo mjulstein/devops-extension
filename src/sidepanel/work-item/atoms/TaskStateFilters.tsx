@@ -1,5 +1,5 @@
 import classes from './TaskStateFilters.module.css';
-import { abbreviateTaskState } from './taskStateDisplay';
+import { abbreviateTaskState } from '@/sidepanel/taskStateDisplay';
 
 interface TaskStateFiltersProps {
   availableTaskStates: string[];

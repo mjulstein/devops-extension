@@ -2,8 +2,21 @@ import { useRef, type FormEvent } from 'react';
 import clsx from 'clsx';
 import type { WorkItem } from '@/types';
 import { Link } from '@/sidepanel/Link';
+import {
+  abbreviateTaskState,
+  getTaskStateTone,
+  type TaskStateTone
+} from '@/sidepanel/taskStateDisplay';
 import classes from './QuickTaskList.module.css';
 import { isFinishedState } from './quickTaskSorting';
+
+const stateToneClassNames: Record<TaskStateTone, string> = {
+  todo: classes.stateTodo,
+  'in-progress': classes.stateInProgress,
+  done: classes.stateDone,
+  blocked: classes.stateBlocked,
+  unknown: classes.stateUnknown
+};
 
 interface QuickTaskListProps {
   items: WorkItem[];
@@ -121,17 +134,6 @@ export function QuickTaskList({
                 role="listitem"
                 className={clsx(classes.row, isFinished && classes.rowFinished)}
               >
-                <button
-                  type="button"
-                  className={clsx(classes.pin, isPinned && classes.pinActive)}
-                  aria-pressed={isPinned}
-                  title={isPinned ? 'Unpin' : 'Pin to top'}
-                  onClick={() => {
-                    void onTogglePin(item.id);
-                  }}
-                >
-                  {isPinned ? '★' : '☆'}
-                </button>
                 <Link
                   className={classes.id}
                   href={item.url}
@@ -142,8 +144,17 @@ export function QuickTaskList({
                 <span className={classes.title} title={item.title}>
                   {item.title}
                 </span>
-                <span className={classes.state} title={item.state}>
-                  {item.state}
+                {/* Two letters and a colour carry the state in a fraction of
+                    the width; the full name stays in the tooltip. */}
+                <span
+                  className={clsx(
+                    classes.state,
+                    stateToneClassNames[getTaskStateTone(item.state)]
+                  )}
+                  title={item.state}
+                  aria-label={item.state}
+                >
+                  {abbreviateTaskState(item.state)}
                 </span>
                 {/* Only finished tasks can be archived — an open one still
                     belongs in the list. */}
@@ -161,6 +172,20 @@ export function QuickTaskList({
                 ) : (
                   <span aria-hidden="true" />
                 )}
+                {/* Pinning is a rare, deliberate act, so the control stays out
+                    of the way until the row is hovered. An active pin is always
+                    shown: it is the only sign the row was pinned. */}
+                <button
+                  type="button"
+                  className={clsx(classes.pin, isPinned && classes.pinActive)}
+                  aria-pressed={isPinned}
+                  title={isPinned ? 'Unpin' : 'Pin to top'}
+                  onClick={() => {
+                    void onTogglePin(item.id);
+                  }}
+                >
+                  📌
+                </button>
               </div>
             );
           })}

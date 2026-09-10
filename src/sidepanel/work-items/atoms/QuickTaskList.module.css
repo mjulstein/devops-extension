@@ -44,37 +44,55 @@
   gap: 2px;
 }
 
+/* id, title, state, archive, pin — the two actions sit right of the state so
+   the title gets everything that is left. */
 .row {
   display: grid;
-  grid-template-columns: 2.2ch 6ch minmax(0, 1fr) 64px 2.4ch;
+  grid-template-columns: 6ch minmax(0, 1fr) 2.6ch 1.8ch 1.8ch;
   gap: 6px;
-  align-items: baseline;
+  align-items: center;
   font-size: 13px;
 }
 
-.rowFinished .title,
-.rowFinished .state {
+.rowFinished .title {
   color: #6e7781;
   text-decoration: line-through;
 }
 
+.rowFinished .state {
+  opacity: 0.75;
+}
+
 .pin {
   font: inherit;
-  font-size: 11px;
-  line-height: 1.4;
+  font-size: 10px;
+  line-height: 1;
   background: none;
   border: none;
   padding: 0;
   cursor: pointer;
-  color: #8b949e;
+  /* Hidden until the row is hovered, so an action used once in a while does not
+     compete with the titles for attention. */
+  opacity: 0;
+  filter: grayscale(1);
+  transition: opacity 80ms linear;
 }
 
-.pin:hover {
-  color: #0a5bd3;
+.row:hover .pin,
+.pin:focus-visible {
+  opacity: 0.65;
 }
 
-.pinActive {
-  color: #0a5bd3;
+.row:hover .pin:hover {
+  opacity: 1;
+}
+
+/* A pin that is set has to stay visible: it is the only thing telling you the
+   row was pinned rather than merely recent. */
+.pinActive,
+.row:hover .pinActive {
+  opacity: 1;
+  filter: none;
 }
 
 .id {
@@ -82,23 +100,55 @@
   color: #0a5bd3;
 }
 
-.title,
-.state {
+.title {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
 }
 
+/* Two-letter state code. Colour does the work at this size, so the badge is
+   just a tinted monospace pair with the full state in its tooltip. */
 .state {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: monospace;
+  letter-spacing: 0.02em;
+  text-align: center;
+  border-radius: 4px;
+  padding: 1px 0;
+  cursor: default;
+}
+
+.stateTodo {
+  color: #4b5563;
+  background: #eceff3;
+}
+
+.stateInProgress {
+  color: #8a5300;
+  background: #fdf0d5;
+}
+
+.stateDone {
+  color: #14653a;
+  background: #dcf3e6;
+}
+
+.stateBlocked {
+  color: #a4262c;
+  background: #fbe3e4;
+}
+
+.stateUnknown {
   color: #57606a;
-  font-size: 12px;
+  background: #eceff3;
 }
 
 .archive {
   font: inherit;
   font-size: 12px;
-  line-height: 1.4;
+  line-height: 1;
   padding: 0;
   border: none;
   background: none;
