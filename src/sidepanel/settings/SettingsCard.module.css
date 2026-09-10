@@ -90,3 +90,29 @@
   gap: 8px;
   align-items: end;
 }
+
+/* Save lives in the tab strip because settings are one stored object: it is not
+   the current tab's action, it is the region's. Disabled until something
+   differs from what is stored, so it doubles as an unsaved-changes indicator. */
+.saveButton {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border: 1px solid #0a5bd3;
+  border-radius: 6px;
+  background: #0a5bd3;
+  color: #fff;
+  cursor: pointer;
+}
+
+.saveButton:hover:not(:disabled) {
+  background: #0949a6;
+}
+
+.saveButton:disabled {
+  cursor: default;
+  border-color: #d0d7de;
+  background: #f6f8fa;
+  color: #8b949e;
+}

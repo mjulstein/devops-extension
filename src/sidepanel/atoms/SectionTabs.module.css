@@ -1,8 +1,52 @@
+/* Strip plus a pinned action area. The strip scrolls; the actions do not, so a
+   region-wide control stays reachable at any panel width. */
+.row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-block-end: 8px;
+  border-block-end: 1px solid #d8dee4;
+}
+
+/* Tabs plus an action rarely fit a 360px panel, so the strip scrolls. */
+.stripWrap {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.row .tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-block-end: 0;
+  border-block-end: none;
+}
+
+/* The fade on the trailing edge is what makes a half-shown tab read as "scroll
+   for more" rather than as a clipping bug. Matches the card it sits on. */
+.stripWrap::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  width: 20px;
+  background: linear-gradient(to right, rgb(247 247 247 / 0%), #f7f7f7);
+  pointer-events: none;
+}
+
+.actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  padding-block-end: 4px;
+}
+
 /* The panel can be as narrow as 320px, so a strip that does not fit scrolls
    rather than wrapping labels onto two lines or clipping the last tab. */
 .tabs {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   align-items: stretch;
   margin-block-end: 8px;
   border-block-end: 1px solid #d8dee4;
@@ -24,7 +68,7 @@
   background: none;
   border: none;
   border-block-end: 2px solid transparent;
-  padding: 6px 10px;
+  padding: 6px 7px;
   cursor: pointer;
 }
 

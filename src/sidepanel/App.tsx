@@ -64,6 +64,7 @@ export function App() {
           onSave={controller.onSaveSettings}
           onReloadExtension={controller.onReloadExtension}
           starredPages={controller.starredPages}
+          savedSettings={controller.savedSettings}
           bookmarkSyncStatus={controller.bookmarkSyncStatus}
           onSaveStarredPages={controller.onSaveStarredPages}
           isLoading={controller.isLoading}

@@ -12,18 +12,16 @@ import {
   SectionTabs,
   type SectionTabDescriptor
 } from '@/sidepanel/atoms/SectionTabs';
+import {
+  describeUnsavedSettings,
+  findChangedSettingsTabs,
+  SETTINGS_TAB_LABELS,
+  type SettingsTab
+} from './settingsDirty';
 import classes from './SettingsCard.module.css';
 import { FavoritesEditor } from './FavoritesEditor';
 import { SettingsHelp } from './SettingsHelp';
 import type { StarredPage } from '../starredPages';
-
-/** Settings are grouped so each region is one screen rather than one long scroll. */
-type SettingsTab =
-  | 'connection'
-  | 'quick'
-  | 'favorites'
-  | 'token'
-  | 'maintenance';
 
 interface SettingsCardProps {
   settings: Settings;
@@ -32,6 +30,8 @@ interface SettingsCardProps {
   onReloadExtension: () => void;
   isLoading: boolean;
   starredPages: StarredPage[];
+  /** Settings as persisted, so Save can be offered only when they differ. */
+  savedSettings: Settings;
   bookmarkSyncStatus: string | null;
   onSaveStarredPages: (pages: StarredPage[]) => Promise<void>;
 }
@@ -43,6 +43,7 @@ export function SettingsPane({
   onReloadExtension,
   isLoading,
   starredPages,
+  savedSettings,
   bookmarkSyncStatus,
   onSaveStarredPages
 }: SettingsCardProps) {
@@ -185,19 +186,48 @@ export function SettingsPane({
   const tabs: SectionTabDescriptor<SettingsTab>[] = [
     {
       id: 'connection',
-      label: 'Project',
+      label: SETTINGS_TAB_LABELS.connection,
       title: 'Organization, project and TODO states'
     },
-    { id: 'quick', label: 'Quick', title: 'Quick-task parent and archive' },
+    {
+      id: 'quick',
+      label: SETTINGS_TAB_LABELS.quick,
+      title: 'Quick-task parent and archive'
+    },
     {
       id: 'favorites',
       label: 'Favorites',
       count: starredPages.length,
       title: 'Starred pages and bookmark syncing'
     },
-    { id: 'token', label: 'Token', title: 'Personal access token status' },
-    { id: 'maintenance', label: 'Tools', title: 'Tab icons and reloading' }
+    {
+      id: 'token',
+      label: SETTINGS_TAB_LABELS.token,
+      title: 'Personal access token status'
+    },
+    {
+      id: 'maintenance',
+      label: SETTINGS_TAB_LABELS.maintenance,
+      title: 'Tab icons and reloading'
+    }
   ];
+
+  // The typed TODO states only reach `settings` on blur, so the draft compared
+  // here uses the text in the box; otherwise an edit in progress would leave
+  // Save disabled.
+  const changedTabs = findChangedSettingsTabs(
+    {
+      organization: settings.organization.trim(),
+      project: settings.project.trim(),
+      assignedTo: settings.assignedTo.trim(),
+      todoStates: parseTodoStatesInput(todoStatesText),
+      quickTaskParentId: settings.quickTaskParentId.trim(),
+      quickTaskArchiveId: settings.quickTaskArchiveId.trim(),
+      bookmarkFolderName: settings.bookmarkFolderName.trim()
+    },
+    savedSettings
+  );
+  const hasUnsavedSettings = changedTabs.length > 0;
 
   return (
     <section className={classes.card}>
@@ -206,6 +236,16 @@ export function SettingsPane({
         tabs={tabs}
         activeTab={activeTab}
         onSelectTab={setActiveTab}
+        actions={
+          <button
+            className={classes.saveButton}
+            onClick={handleSaveClick}
+            disabled={isLoading || !hasUnsavedSettings}
+            title={describeUnsavedSettings(changedTabs)}
+          >
+            Save
+          </button>
+        }
       />
 
       {activeTab === 'connection' && (
@@ -493,20 +533,6 @@ export function SettingsPane({
             </button>
           </div>
         </>
-      )}
-
-      {/* Settings are one stored object, so saving stays put rather than
-          hiding on whichever tab happens to hold the field you edited. */}
-      {activeTab !== 'token' && activeTab !== 'maintenance' && (
-        <div className={classes.buttonRow}>
-          <button
-            className={classes.button}
-            onClick={handleSaveClick}
-            disabled={isLoading}
-          >
-            Save settings
-          </button>
-        </div>
       )}
     </section>
   );

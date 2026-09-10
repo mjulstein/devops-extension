@@ -7,7 +7,8 @@ This directory contains the Settings tab UI.
 ## Files in this directory
 
 - `index.ts` — barrel export for the settings tab component.
-- `SettingsPane.tsx` + `SettingsCard.module.css` — the Settings tab, split into regions on a `SectionTabs` strip like the work-items lists: **Project** (organization, project, assigned-to, TODO states), **Quick** (quick-task parent and archive ids), **Favorites** (bookmark folder name, sync status, favorites editor), **Token** (PAT status and actions) and **Tools** (tab icons, panel/extension reload). Settings are one stored object, so **Save settings** stays visible on every region that has fields.
+- `SettingsPane.tsx` + `SettingsCard.module.css` — the Settings tab, split into regions on a `SectionTabs` strip like the work-items lists: **Project** (organization, project, assigned-to, TODO states), **Quick** (quick-task parent and archive ids), **Favorites** (bookmark folder name, sync status, favorites editor), **Token** (PAT status and actions) and **Tools** (tab icons, panel/extension reload). Settings are one stored object, so **Save** lives in the tab strip rather than on a tab: it is enabled only when a field differs from what is stored, and its tooltip names which regions hold the unsaved changes.
 - `FavoritesEditor.tsx` + `FavoritesEditor.module.css` — accordion editor for starred pages, working on a draft with explicit Save/Cancel rather than persisting as you type.
 - `favoritesDraft.ts` + `favoritesDraft.test.ts` — the draft model behind that editor: rows carry their own key because the address is editable.
+- `settingsDirty.ts` + `settingsDirty.test.ts` — which region owns which settings field, so Save can be gated on a real change and say where the pending edits are.
 - `SettingsHelp.tsx` — `<details>` accordion that keeps long explanations out of the way until asked for.

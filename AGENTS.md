@@ -73,7 +73,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - `src/sidepanel/workItemsDateRange.ts` — default closed-date range and validation helpers for the Work items tab
 - `src/sidepanel/work-items/*` + `src/sidepanel/work-items/atoms/*` — work-items tab layout plus smaller toolbar/tab-strip/date-range/row/list atoms and helper tests. Selecting a list tab is the refresh gesture: each tab refetches its own data, so there is no separate fetch button
 - `src/sidepanel/work-item/*` + `src/sidepanel/work-item/atoms/*` — active-item tab layout plus smaller task/suggestion/pin atoms and helper tests
-- `src/sidepanel/settings/*` — settings tab components with colocated `*.module.css` files and `index.ts` entry export. The tab is split into regions (Project, Quick, Favorites, Token, Tools) on a `SectionTabs` strip
+- `src/sidepanel/settings/*` — settings tab components with colocated `*.module.css` files and `index.ts` entry export. The tab is split into regions (Project, Quick, Favorites, Token, Tools) on a `SectionTabs` strip, with **Save** in the strip itself: `settingsDirty.ts` maps each field to its region so Save is enabled only on a real change and its tooltip names where the unsaved edits are
 - `src/sidepanel/{chromeStorage,defaultSettings}.ts` — side panel storage/defaults helpers, including cached work-items results plus browser-local closed-date range and parent-detail toggle state
 - `src/sidepanel/tabMessaging/index.ts` + `src/sidepanel/tabMessaging/*.ts` — side panel tab messaging barrel + function modules
 - `src/devops/*.test.ts` + `src/sidepanel/tabMessaging/*.test.ts` / `*.test.tsx` — Vitest unit tests (globals enabled)

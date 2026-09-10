@@ -127,6 +127,9 @@ const BOOKMARK_EVENT_DEBOUNCE_MS = 400;
 export function useSidepanelController() {
   const [activeTab, setActiveTab] = useState<SidepanelTabId>('work-items');
   const [settings, setSettings] = useState<Settings>(defaultSettings);
+  // What is actually persisted, so the Settings tab can tell a draft from a
+  // saved value and only offer Save when something differs.
+  const [savedSettings, setSavedSettings] = useState<Settings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [taskTitle, setTaskTitle] = useState('');
@@ -318,6 +321,7 @@ export function useSidepanelController() {
       };
 
       setSettings(hydratedSettings);
+      setSavedSettings(getTrimmedSettingsFromState(hydratedSettings));
 
       if (
         hydratedSettings.organization !== storedSettings.organization ||
@@ -562,7 +566,9 @@ export function useSidepanelController() {
   }
 
   async function onSaveSettings() {
-    await saveSettings(getTrimmedSettingsFromState(settings));
+    const trimmed = getTrimmedSettingsFromState(settings);
+    await saveSettings(trimmed);
+    setSavedSettings(trimmed);
     pushDebugLog(
       'success',
       `Saved settings for ${settings.organization.trim() || '(auto org)'}/${settings.project.trim() || '(auto project)'}.`
@@ -1793,6 +1799,7 @@ export function useSidepanelController() {
     onDeduplicateTabs,
     onChangeDebugLogs: setDebugLogs,
     onChangeSettings: setSettings,
+    savedSettings,
     onClosedDateRangeChange,
     onCreateTaskFromCurrentWorkItem,
     onEnableCustomClosedEndDate,

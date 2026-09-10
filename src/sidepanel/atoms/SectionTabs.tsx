@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import clsx from 'clsx';
 import classes from './SectionTabs.module.css';
 
@@ -18,15 +19,22 @@ interface SectionTabsProps<TabId extends string> {
   activeTab: TabId;
   onSelectTab: (tab: TabId) => void;
   label: string;
+  /**
+   * Control pinned to the right of the strip, for an action that belongs to the
+   * whole region rather than one tab. It sits outside the scrolling tab list so
+   * it cannot scroll out of reach on a narrow panel.
+   */
+  actions?: ReactNode;
 }
 
 export function SectionTabs<TabId extends string>({
   tabs,
   activeTab,
   onSelectTab,
-  label
+  label,
+  actions
 }: SectionTabsProps<TabId>) {
-  return (
+  const strip = (
     <div className={classes.tabs} role="tablist" aria-label={label}>
       {tabs.map((tab) => (
         <button
@@ -49,6 +57,17 @@ export function SectionTabs<TabId extends string>({
           )}
         </button>
       ))}
+    </div>
+  );
+
+  if (!actions) {
+    return strip;
+  }
+
+  return (
+    <div className={classes.row}>
+      <div className={classes.stripWrap}>{strip}</div>
+      <div className={classes.actions}>{actions}</div>
     </div>
   );
 }
