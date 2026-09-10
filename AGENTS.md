@@ -67,11 +67,13 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - `src/sidepanel.tsx` — React side panel entry
 - `src/sidepanel/{App,Tabs,Link,DebugConsolePane}.tsx` + matching `*.module.css` files — side panel shell, tab chrome, link navigation helper, and in-panel debug log viewer
 - `src/sidepanel/navigateToWorkItem.ts` — shared Azure DevOps work-item navigation helper used by links and task buttons to reuse matching tabs when possible
-- `src/sidepanel/{atoms,useSidepanelController}.ts*` — shared shell atoms plus the side-panel orchestration hook used by `App.tsx`
+- `src/sidepanel/{atoms,useSidepanelController}.ts*` — shared shell atoms (including the one `SectionTabs` strip every tabbed region uses) plus the side-panel orchestration hook used by `App.tsx`
+- `src/sidepanel/starredPages.ts` — starred Azure DevOps pages: identity is URL + search params only, plus label disambiguation and ranked search
+- `src/sidepanel/bookmarkSync.ts` — two-way sync between favorites and a bookmarks folder. The folder is the shared copy because it is the half the browser syncs between machines; local favorites are a cache of it. The panel only wins for a favorite it has just added and not yet written, so a remote add/rename/delete is adopted. A stored baseline of the folder's last known state is what separates "added here" from "deleted elsewhere"
 - `src/sidepanel/workItemsDateRange.ts` — default closed-date range and validation helpers for the Work items tab
 - `src/sidepanel/work-items/*` + `src/sidepanel/work-items/atoms/*` — work-items tab layout plus smaller toolbar/tab-strip/date-range/row/list atoms and helper tests. Selecting a list tab is the refresh gesture: each tab refetches its own data, so there is no separate fetch button
 - `src/sidepanel/work-item/*` + `src/sidepanel/work-item/atoms/*` — active-item tab layout plus smaller task/suggestion/pin atoms and helper tests
-- `src/sidepanel/settings/*` — settings tab components (`SettingsCard`) with colocated `*.module.css` files and `index.ts` entry export
+- `src/sidepanel/settings/*` — settings tab components with colocated `*.module.css` files and `index.ts` entry export. The tab is split into regions (Project, Quick, Favorites, Token, Tools) on a `SectionTabs` strip
 - `src/sidepanel/{chromeStorage,defaultSettings}.ts` — side panel storage/defaults helpers, including cached work-items results plus browser-local closed-date range and parent-detail toggle state
 - `src/sidepanel/tabMessaging/index.ts` + `src/sidepanel/tabMessaging/*.ts` — side panel tab messaging barrel + function modules
 - `src/devops/*.test.ts` + `src/sidepanel/tabMessaging/*.test.ts` / `*.test.tsx` — Vitest unit tests (globals enabled)
@@ -91,6 +93,8 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - Prefer deriving organization/project from the last visited `dev.azure.com/{organization}/{project}` URL when settings are empty.
 - Treat an empty `assignedTo` setting as the current signed-in Azure DevOps user (`@me`) when querying work items; explicit saved values remain overrides.
 - Preserve the `todoStates` array so custom Azure DevOps states stay available for the TODO section alongside the default To Do/In Progress filter.
+- Keep the bookmark baseline (`bookmarkSyncBaseline`) browser-local: it records *this* machine's last view of the shared folder, so syncing it would defeat the comparison it exists for.
+- Favorites sync both ways. Anything that changes favorites locally must go through `commitStarredPages` and pass the previous list, or an unstar will be read as a remote addition and adopted straight back.
 - `organization`, `project`, and user-specific fields (for example `assignedTo`) may be persisted in settings as explicit overrides.
 
 ## Change Guidelines

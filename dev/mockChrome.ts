@@ -189,7 +189,106 @@ function noopEvent() {
   return { addListener: () => {}, removeListener: () => {} };
 }
 
+/** A dispatchable event, so the harness can simulate what the browser raises. */
+function fakeEvent<Args extends unknown[]>() {
+  const listeners = new Set<(...args: Args) => void>();
+  return {
+    addListener: (listener: (...args: Args) => void) => {
+      listeners.add(listener);
+    },
+    removeListener: (listener: (...args: Args) => void) => {
+      listeners.delete(listener);
+    },
+    dispatch: (...args: Args) => {
+      for (const listener of listeners) listener(...args);
+    }
+  };
+}
+
+interface FakeBookmark {
+  id: string;
+  parentId?: string;
+  title: string;
+  url?: string;
+}
+
+/**
+ * In-memory bookmarks, with dispatchable events.
+ *
+ * The two-way favorites sync is unreachable without this: `chrome.bookmarks`
+ * being absent reads as "permission denied", so the harness could neither write
+ * the folder nor act on a change arriving from another machine.
+ */
+function createBookmarksMock() {
+  // Root ids are deliberately not "0"/"1"/"2": hardcoding Chrome's numbering is
+  // what broke the real mirror in Edge, and the harness should not re-teach it.
+  const nodes = new Map<string, FakeBookmark>([
+    ['root', { id: 'root', title: '' }],
+    ['bar', { id: 'bar', parentId: 'root', title: 'Bookmarks bar' }],
+    ['other', { id: 'other', parentId: 'root', title: 'Other favorites' }]
+  ]);
+  let nextId = 100;
+
+  const onCreated = fakeEvent<[string, FakeBookmark]>();
+  const onChanged = fakeEvent<[string, { title?: string; url?: string }]>();
+  const onRemoved = fakeEvent<[string, { parentId?: string }]>();
+  const onMoved = fakeEvent<[string, Record<string, unknown>]>();
+
+  function childrenOf(parentId: string): FakeBookmark[] {
+    return [...nodes.values()].filter((node) => node.parentId === parentId);
+  }
+
+  function subtree(id: string): FakeBookmark & { children?: FakeBookmark[] } {
+    const node = nodes.get(id);
+    if (!node) throw new Error(`No bookmark ${id}`);
+    const children = childrenOf(id);
+    return children.length > 0 || !node.url
+      ? { ...node, children: children.map((child) => subtree(child.id)) }
+      : { ...node };
+  }
+
+  const api = {
+    getTree: async () => [subtree('root')],
+    getChildren: async (id: string) => childrenOf(id).map((node) => ({ ...node })),
+    create: async (info: { parentId?: string; title?: string; url?: string }) => {
+      const parentId = info.parentId ?? 'other';
+      if (!nodes.has(parentId)) throw new Error(`Can't write to ${parentId}`);
+      const id = String(nextId++);
+      const node: FakeBookmark = {
+        id,
+        parentId,
+        title: info.title ?? '',
+        url: info.url
+      };
+      nodes.set(id, node);
+      onCreated.dispatch(id, node);
+      return { ...node };
+    },
+    update: async (id: string, changes: { title?: string; url?: string }) => {
+      const node = nodes.get(id);
+      if (!node) throw new Error(`No bookmark ${id}`);
+      if (changes.title !== undefined) node.title = changes.title;
+      if (changes.url !== undefined) node.url = changes.url;
+      onChanged.dispatch(id, changes);
+      return { ...node };
+    },
+    remove: async (id: string) => {
+      const node = nodes.get(id);
+      if (!node) throw new Error(`No bookmark ${id}`);
+      nodes.delete(id);
+      onRemoved.dispatch(id, { parentId: node.parentId });
+    },
+    onCreated,
+    onChanged,
+    onRemoved,
+    onMoved
+  };
+
+  return { api, nodes, childrenOf };
+}
+
 export function installMockChrome(getScenario: () => Scenario): void {
+  const bookmarks = createBookmarksMock();
   const fakeTab = {
     id: 1,
     windowId: 1,
@@ -251,8 +350,36 @@ export function installMockChrome(getScenario: () => Scenario): void {
     },
     sidePanel: {
       setPanelBehavior: async () => {}
-    }
+    },
+    bookmarks: bookmarks.api
   };
 
   (globalThis as unknown as { chrome: unknown }).chrome = mock;
+
+  // Exposed so the toolbar (and a CDP session) can act as "another machine":
+  // change the folder behind the panel's back and see whether it notices.
+  (
+    globalThis as unknown as { devBookmarks: unknown }
+  ).devBookmarks = {
+    list: (folderName: string) => {
+      const folder = [...bookmarks.nodes.values()].find(
+        (node) => !node.url && node.title === folderName
+      );
+      return folder ? bookmarks.childrenOf(folder.id) : [];
+    },
+    /** Simulates a favorite arriving from another machine over bookmark sync. */
+    syncIn: async (folderName: string, title: string, url: string) => {
+      let folder = [...bookmarks.nodes.values()].find(
+        (node) => !node.url && node.title === folderName
+      );
+      folder ??= await bookmarks.api.create({
+        parentId: 'other',
+        title: folderName
+      });
+      return bookmarks.api.create({ parentId: folder.id, title, url });
+    },
+    renameRemotely: (id: string, title: string) =>
+      bookmarks.api.update(id, { title }),
+    removeRemotely: (id: string) => bookmarks.api.remove(id)
+  };
 }

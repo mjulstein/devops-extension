@@ -1,12 +1,22 @@
+/* The panel can be as narrow as 320px, so a strip that does not fit scrolls
+   rather than wrapping labels onto two lines or clipping the last tab. */
 .tabs {
   display: flex;
   gap: 4px;
-  align-items: center;
+  align-items: stretch;
   margin-block-end: 8px;
   border-block-end: 1px solid #d8dee4;
+  overflow-x: auto;
+}
+
+/* Chromium-only target, so the vendor rule is enough to hide the strip's bar. */
+.tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .tab {
+  flex: 0 0 auto;
+  white-space: nowrap;
   font: inherit;
   font-size: 13px;
   font-weight: 600;

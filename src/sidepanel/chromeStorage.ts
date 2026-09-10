@@ -1,5 +1,6 @@
 import { defaultSettings } from './defaultSettings';
 import type { StarredPage } from './starredPages';
+import type { BookmarkBaseline } from './bookmarkSync';
 import {
   applyClosedDateRangeOverrides,
   createClosedDateRangeOverrides
@@ -30,6 +31,7 @@ const HIDDEN_CHILD_TASK_STATES_KEY = 'hiddenChildTaskStates';
 const PINNED_QUICK_TASK_IDS_KEY = 'pinnedQuickTaskIds';
 // Additive, browser-local: Azure DevOps pages the user starred as shortcuts.
 const STARRED_PAGES_KEY = 'starredPages';
+const BOOKMARK_BASELINE_KEY = 'bookmarkSyncBaseline';
 const PARENT_SUGGESTIONS_KEY = 'parentSuggestions';
 const PINNED_ACTIVE_WORK_ITEM_CONTEXT_KEY = 'pinnedActiveWorkItemContext';
 const WORK_ITEMS_CLOSED_DATE_RANGE_KEY = 'workItemsClosedDateRange';
@@ -209,6 +211,34 @@ export async function loadStarredPages(): Promise<StarredPage[]> {
 
 export async function saveStarredPages(pages: StarredPage[]): Promise<void> {
   await chrome.storage.local.set({ [STARRED_PAGES_KEY]: pages });
+}
+
+/**
+ * What the mirrored bookmarks folder looked like at the last reconcile.
+ *
+ * Browser-local on purpose: it describes this machine's last view of the shared
+ * folder, so it must not itself be synced.
+ */
+export async function loadBookmarkBaseline(): Promise<BookmarkBaseline> {
+  const stored = await chrome.storage.local.get(BOOKMARK_BASELINE_KEY);
+  const value = stored[BOOKMARK_BASELINE_KEY];
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+
+  const baseline: BookmarkBaseline = {};
+  for (const [url, title] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof title === 'string') {
+      baseline[url] = title;
+    }
+  }
+  return baseline;
+}
+
+export async function saveBookmarkBaseline(
+  baseline: BookmarkBaseline
+): Promise<void> {
+  await chrome.storage.local.set({ [BOOKMARK_BASELINE_KEY]: baseline });
 }
 
 export async function loadParentSuggestions(): Promise<ParentSuggestionStore> {

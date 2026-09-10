@@ -14,7 +14,8 @@ function makePullRequests(count: number): PullRequestActivityItem[] {
     status: 'active' as const,
     isDraft: false,
     approval: 'no-vote' as const,
-    createdAt: '2026-09-01T00:00:00Z',
+    lastActivityAt: 1_756_684_800_000,
+    lastCommentedAt: null,
     involvement: {
       authoredByMe: true,
       commentedByMe: false,

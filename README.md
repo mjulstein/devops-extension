@@ -165,7 +165,14 @@ npm test
 7. Adjust the closed-date range inputs to refresh closed items for a specific window, or use **Reset to default** to restore the default today-to-7-days-ago range.
 8. Optionally enable **Show task parent details** to display each task's parent summary inline.
 9. Use the per-day refetch button beside any closed-date heading to reload only that day.
-10. Open the **Active item** tab to create child tasks. The tab resolves context from the last visited Azure DevOps work-item view (or the pinned item if set), so it can continue working even when a non-DevOps tab is active.
+10. Star an Azure DevOps page with the toggle beside the favorites menu. Name a
+    bookmarks folder on Settings → **Favorites** and the list is kept in step
+    with that folder in both directions, so favorites also appear in
+    address-bar autocomplete and travel between machines over the browser's own
+    bookmark sync. A favorite added, renamed or deleted on another machine is
+    adopted here once the browser syncs it; the panel only overrides the folder
+    for a favorite you just added.
+11. Open the **Active item** tab to create child tasks. The tab resolves context from the last visited Azure DevOps work-item view (or the pinned item if set), so it can continue working even when a non-DevOps tab is active.
 
 The extension queries Azure DevOps with its runtime-minted PAT (over HTTP Basic auth) and displays matching work items in the side panel.
 

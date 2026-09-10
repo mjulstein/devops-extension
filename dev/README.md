@@ -49,3 +49,25 @@ When the side panel starts sending a new runtime message, add a case to `route()
 in `mockChrome.ts`. Unrouted messages resolve as
 `{ ok: false, error: … }` and log a warning, so a missing route is visible rather
 than silent.
+
+## Fake bookmarks
+
+`mockChrome.ts` provides an in-memory `chrome.bookmarks` with dispatchable
+events, because without it the two-way favorites sync is unreachable: an absent
+`chrome.bookmarks` reads as "permission denied". Root folder ids are deliberately
+not Chrome's `0`/`1`/`2` — hardcoding that numbering is what broke the real
+mirror in Edge.
+
+`globalThis.devBookmarks` acts as another machine, so a synced change can be
+simulated from the console or a CDP session:
+
+```js
+await devBookmarks.syncIn('dev-favorites', 'Sprint board', 'https://dev.azure.com/myorg/myproj/_boards/board/t/Team/Stories');
+devBookmarks.list('dev-favorites');
+await devBookmarks.renameRemotely('102', 'Renamed elsewhere');
+await devBookmarks.removeRemotely('102');
+```
+
+The panel should adopt an addition or rename and drop a deletion. Note the fake
+bookmarks live in memory only, so a page reload empties the folder; the
+"changed while the panel was closed" case cannot be reproduced here.

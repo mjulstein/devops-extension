@@ -17,7 +17,9 @@ import {
   loadCachedWorkItems,
   loadHiddenChildTaskStates,
   loadPinnedQuickTaskIds,
+  loadBookmarkBaseline,
   loadStarredPages,
+  saveBookmarkBaseline,
   saveStarredPages,
   savePinnedQuickTaskIds,
   loadLastVisitedDevOpsContext,
@@ -79,8 +81,9 @@ import {
   type StaleLists
 } from './work-items/atoms/staleLists';
 import {
-  isBookmarkSyncPlanEmpty,
-  syncFavoritesToBookmarks
+  describeReconcile,
+  reconcileBookmarkFolder,
+  type BookmarkBaseline
 } from './bookmarkSync';
 import {
   isPageStarred,
@@ -113,6 +116,13 @@ const EMPTY_PARENT_SUGGESTIONS: ParentSuggestionStore = {
 const MAX_DYNAMIC_SUGGESTIONS = 5;
 const MAX_IN_MEMORY_SUGGESTIONS = 40;
 const MAX_DEBUG_LOG_ENTRIES = 120;
+
+/**
+ * How long to wait for bookmark events to settle before reconciling. A synced
+ * change arrives as a burst of per-bookmark events; reconciling on each one
+ * would read half-applied state.
+ */
+const BOOKMARK_EVENT_DEBOUNCE_MS = 400;
 
 export function useSidepanelController() {
   const [activeTab, setActiveTab] = useState<SidepanelTabId>('work-items');
@@ -181,6 +191,11 @@ export function useSidepanelController() {
   // Bumped when the keyboard shortcut fires, so the menu opens and focuses its
   // search. A counter, so pressing it twice works.
   const [starredFocusRequest, setStarredFocusRequest] = useState(0);
+  // Last known state of the mirrored folder, which is what lets a reconcile
+  // tell a local addition from a deletion that arrived over bookmark sync.
+  const bookmarkBaselineRef = useRef<BookmarkBaseline>({});
+  // Guards against reacting to our own bookmark writes.
+  const isWritingBookmarksRef = useRef(false);
   const [bookmarkSyncStatus, setBookmarkSyncStatus] = useState<string | null>(
     null
   );
@@ -258,7 +273,8 @@ export function useSidepanelController() {
         storedShowWorkItemParentDetails,
         storedRecentFeaturesCollapsed,
         storedPinnedQuickTaskIds,
-        storedStarredPages
+        storedStarredPages,
+        storedBookmarkBaseline
       ] = await Promise.all([
         loadSettings(),
         loadLastVisitedDevOpsContext(),
@@ -271,7 +287,8 @@ export function useSidepanelController() {
         loadShowWorkItemParentDetails(),
         loadRecentFeaturesCollapsed(),
         loadPinnedQuickTaskIds(),
-        loadStarredPages()
+        loadStarredPages(),
+        loadBookmarkBaseline()
       ]);
 
       const resolvedLastVisitedContext =
@@ -321,9 +338,11 @@ export function useSidepanelController() {
       setHiddenTaskStates(storedHiddenStates);
       setPinnedQuickTaskIds(storedPinnedQuickTaskIds);
       setStarredPages(storedStarredPages);
-      // Bring the folder up to date on open: favorites may have changed in
-      // another window, or the folder may never have been written.
-      void mirrorToBookmarks(
+      bookmarkBaselineRef.current = storedBookmarkBaseline;
+      // Reconcile on open: the folder may have picked up additions, renames or
+      // deletions from another machine over the browser's bookmark sync while
+      // this panel was closed.
+      void reconcileBookmarks(
         storedStarredPages,
         storedSettings.bookmarkFolderName
       );
@@ -363,6 +382,54 @@ export function useSidepanelController() {
       await refreshActiveWorkItemContext();
       pushDebugLog('success', 'Side panel initialization complete.');
     })();
+  }, []);
+
+  // Kept current every render so the bookmark listener, which is registered
+  // once, always reconciles against the latest favorites and folder name.
+  const reconcileBookmarksRef = useRef<() => void>(() => undefined);
+  useEffect(() => {
+    reconcileBookmarksRef.current = () => {
+      void reconcileBookmarks(starredPages, settings.bookmarkFolderName);
+    };
+  });
+
+  useEffect(() => {
+    // Bookmark sync is how favorites travel between machines, so a change the
+    // browser pulls down from the cloud has to reach the panel. Edge applies a
+    // sync in a burst of individual events, hence the debounce.
+    if (!chrome.bookmarks?.onCreated) {
+      return;
+    }
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = () => {
+      if (isWritingBookmarksRef.current) {
+        return;
+      }
+      if (timer !== undefined) {
+        clearTimeout(timer);
+      }
+      timer = setTimeout(() => {
+        reconcileBookmarksRef.current();
+      }, BOOKMARK_EVENT_DEBOUNCE_MS);
+    };
+
+    chrome.bookmarks.onCreated.addListener(schedule);
+    chrome.bookmarks.onChanged.addListener(schedule);
+    chrome.bookmarks.onRemoved.addListener(schedule);
+    chrome.bookmarks.onMoved.addListener(schedule);
+    chrome.bookmarks.onChildrenReordered?.addListener(schedule);
+
+    return () => {
+      if (timer !== undefined) {
+        clearTimeout(timer);
+      }
+      chrome.bookmarks.onCreated.removeListener(schedule);
+      chrome.bookmarks.onChanged.removeListener(schedule);
+      chrome.bookmarks.onRemoved.removeListener(schedule);
+      chrome.bookmarks.onMoved.removeListener(schedule);
+      chrome.bookmarks.onChildrenReordered?.removeListener(schedule);
+    };
   }, []);
 
   useEffect(() => {
@@ -502,9 +569,9 @@ export function useSidepanelController() {
     );
     setStatusMessage({ kind: 'success', text: 'Settings saved.' });
 
-    // Naming the folder is exactly when the mirror should appear; waiting for
-    // the next star would make it look broken.
-    await mirrorToBookmarks(starredPages, settings.bookmarkFolderName);
+    // Naming the folder is exactly when the sync should appear; waiting for the
+    // next star would make it look broken.
+    await reconcileBookmarks(starredPages, settings.bookmarkFolderName);
   }
 
   function onReloadExtension() {
@@ -918,23 +985,38 @@ export function useSidepanelController() {
   }
 
   /**
-   * Persists favorites and mirrors them into bookmarks. Everything that changes
-   * favorites goes through here, so the projection cannot drift.
+   * Persists favorites and reconciles them with the bookmarks folder.
+   * Everything that changes favorites locally goes through here.
+   *
+   * `previous` is needed because a favorite the user just unstarred still has a
+   * bookmark; without knowing it was removed here, the reconcile would read that
+   * bookmark as one from another machine and adopt it back.
    */
-  async function commitStarredPages(next: StarredPage[]) {
+  async function commitStarredPages(
+    next: StarredPage[],
+    previous: StarredPage[] = starredPages
+  ) {
     setStarredPages(next);
     await saveStarredPages(next);
-    await mirrorToBookmarks(next, settings.bookmarkFolderName);
+
+    const nextUrls = new Set(next.map((page) => page.url));
+    const removedLocally = previous
+      .map((page) => page.url)
+      .filter((url) => !nextUrls.has(url));
+
+    await reconcileBookmarks(next, settings.bookmarkFolderName, removedLocally);
   }
 
   /**
-   * Projects favorites into the bookmarks folder and records the outcome, so
-   * Settings can say whether the mirror is actually doing anything. Without that
-   * the feature is invisible until you happen to look in the bookmark manager.
+   * Merges the bookmarks folder with local favorites in both directions and
+   * records the outcome, so Settings can say what the sync actually did. Without
+   * that the feature is invisible until you happen to look in the bookmark
+   * manager.
    */
-  async function mirrorToBookmarks(
+  async function reconcileBookmarks(
     favorites: StarredPage[],
-    folderName: string
+    folderName: string,
+    removedLocally: string[] = []
   ) {
     const name = folderName.trim();
     if (!name) {
@@ -942,20 +1024,43 @@ export function useSidepanelController() {
       return;
     }
 
-    const result = await syncFavoritesToBookmarks(name, favorites);
+    // Our own writes raise bookmark events; without this the listener would
+    // re-enter on every change we make.
+    isWritingBookmarksRef.current = true;
+    try {
+      const result = await reconcileBookmarkFolder({
+        folderName: name,
+        favorites,
+        baseline: bookmarkBaselineRef.current,
+        removedLocally
+      });
 
-    if (!result.ok) {
-      setBookmarkSyncStatus(result.error);
-      pushDebugLog('error', `Bookmark mirror failed: ${result.error}`);
-      return;
+      if (!result.ok) {
+        setBookmarkSyncStatus(result.error);
+        pushDebugLog('error', `Bookmark sync failed: ${result.error}`);
+        return;
+      }
+
+      bookmarkBaselineRef.current = result.baseline;
+      await saveBookmarkBaseline(result.baseline);
+
+      // The folder may have contributed additions, renames or deletions, so the
+      // merged list — not the one we passed in — is what the panel shows.
+      const changedLocally =
+        result.adopted.length > 0 ||
+        result.renamedRemotely.length > 0 ||
+        result.droppedRemotely.length > 0;
+      if (changedLocally) {
+        setStarredPages(result.favorites);
+        await saveStarredPages(result.favorites);
+      }
+
+      const summary = describeReconcile(name, result);
+      setBookmarkSyncStatus(summary);
+      pushDebugLog('info', `Bookmark sync ${summary}`);
+    } finally {
+      isWritingBookmarksRef.current = false;
     }
-
-    const { plan } = result;
-    const summary = isBookmarkSyncPlanEmpty(plan)
-      ? `“${name}” already matches ${favorites.length} favorite(s).`
-      : `“${name}”: added ${plan.create.length}, renamed ${plan.update.length}, removed ${plan.remove.length}.`;
-    setBookmarkSyncStatus(summary);
-    pushDebugLog('info', `Bookmark mirror ${summary}`);
   }
 
   async function refreshActivePage() {

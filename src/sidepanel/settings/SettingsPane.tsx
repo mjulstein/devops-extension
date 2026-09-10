@@ -8,10 +8,22 @@ import {
   rotatePat
 } from '@/sidepanel/tabMessaging';
 import { loadLastVisitedDevOpsContext } from '@/sidepanel/chromeStorage';
+import {
+  SectionTabs,
+  type SectionTabDescriptor
+} from '@/sidepanel/atoms/SectionTabs';
 import classes from './SettingsCard.module.css';
 import { FavoritesEditor } from './FavoritesEditor';
 import { SettingsHelp } from './SettingsHelp';
 import type { StarredPage } from '../starredPages';
+
+/** Settings are grouped so each region is one screen rather than one long scroll. */
+type SettingsTab =
+  | 'connection'
+  | 'quick'
+  | 'favorites'
+  | 'token'
+  | 'maintenance';
 
 interface SettingsCardProps {
   settings: Settings;
@@ -34,6 +46,7 @@ export function SettingsPane({
   bookmarkSyncStatus,
   onSaveStarredPages
 }: SettingsCardProps) {
+  const [activeTab, setActiveTab] = useState<SettingsTab>('connection');
   const [todoStatesText, setTodoStatesText] = useState(() =>
     settings.todoStates.join(', ')
   );
@@ -169,270 +182,331 @@ export function SettingsPane({
     }
   }
 
+  const tabs: SectionTabDescriptor<SettingsTab>[] = [
+    {
+      id: 'connection',
+      label: 'Project',
+      title: 'Organization, project and TODO states'
+    },
+    { id: 'quick', label: 'Quick', title: 'Quick-task parent and archive' },
+    {
+      id: 'favorites',
+      label: 'Favorites',
+      count: starredPages.length,
+      title: 'Starred pages and bookmark syncing'
+    },
+    { id: 'token', label: 'Token', title: 'Personal access token status' },
+    { id: 'maintenance', label: 'Tools', title: 'Tab icons and reloading' }
+  ];
+
   return (
     <section className={classes.card}>
-      <SettingsHelp summary="About organization and project">
-        <p>
-          Organization/project auto-fill from the last visited dev.azure.com
-          project URL when empty. You can override them here and saved values
-          stay until you change them. Leave Assigned to empty to use the current
-          signed-in Azure DevOps user.
-        </p>
-      </SettingsHelp>
+      <SectionTabs
+        label="Settings sections"
+        tabs={tabs}
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+      />
 
-      <label className={classes.fieldLabel}>
-        Organization
-        <input
-          className={classes.textInput}
-          type="text"
-          placeholder="my-organization"
-          value={settings.organization}
-          onChange={(event) =>
-            onChange({ ...settings, organization: event.target.value })
-          }
-        />
-      </label>
+      {activeTab === 'connection' && (
+        <>
+          <SettingsHelp summary="About organization and project">
+            <p>
+              Organization/project auto-fill from the last visited dev.azure.com
+              project URL when empty. You can override them here and saved
+              values stay until you change them. Leave Assigned to empty to use
+              the current signed-in Azure DevOps user.
+            </p>
+          </SettingsHelp>
 
-      <label className={classes.fieldLabel}>
-        Project
-        <input
-          className={classes.textInput}
-          type="text"
-          placeholder="my-project"
-          value={settings.project}
-          onChange={(event) =>
-            onChange({ ...settings, project: event.target.value })
-          }
-        />
-      </label>
+          <label className={classes.fieldLabel}>
+            Organization
+            <input
+              className={classes.textInput}
+              type="text"
+              placeholder="my-organization"
+              value={settings.organization}
+              onChange={(event) =>
+                onChange({ ...settings, organization: event.target.value })
+              }
+            />
+          </label>
 
-      <div className={classes.fieldRow}>
-        <label className={classes.fieldLabel}>
-          Quick-task parent id
-          <input
-            className={classes.textInput}
-            type="text"
-            inputMode="numeric"
-            placeholder="e.g. 12345"
-            value={settings.quickTaskParentId}
-            onChange={(event) =>
-              onChange({ ...settings, quickTaskParentId: event.target.value })
-            }
-          />
-        </label>
+          <label className={classes.fieldLabel}>
+            Project
+            <input
+              className={classes.textInput}
+              type="text"
+              placeholder="my-project"
+              value={settings.project}
+              onChange={(event) =>
+                onChange({ ...settings, project: event.target.value })
+              }
+            />
+          </label>
 
-        <label className={classes.fieldLabel}>
-          Archive id
-          <input
-            className={classes.textInput}
-            type="text"
-            inputMode="numeric"
-            placeholder="e.g. 12346"
-            value={settings.quickTaskArchiveId}
-            onChange={(event) =>
-              onChange({ ...settings, quickTaskArchiveId: event.target.value })
-            }
-          />
-        </label>
-      </div>
+          <label className={classes.fieldLabel}>
+            Assigned to
+            <input
+              className={classes.textInput}
+              type="text"
+              placeholder="@me (leave blank to use current user)"
+              value={settings.assignedTo}
+              onChange={(event) =>
+                onChange({ ...settings, assignedTo: event.target.value })
+              }
+            />
+          </label>
 
-      <SettingsHelp summary="About quick tasks">
-        <p>
-          The parent is a personal catch-all for small jobs not linked to
-          planned work. “+ Task from page” creates a task under it, in progress,
-          assigned to you, titled after the active page, with a description
-          linking back to that page. Quick tasks are kept out of the TODO tab
-          and listed in Quick instead.
-        </p>
-        <p>
-          Finished quick tasks can be archived under the archive item, which
-          consolidates them out of the Quick list without deleting them. The
-          archive button only appears on completed tasks. Leave either id blank
-          to disable that half.
-        </p>
-      </SettingsHelp>
+          <label className={classes.fieldLabel}>
+            TODO states
+            <input
+              className={classes.textInput}
+              type="text"
+              placeholder="e.g. Ready, New"
+              value={todoStatesText}
+              onChange={(event) => setTodoStatesText(event.target.value)}
+              onBlur={commitTodoStates}
+            />
+            <span className={classes.helperText}>
+              Comma-separated Azure DevOps state names to include in the TODO
+              section in addition to the default To Do/In Progress states.
+            </span>
+          </label>
+        </>
+      )}
 
-      <label className={classes.fieldLabel}>
-        Assigned to
-        <input
-          className={classes.textInput}
-          type="text"
-          placeholder="@me (leave blank to use current user)"
-          value={settings.assignedTo}
-          onChange={(event) =>
-            onChange({ ...settings, assignedTo: event.target.value })
-          }
-        />
-      </label>
+      {activeTab === 'quick' && (
+        <>
+          <div className={classes.fieldRow}>
+            <label className={classes.fieldLabel}>
+              Quick-task parent id
+              <input
+                className={classes.textInput}
+                type="text"
+                inputMode="numeric"
+                placeholder="e.g. 12345"
+                value={settings.quickTaskParentId}
+                onChange={(event) =>
+                  onChange({
+                    ...settings,
+                    quickTaskParentId: event.target.value
+                  })
+                }
+              />
+            </label>
 
-      <label className={classes.fieldLabel}>
-        TODO states
-        <input
-          className={classes.textInput}
-          type="text"
-          placeholder="e.g. Ready, New"
-          value={todoStatesText}
-          onChange={(event) => setTodoStatesText(event.target.value)}
-          onBlur={commitTodoStates}
-        />
-        <span className={classes.helperText}>
-          Comma-separated Azure DevOps state names to include in the TODO
-          section in addition to the default To Do/In Progress states.
-        </span>
-      </label>
-
-      <label className={classes.fieldLabel}>
-        Mirror favorites into bookmarks folder
-        <input
-          className={classes.textInput}
-          type="text"
-          placeholder="Folder name (leave blank to disable)"
-          value={settings.bookmarkFolderName}
-          onChange={(event) =>
-            onChange({ ...settings, bookmarkFolderName: event.target.value })
-          }
-        />
-      </label>
-      <SettingsHelp summary="About the bookmark mirror">
-        <p>
-          Keeps a bookmarks folder in step with the favorites below, so they
-          also appear in address-bar autocomplete. The folder is found wherever
-          it already is, or created under one of the bookmark roots.
-        </p>
-        <p>
-          The favorites here are the source of truth — edits made in the
-          bookmark manager are overwritten on the next sync, which runs on save,
-          on panel open, and whenever a favorite changes.
-        </p>
-      </SettingsHelp>
-      {bookmarkSyncStatus ? (
-        <p className={classes.description}>
-          <strong>Bookmark mirror:</strong> {bookmarkSyncStatus}
-        </p>
-      ) : null}
-      <FavoritesEditor pages={starredPages} onSave={onSaveStarredPages} />
-
-      <div className={classes.buttonRow}>
-        <button
-          className={classes.button}
-          onClick={handleSaveClick}
-          disabled={isLoading}
-        >
-          Save settings
-        </button>
-        <button
-          className={classes.button}
-          onClick={() => {
-            window.location.reload();
-          }}
-        >
-          Reload
-        </button>
-        <button className={classes.button} onClick={onReloadExtension}>
-          Reload extension
-        </button>
-      </div>
-
-      <hr className={classes.separator} />
-
-      <SettingsHelp summary="About tab icons">
-        <p>
-          Re-scrape the Azure DevOps section icons from the live page and
-          persist them for instant loading. The active tab must be an Azure
-          DevOps page.
-        </p>
-      </SettingsHelp>
-
-      <div className={classes.buttonRow}>
-        <button
-          className={classes.button}
-          onClick={() => void handleRefreshIcons()}
-          disabled={refreshingIcons}
-        >
-          {refreshingIcons ? 'Refreshing…' : 'Refresh Tab Icons'}
-        </button>
-        {iconRefreshStatus && (
-          <span className={classes.helperText}>{iconRefreshStatus}</span>
-        )}
-      </div>
-
-      <hr className={classes.separator} />
-
-      <p className={classes.description}>
-        The extension uses a Personal Access Token (PAT) for authenticated
-        requests. It is created and rotated automatically — no manual setup
-        required.
-      </p>
-
-      <div style={{ fontSize: 13, marginBottom: 10 }}>
-        <span style={{ marginRight: 8 }}>
-          Status:{' '}
-          <strong style={{ color: getPatStatusColor(patRecord) }}>
-            {getPatStatusLabel(patRecord)}
-          </strong>
-        </span>
-        {patRecord && (
-          <span style={{ color: '#555' }}>
-            · expires {formatExpiry(patRecord.expiresAt)}
-          </span>
-        )}
-        {patDeviceId && (
-          <div style={{ color: '#888', marginTop: 2 }}>
-            ID: {patDeviceId}-devopsext
+            <label className={classes.fieldLabel}>
+              Archive id
+              <input
+                className={classes.textInput}
+                type="text"
+                inputMode="numeric"
+                placeholder="e.g. 12346"
+                value={settings.quickTaskArchiveId}
+                onChange={(event) =>
+                  onChange({
+                    ...settings,
+                    quickTaskArchiveId: event.target.value
+                  })
+                }
+              />
+            </label>
           </div>
-        )}
-        {patOrg && (
-          <div style={{ marginTop: 4 }}>
-            <a
-              href={`https://dev.azure.com/${encodeURIComponent(patOrg)}/_usersSettings/tokens`}
-              target="_blank"
-              rel="noreferrer"
-              style={{ fontSize: 12 }}
+
+          <SettingsHelp summary="About quick tasks">
+            <p>
+              The parent is a personal catch-all for small jobs not linked to
+              planned work. The button beside the Quick tab’s input creates a
+              task under it, in progress, assigned to you — titled after the
+              active page when the input is empty, or after what you typed.
+              Quick tasks are kept out of the TODO tab and listed in Quick
+              instead.
+            </p>
+            <p>
+              Finished quick tasks can be archived under the archive item, which
+              consolidates them out of the Quick list without deleting them. The
+              archive button only appears on completed tasks. Leave either id
+              blank to disable that half.
+            </p>
+          </SettingsHelp>
+        </>
+      )}
+
+      {activeTab === 'favorites' && (
+        <>
+          <label className={classes.fieldLabel}>
+            Sync favorites with bookmarks folder
+            <input
+              className={classes.textInput}
+              type="text"
+              placeholder="Folder name (leave blank to disable)"
+              value={settings.bookmarkFolderName}
+              onChange={(event) =>
+                onChange({
+                  ...settings,
+                  bookmarkFolderName: event.target.value
+                })
+              }
+            />
+          </label>
+          <SettingsHelp summary="About bookmark syncing">
+            <p>
+              Favorites are kept in step with a bookmarks folder in both
+              directions, so they appear in address-bar autocomplete and travel
+              between machines over the browser’s own bookmark sync. The folder
+              is found wherever it already is, or created under one of the
+              bookmark roots.
+            </p>
+            <p>
+              The folder is the shared copy, so a favorite added, renamed or
+              deleted on another machine is adopted here as soon as the browser
+              syncs it. The panel only overrides the folder for a favorite you
+              have just added here. Saving below writes your edits into the
+              actual bookmarks so they sync onward.
+            </p>
+          </SettingsHelp>
+          {bookmarkSyncStatus ? (
+            <p className={classes.description}>
+              <strong>Bookmark sync:</strong> {bookmarkSyncStatus}
+            </p>
+          ) : null}
+          <FavoritesEditor pages={starredPages} onSave={onSaveStarredPages} />
+        </>
+      )}
+
+      {activeTab === 'token' && (
+        <>
+          <p className={classes.description}>
+            The extension uses a Personal Access Token (PAT) for authenticated
+            requests. It is created and rotated automatically — no manual setup
+            required.
+          </p>
+
+          <div style={{ fontSize: 13, marginBottom: 10 }}>
+            <span style={{ marginRight: 8 }}>
+              Status:{' '}
+              <strong style={{ color: getPatStatusColor(patRecord) }}>
+                {getPatStatusLabel(patRecord)}
+              </strong>
+            </span>
+            {patRecord && (
+              <span style={{ color: '#555' }}>
+                · expires {formatExpiry(patRecord.expiresAt)}
+              </span>
+            )}
+            {patDeviceId && (
+              <div style={{ color: '#888', marginTop: 2 }}>
+                ID: {patDeviceId}-devopsext
+              </div>
+            )}
+            {patOrg && (
+              <div style={{ marginTop: 4 }}>
+                <a
+                  href={`https://dev.azure.com/${encodeURIComponent(patOrg)}/_usersSettings/tokens`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ fontSize: 12 }}
+                >
+                  Manage in Azure DevOps ↗
+                </a>
+              </div>
+            )}
+          </div>
+
+          <div className={classes.buttonRow}>
+            <button
+              className={classes.button}
+              onClick={() => void handleRotatePat()}
+              disabled={patAction !== 'idle'}
             >
-              Manage in Azure DevOps ↗
-            </a>
+              {patAction === 'rotating' ? 'Rotating…' : 'Rotate now'}
+            </button>
+            <button
+              className={classes.button}
+              onClick={() => void handleRevokeAll()}
+              disabled={patAction !== 'idle'}
+            >
+              {patAction === 'revoking' ? 'Revoking…' : 'Revoke all'}
+            </button>
+            <button
+              className={classes.button}
+              onClick={() => void handleClearPatData()}
+              disabled={patAction !== 'idle'}
+              title="Wipe stored PAT and device ID so the extension starts fresh on next sign-in"
+            >
+              Clear PAT data
+            </button>
           </div>
-        )}
-      </div>
+          {patActionMessage && (
+            <span
+              style={{
+                fontSize: 12,
+                color: /failed|error/i.test(patActionMessage)
+                  ? '#c62828'
+                  : '#2e7d32',
+                marginTop: 6,
+                display: 'block',
+                fontWeight: 500
+              }}
+            >
+              {patActionMessage}
+            </span>
+          )}
+        </>
+      )}
 
-      <div className={classes.buttonRow}>
-        <button
-          className={classes.button}
-          onClick={() => void handleRotatePat()}
-          disabled={patAction !== 'idle'}
-        >
-          {patAction === 'rotating' ? 'Rotating…' : 'Rotate now'}
-        </button>
-        <button
-          className={classes.button}
-          onClick={() => void handleRevokeAll()}
-          disabled={patAction !== 'idle'}
-        >
-          {patAction === 'revoking' ? 'Revoking…' : 'Revoke all'}
-        </button>
-        <button
-          className={classes.button}
-          onClick={() => void handleClearPatData()}
-          disabled={patAction !== 'idle'}
-          title="Wipe stored PAT and device ID so the extension starts fresh on next sign-in"
-        >
-          Clear PAT data
-        </button>
-      </div>
-      {patActionMessage && (
-        <span
-          style={{
-            fontSize: 12,
-            color: /failed|error/i.test(patActionMessage)
-              ? '#c62828'
-              : '#2e7d32',
-            marginTop: 6,
-            display: 'block',
-            fontWeight: 500
-          }}
-        >
-          {patActionMessage}
-        </span>
+      {activeTab === 'maintenance' && (
+        <>
+          <SettingsHelp summary="About tab icons">
+            <p>
+              Re-scrape the Azure DevOps section icons from the live page and
+              persist them for instant loading. The active tab must be an Azure
+              DevOps page.
+            </p>
+          </SettingsHelp>
+
+          <div className={classes.buttonRow}>
+            <button
+              className={classes.button}
+              onClick={() => void handleRefreshIcons()}
+              disabled={refreshingIcons}
+            >
+              {refreshingIcons ? 'Refreshing…' : 'Refresh Tab Icons'}
+            </button>
+            {iconRefreshStatus && (
+              <span className={classes.helperText}>{iconRefreshStatus}</span>
+            )}
+          </div>
+
+          <div className={classes.buttonRow}>
+            <button
+              className={classes.button}
+              onClick={() => {
+                window.location.reload();
+              }}
+            >
+              Reload panel
+            </button>
+            <button className={classes.button} onClick={onReloadExtension}>
+              Reload extension
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Settings are one stored object, so saving stays put rather than
+          hiding on whichever tab happens to hold the field you edited. */}
+      {activeTab !== 'token' && activeTab !== 'maintenance' && (
+        <div className={classes.buttonRow}>
+          <button
+            className={classes.button}
+            onClick={handleSaveClick}
+            disabled={isLoading}
+          >
+            Save settings
+          </button>
+        </div>
       )}
     </section>
   );

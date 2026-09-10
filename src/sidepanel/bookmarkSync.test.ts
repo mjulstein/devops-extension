@@ -3,6 +3,8 @@ import {
   findFolderByName,
   isBookmarkSyncPlanEmpty,
   planBookmarkSync,
+  reconcileFavoritesWithBookmarks,
+  type BookmarkBaseline,
   type BookmarkNode
 } from './bookmarkSync';
 import type { StarredPage } from './starredPages';
@@ -171,5 +173,206 @@ describe('findFolderByName', () => {
 
   it('returns null when absent', () => {
     expect(findFolderByName(tree, 'nope')).toBeNull();
+  });
+});
+
+describe('reconcileFavoritesWithBookmarks', () => {
+  const NOW = 1_760_000_000_000;
+
+  function reconcile(
+    bookmarks: BookmarkNode[],
+    favorites: StarredPage[],
+    baseline: BookmarkBaseline
+  ) {
+    return reconcileFavoritesWithBookmarks({
+      bookmarks,
+      favorites,
+      baseline,
+      now: NOW
+    });
+  }
+
+  function favorite(url: string, label: string): StarredPage {
+    return { url, label, starredAt: 1 };
+  }
+
+  it('adopts a bookmark that arrived from another machine', () => {
+    const result = reconcile(
+      [{ id: 'b1', title: 'Sprint board', url: 'https://example.test/boards' }],
+      [],
+      {}
+    );
+
+    expect(result.favorites).toEqual([
+      {
+        url: 'https://example.test/boards',
+        label: 'Sprint board',
+        starredAt: NOW
+      }
+    ]);
+    expect(result.adopted).toEqual(['https://example.test/boards']);
+    expect(isBookmarkSyncPlanEmpty(result.plan)).toBe(true);
+    expect(result.baseline).toEqual({
+      'https://example.test/boards': 'Sprint board'
+    });
+  });
+
+  it('pushes a favorite added here that the folder has never seen', () => {
+    const result = reconcile(
+      [],
+      [favorite('https://example.test/q', 'My query')],
+      {}
+    );
+
+    expect(result.plan.create).toEqual([
+      { title: 'My query', url: 'https://example.test/q' }
+    ]);
+    expect(result.favorites).toHaveLength(1);
+    expect(result.droppedRemotely).toEqual([]);
+  });
+
+  it('drops a favorite whose bookmark was deleted on another machine', () => {
+    const result = reconcile(
+      [],
+      [favorite('https://example.test/q', 'My query')],
+      {
+        'https://example.test/q': 'My query'
+      }
+    );
+
+    expect(result.favorites).toEqual([]);
+    expect(result.droppedRemotely).toEqual(['https://example.test/q']);
+    expect(result.plan.create).toEqual([]);
+  });
+
+  it('takes a rename that came from the folder', () => {
+    const result = reconcile(
+      [{ id: 'b1', title: 'Renamed elsewhere', url: 'https://example.test/q' }],
+      [favorite('https://example.test/q', 'Old name')],
+      { 'https://example.test/q': 'Old name' }
+    );
+
+    expect(result.favorites[0]?.label).toBe('Renamed elsewhere');
+    expect(result.renamedRemotely).toEqual(['https://example.test/q']);
+    expect(result.plan.update).toEqual([]);
+  });
+
+  it('pushes a rename made here when the folder still holds the old title', () => {
+    const result = reconcile(
+      [{ id: 'b1', title: 'Old name', url: 'https://example.test/q' }],
+      [favorite('https://example.test/q', 'New name')],
+      { 'https://example.test/q': 'Old name' }
+    );
+
+    expect(result.favorites[0]?.label).toBe('New name');
+    expect(result.plan.update).toEqual([
+      { id: 'b1', title: 'New name', url: 'https://example.test/q' }
+    ]);
+    expect(result.renamedRemotely).toEqual([]);
+  });
+
+  it('matches a bookmark saved with a fragment or trailing slash', () => {
+    const result = reconcile(
+      [{ id: 'b1', title: 'Board', url: 'https://example.test/boards/#tab' }],
+      [favorite('https://example.test/boards', 'Board')],
+      { 'https://example.test/boards': 'Board' }
+    );
+
+    expect(result.favorites).toHaveLength(1);
+    expect(result.adopted).toEqual([]);
+    expect(isBookmarkSyncPlanEmpty(result.plan)).toBe(true);
+  });
+
+  it('removes a duplicate bookmark for a page it already matched', () => {
+    const result = reconcile(
+      [
+        { id: 'b1', title: 'Board', url: 'https://example.test/boards' },
+        { id: 'b2', title: 'Board', url: 'https://example.test/boards/' }
+      ],
+      [favorite('https://example.test/boards', 'Board')],
+      { 'https://example.test/boards': 'Board' }
+    );
+
+    expect(result.plan.remove).toEqual(['b2']);
+    expect(result.favorites).toHaveLength(1);
+  });
+
+  it('leaves a sub-folder in the folder alone', () => {
+    const result = reconcile([{ id: 'f1', title: 'Archive' }], [], {});
+
+    expect(isBookmarkSyncPlanEmpty(result.plan)).toBe(true);
+    expect(result.favorites).toEqual([]);
+  });
+
+  it('keeps local order and appends what it adopted', () => {
+    const result = reconcile(
+      [
+        { id: 'b1', title: 'First', url: 'https://example.test/1' },
+        { id: 'b2', title: 'Second', url: 'https://example.test/2' },
+        { id: 'b3', title: 'Third', url: 'https://example.test/3' }
+      ],
+      [
+        favorite('https://example.test/2', 'Second'),
+        favorite('https://example.test/1', 'First')
+      ],
+      {
+        'https://example.test/2': 'Second',
+        'https://example.test/1': 'First'
+      }
+    );
+
+    expect(result.favorites.map((page) => page.label)).toEqual([
+      'Second',
+      'First',
+      'Third'
+    ]);
+  });
+
+  it('is stable: reconciling its own output changes nothing', () => {
+    const bookmarks: BookmarkNode[] = [
+      { id: 'b1', title: 'Board', url: 'https://example.test/boards' }
+    ];
+    const first = reconcile(bookmarks, [], {});
+    const second = reconcile(bookmarks, first.favorites, first.baseline);
+
+    expect(second.favorites).toEqual(first.favorites);
+    expect(isBookmarkSyncPlanEmpty(second.plan)).toBe(true);
+    expect(second.adopted).toEqual([]);
+    expect(second.droppedRemotely).toEqual([]);
+  });
+});
+
+describe('reconcileFavoritesWithBookmarks with local removals', () => {
+  it('deletes the bookmark for a page unstarred here instead of adopting it', () => {
+    const result = reconcileFavoritesWithBookmarks({
+      bookmarks: [
+        { id: 'b1', title: 'Board', url: 'https://example.test/boards' }
+      ],
+      favorites: [],
+      baseline: { 'https://example.test/boards': 'Board' },
+      now: 5,
+      removedLocally: ['https://example.test/boards']
+    });
+
+    expect(result.plan.remove).toEqual(['b1']);
+    expect(result.favorites).toEqual([]);
+    expect(result.adopted).toEqual([]);
+    expect(result.baseline).toEqual({});
+  });
+
+  it('still adopts other machines’ bookmarks in the same pass', () => {
+    const result = reconcileFavoritesWithBookmarks({
+      bookmarks: [
+        { id: 'b1', title: 'Gone', url: 'https://example.test/gone' },
+        { id: 'b2', title: 'New', url: 'https://example.test/new' }
+      ],
+      favorites: [],
+      baseline: { 'https://example.test/gone': 'Gone' },
+      now: 5,
+      removedLocally: ['https://example.test/gone']
+    });
+
+    expect(result.plan.remove).toEqual(['b1']);
+    expect(result.adopted).toEqual(['https://example.test/new']);
   });
 });

@@ -28,7 +28,8 @@ void chrome.storage.local
         // Placeholder ids so the quick-task create/archive actions are
         // reachable in the harness. Never real work-item ids.
         quickTaskParentId: '9000',
-        quickTaskArchiveId: '9100'
+        quickTaskArchiveId: '9100',
+        bookmarkFolderName: 'dev-favorites'
       });
     }
   });

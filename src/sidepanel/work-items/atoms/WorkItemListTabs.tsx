@@ -1,5 +1,4 @@
-import clsx from 'clsx';
-import classes from './WorkItemListTabs.module.css';
+import { SectionTabs } from '@/sidepanel/atoms/SectionTabs';
 
 export type WorkItemListTab = 'todo' | 'authored' | 'prs' | 'quick';
 
@@ -21,64 +20,16 @@ export function WorkItemListTabs({
   onSelectTab
 }: WorkItemListTabsProps) {
   return (
-    <div className={classes.tabs} role="tablist">
-      <Tab
-        label="TODO"
-        count={todoCount}
-        isActive={activeTab === 'todo'}
-        onSelect={() => {
-          onSelectTab('todo');
-        }}
-      />
-      <Tab
-        label="Authored"
-        count={authoredCount}
-        isActive={activeTab === 'authored'}
-        onSelect={() => {
-          onSelectTab('authored');
-        }}
-      />
-      <Tab
-        label="PRs"
-        count={pullRequestCount}
-        isActive={activeTab === 'prs'}
-        onSelect={() => {
-          onSelectTab('prs');
-        }}
-      />
-      <Tab
-        label="Quick"
-        count={quickTaskCount}
-        isActive={activeTab === 'quick'}
-        onSelect={() => {
-          onSelectTab('quick');
-        }}
-      />
-    </div>
-  );
-}
-
-function Tab({
-  label,
-  count,
-  isActive,
-  onSelect
-}: {
-  label: string;
-  count: number | null;
-  isActive: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={isActive}
-      className={clsx(classes.tab, isActive && classes.tabActive)}
-      onClick={onSelect}
-    >
-      {label}
-      {count === null ? null : <span className={classes.count}>{count}</span>}
-    </button>
+    <SectionTabs
+      label="Work item lists"
+      activeTab={activeTab}
+      onSelectTab={onSelectTab}
+      tabs={[
+        { id: 'todo', label: 'TODO', count: todoCount },
+        { id: 'authored', label: 'Authored', count: authoredCount },
+        { id: 'prs', label: 'PRs', count: pullRequestCount },
+        { id: 'quick', label: 'Quick', count: quickTaskCount }
+      ]}
+    />
   );
 }
