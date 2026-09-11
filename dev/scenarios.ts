@@ -93,6 +93,16 @@ const parentSummary = {
 };
 
 const HAPPY_OPEN: WorkItem[] = [
+  // The parent of 1001/1002 is assigned out too, so the list holds a parent and
+  // its children at once — the case the flat TODO view collapses.
+  workItem({
+    id: 1000,
+    workItemType: 'Product Backlog Item',
+    title: parentSummary.title,
+    state: 'To Do',
+    hasIncompleteChildren: true,
+    lastChangedDate: daysAgo(1)
+  }),
   workItem({
     id: 1001,
     workItemType: 'Bug',

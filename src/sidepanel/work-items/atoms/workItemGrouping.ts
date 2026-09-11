@@ -1,4 +1,5 @@
 import type { WorkItem, WorkItemParentSummary } from '@/types';
+import { getTaskStateTone } from '@/sidepanel/taskStateDisplay';
 
 export interface ClosedItemGroup {
   key: string;
@@ -116,4 +117,68 @@ export function groupItemsByParent(items: WorkItem[]): ParentGroup[] {
   }
 
   return groups;
+}
+
+/**
+ * Drops parent rows whose work has already started.
+ *
+ * In the flat TODO list a parent and its tasks both appear when both are
+ * assigned to you, and the parent row then says nothing the started task does
+ * not. A task in progress is the thing that needs focus and will finish first,
+ * so it stands in for its parent. A parent with nothing started keeps its row,
+ * because then it is the row carrying the context.
+ *
+ * Only parents present in the list are considered, and only their children that
+ * are also present: a task whose parent is not listed is never affected, and
+ * nothing outside a parent/child pair in this list is removed.
+ */
+export function omitParentsWithStartedTasks(items: WorkItem[]): WorkItem[] {
+  const startedParentIds = new Set<number>();
+
+  for (const item of items) {
+    if (item.parentId !== null && isStartedState(item.state)) {
+      startedParentIds.add(item.parentId);
+    }
+  }
+
+  if (startedParentIds.size === 0) {
+    return items;
+  }
+
+  return items.filter((item) => !startedParentIds.has(item.id));
+}
+
+/**
+ * Whether a state means the work is under way, as opposed to merely queued.
+ *
+ * Deliberately narrower than "not done": a parent is only redundant once
+ * something under it is actually being worked on.
+ */
+export function isStartedState(state: string): boolean {
+  return getTaskStateTone(state) === 'in-progress';
+}
+
+export interface ActivitySplit {
+  /** Items being worked on, which belong in the main list. */
+  active: WorkItem[];
+  /** Everything still queued, which belongs behind an accordion. */
+  idle: WorkItem[];
+}
+
+/**
+ * Splits a list into what is under way and what is merely queued.
+ *
+ * The Authored list is long and mostly dormant — items you filed for someone
+ * else that nobody has picked up. Keeping the dormant ones out of the main list
+ * makes the few that are actually moving visible, without losing the rest.
+ */
+export function splitByActivity(items: WorkItem[]): ActivitySplit {
+  const active: WorkItem[] = [];
+  const idle: WorkItem[] = [];
+
+  for (const item of items) {
+    (isStartedState(item.state) ? active : idle).push(item);
+  }
+
+  return { active, idle };
 }

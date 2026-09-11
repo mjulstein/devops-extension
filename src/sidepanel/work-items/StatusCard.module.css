@@ -115,3 +115,37 @@
 .dismiss:hover {
   color: #111827;
 }
+
+/* Dormant authored items: present, but not competing with what is moving. */
+.idleGroup {
+  margin-block-start: 10px;
+  border-block-start: 1px solid #e4e8ec;
+  padding-block-start: 8px;
+}
+
+.idleSummary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: #57606a;
+  list-style: none;
+}
+
+.idleSummary::-webkit-details-marker {
+  display: none;
+}
+
+.idleSummary::before {
+  content: '▸';
+  display: inline-block;
+  margin-inline-end: 6px;
+  color: #8b949e;
+}
+
+.idleGroup[open] > .idleSummary::before {
+  content: '▾';
+}
+
+.idleSummary:hover {
+  color: #24292f;
+}

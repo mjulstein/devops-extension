@@ -15,6 +15,10 @@ import {
 import { PullRequestList } from './atoms/PullRequestList';
 import { QuickTaskList } from './atoms/QuickTaskList';
 import { WorkItemSection } from './WorkItemSection';
+import {
+  omitParentsWithStartedTasks,
+  splitByActivity
+} from './atoms/workItemGrouping';
 
 interface StatusCardProps {
   loadingMessage: string;
@@ -113,6 +117,21 @@ export function WorkItemsPane({
   onDismissCreatedQuickTask,
   onDismissStatusMessage
 }: StatusCardProps) {
+  // Grouped, a parent is the heading its tasks sit under, so it earns its place.
+  // Flat, a parent whose task is already in progress is just a duplicate row.
+  const todoItems =
+    result && !showWorkItemParentDetails
+      ? omitParentsWithStartedTasks(result.openItems)
+      : (result?.openItems ?? []);
+
+  // Authored is mostly items filed for other people, so the same parent rule
+  // applies and the dormant remainder moves behind an accordion.
+  const authoredSplit = splitByActivity(
+    showWorkItemParentDetails
+      ? (authoredItems ?? [])
+      : omitParentsWithStartedTasks(authoredItems ?? [])
+  );
+
   const statusKindClassNames = {
     info: classes.statusInfo,
     success: classes.statusSuccess,
@@ -136,8 +155,8 @@ export function WorkItemsPane({
       <section className={classes.card}>
         <WorkItemListTabs
           activeTab={activeListTab}
-          todoCount={result?.openItems.length ?? null}
-          authoredCount={authoredItems?.length ?? null}
+          todoCount={result === null ? null : todoItems.length}
+          authoredCount={authoredItems === null ? null : authoredItems.length}
           pullRequestCount={pullRequests?.length ?? null}
           quickTaskCount={quickTasks?.length ?? null}
           onSelectTab={onSelectListTab}
@@ -199,7 +218,7 @@ export function WorkItemsPane({
                 title="TODO"
                 showTitle={false}
                 emptyText="No open items."
-                items={result.openItems}
+                items={todoItems}
                 showState={true}
                 groupByParent={showWorkItemParentDetails}
                 linkExternal={linkExternal}
@@ -272,12 +291,32 @@ export function WorkItemsPane({
                 <WorkItemSection
                   title="Authored"
                   showTitle={false}
-                  emptyText="No open items you authored and are not assigned to."
-                  items={authoredItems ?? []}
+                  emptyText={
+                    authoredSplit.idle.length > 0
+                      ? 'Nothing you authored is being worked on yet.'
+                      : 'No open items you authored and are not assigned to.'
+                  }
+                  items={authoredSplit.active}
                   showState={true}
                   groupByParent={showWorkItemParentDetails}
                   linkExternal={linkExternal}
                 />
+                {authoredSplit.idle.length > 0 && (
+                  <details className={classes.idleGroup}>
+                    <summary className={classes.idleSummary}>
+                      Not started ({authoredSplit.idle.length})
+                    </summary>
+                    <WorkItemSection
+                      title="Not started"
+                      showTitle={false}
+                      emptyText=""
+                      items={authoredSplit.idle}
+                      showState={true}
+                      groupByParent={showWorkItemParentDetails}
+                      linkExternal={linkExternal}
+                    />
+                  </details>
+                )}
               </div>
             )}
           </>

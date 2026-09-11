@@ -28,13 +28,9 @@ export async function fetchWorkItems(
   const closedDateRange = normalizeClosedDateRange(request.closedDateRange);
   const scope = request.scope;
   const todoStates = getEffectiveTodoStates(request.settings.todoStates);
-  const quickTaskParentNumber = Number(
-    request.settings.quickTaskParentId.trim()
+  const quickTaskParentId = parseQuickTaskParentId(
+    request.settings.quickTaskParentId
   );
-  const quickTaskParentId =
-    Number.isInteger(quickTaskParentNumber) && quickTaskParentNumber > 0
-      ? quickTaskParentNumber
-      : null;
 
   if (!organization || !project) {
     throw new Error(
@@ -91,13 +87,7 @@ async function fetchOpenItems(
   todoStates: string[],
   quickTaskParentId: number | null
 ): Promise<WorkItem[]> {
-  // Quick tasks are personal odds and ends under a catch-all parent. They have
-  // their own tab, so they must not pad out the TODO list. `<>` alone would drop
-  // parentless items too, hence the explicit empty case.
-  const excludeQuickTasks =
-    quickTaskParentId === null
-      ? ''
-      : `AND ([System.Parent] <> ${quickTaskParentId} OR [System.Parent] = '')`;
+  const excludeQuickTasks = buildQuickTaskExclusion(quickTaskParentId);
 
   return fetchOpenItemsForWiql(
     organization,
@@ -167,6 +157,25 @@ export async function fetchQuickTaskItems(
  * empty values, so they need an explicit escape hatch or authored-but-unassigned
  * work would silently vanish.
  */
+/**
+ * WIQL fragment dropping quick tasks from a list.
+ *
+ * Quick tasks are personal odds and ends under a catch-all parent, and they have
+ * their own tab, so they must not pad out any other list. `<>` alone would drop
+ * parentless items too, hence the explicit empty case.
+ */
+function buildQuickTaskExclusion(quickTaskParentId: number | null): string {
+  return quickTaskParentId === null
+    ? ''
+    : `AND ([System.Parent] <> ${quickTaskParentId} OR [System.Parent] = '')`;
+}
+
+/** The quick-task parent id from settings, or null when it is unset or invalid. */
+function parseQuickTaskParentId(rawId: string): number | null {
+  const parsed = Number(rawId.trim());
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
 export async function fetchAuthoredWorkItems(
   request: FetchWorkItemsRequest,
   context: WorkItemsContext
@@ -182,6 +191,9 @@ export async function fetchAuthoredWorkItems(
 
   const assignedToClause = buildAssignedToClause(
     request.settings.assignedTo.trim()
+  );
+  const excludeQuickTasks = buildQuickTaskExclusion(
+    parseQuickTaskParentId(request.settings.quickTaskParentId)
   );
 
   return fetchOpenItemsForWiql(
@@ -199,6 +211,7 @@ export async function fetchAuthoredWorkItems(
           [System.AssignedTo] <> ${assignedToClause}
           OR [System.AssignedTo] = ''
         )
+        ${excludeQuickTasks}
       ORDER BY [System.ChangedDate] DESC
     `
   );

@@ -16,4 +16,4 @@ This directory contains small Work items tab atoms and helpers that keep `Status
 - `ParentGroupSection.tsx` + `ParentGroupSection.module.css` — parent heading with its grouped child rows.
 - `quickTaskSorting.ts` + `quickTaskSorting.test.ts` — pinned-first, done-last quick-task ordering helpers.
 - `staleLists.ts` + `staleLists.test.ts` — which lazily-loaded lists a refetch invalidated, so a list refreshes in place instead of blanking out.
-- `workItemGrouping.ts` + `workItemGrouping.test.ts` — closed-item grouping and completed-item emphasis helpers.
+- `workItemGrouping.ts` + `workItemGrouping.test.ts` — closed-item grouping and completed-item emphasis helpers, plus `omitParentsWithStartedTasks` (drops a parent row once one of its tasks is in progress, so the started task stands in for it) and `splitByActivity` (separates what is under way from what is merely queued).

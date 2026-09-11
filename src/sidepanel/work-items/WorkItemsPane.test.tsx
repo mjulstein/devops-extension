@@ -116,6 +116,126 @@ describe('WorkItemsPane loading behaviour', () => {
   });
 });
 
+describe('WorkItemsPane TODO hierarchy', () => {
+  const parent = makeWorkItem({
+    id: 400,
+    workItemType: 'Improvement',
+    title: 'Parent carrying the context',
+    state: 'To Do'
+  });
+  const startedTask = makeWorkItem({
+    id: 401,
+    workItemType: 'Task',
+    title: 'Task already under way',
+    state: 'In Progress',
+    parentId: 400
+  });
+
+  function renderTodo(overrides: Record<string, unknown> = {}) {
+    return renderPane({
+      activeListTab: 'todo',
+      result: {
+        count: 2,
+        openItems: [parent, startedTask],
+        closedItems: [],
+        closedDateRange: { start: '2026-09-01', end: '2026-09-07' }
+      },
+      ...overrides
+    });
+  }
+
+  it('hides a parent whose task is already in progress', () => {
+    const markup = renderTodo();
+
+    expect(markup).toContain('Task already under way');
+    expect(markup).not.toContain('Parent carrying the context');
+  });
+
+  it('keeps the parent once nothing under it has started', () => {
+    const queued = { ...startedTask, state: 'To Do' };
+    const markup = renderTodo({
+      result: {
+        count: 2,
+        openItems: [parent, queued],
+        closedItems: [],
+        closedDateRange: { start: '2026-09-01', end: '2026-09-07' }
+      }
+    });
+
+    expect(markup).toContain('Parent carrying the context');
+  });
+
+  it('leaves the grouped view showing both, since the parent is the heading', () => {
+    const markup = renderTodo({ showWorkItemParentDetails: true });
+
+    expect(markup).toContain('Parent carrying the context');
+    expect(markup).toContain('Task already under way');
+  });
+});
+
+describe('WorkItemsPane Authored split', () => {
+  const started = makeWorkItem({
+    id: 500,
+    workItemType: 'Bug',
+    title: 'Someone picked this up',
+    state: 'In Progress'
+  });
+  const queued = makeWorkItem({
+    id: 501,
+    workItemType: 'Bug',
+    title: 'Still waiting for anyone',
+    state: 'To Do'
+  });
+
+  function renderAuthored(items: unknown[]) {
+    return renderPane({ activeListTab: 'authored', authoredItems: items });
+  }
+
+  it('keeps started items in the main list and the rest in an accordion', () => {
+    const markup = renderAuthored([started, queued]);
+
+    expect(markup).toContain('Someone picked this up');
+    expect(markup).toContain('Still waiting for anyone');
+    expect(markup).toContain('Not started (1)');
+    expect(markup).toContain('<details');
+  });
+
+  it('renders no accordion when everything is under way', () => {
+    const markup = renderAuthored([started]);
+
+    expect(markup).not.toContain('Not started');
+    expect(markup).not.toContain('<details');
+  });
+
+  it('says why the main list is empty when everything is dormant', () => {
+    const markup = renderAuthored([queued]);
+
+    expect(markup).toContain('Nothing you authored is being worked on yet.');
+    expect(markup).toContain('Not started (1)');
+  });
+
+  it('applies the parent rule to authored items too', () => {
+    const parent = makeWorkItem({
+      id: 600,
+      workItemType: 'Improvement',
+      title: 'Authored parent',
+      state: 'To Do'
+    });
+    const child = makeWorkItem({
+      id: 601,
+      workItemType: 'Task',
+      title: 'Authored child under way',
+      state: 'In Progress',
+      parentId: 600
+    });
+
+    const markup = renderAuthored([parent, child]);
+
+    expect(markup).toContain('Authored child under way');
+    expect(markup).not.toContain('Authored parent');
+  });
+});
+
 describe('WorkItemsPane chrome', () => {
   it('offers no fetch button, since selecting a tab refetches', () => {
     expect(renderPane()).not.toContain('Fetch work items');
