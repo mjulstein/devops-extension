@@ -21,6 +21,7 @@ import {
 import classes from './SettingsCard.module.css';
 import { FavoritesEditor } from './FavoritesEditor';
 import { SettingsHelp } from './SettingsHelp';
+import { ShortcutStatus } from './ShortcutStatus';
 import type { StarredPage } from '../starredPages';
 
 interface SettingsCardProps {
@@ -518,6 +519,8 @@ export function SettingsPane({
               <span className={classes.helperText}>{iconRefreshStatus}</span>
             )}
           </div>
+
+          <ShortcutStatus />
 
           <div className={classes.buttonRow}>
             <button

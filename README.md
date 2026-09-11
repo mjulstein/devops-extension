@@ -174,7 +174,11 @@ npm test
     menu opens at the full width of the side panel, and each entry shows the
     page's icon taken from the browser's own favicon cache — the same icon the
     bookmarks menu draws, so favorites synced in from another machine are
-    recognisable too. Name a
+    recognisable too.
+    A keyboard shortcut opens the panel straight into that search; Settings →
+    **Tools** shows which keys the browser actually bound to it, and browsers
+    silently leave the suggested combination unbound when it clashes with one of
+    their own — assign your own at `edge://extensions/shortcuts` if it is blank. Name a
     bookmarks folder on Settings → **Favorites** and the list is kept in step
     with that folder in both directions, so favorites also appear in
     address-bar autocomplete and travel between machines over the browser's own

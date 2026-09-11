@@ -11,4 +11,5 @@ This directory contains the Settings tab UI.
 - `FavoritesEditor.tsx` + `FavoritesEditor.module.css` — accordion editor for starred pages, working on a draft with explicit Save/Cancel rather than persisting as you type.
 - `favoritesDraft.ts` + `favoritesDraft.test.ts` — the draft model behind that editor: rows carry their own key because the address is editable.
 - `settingsDirty.ts` + `settingsDirty.test.ts` — which region owns which settings field, so Save can be gated on a real change and say where the pending edits are.
+- `ShortcutStatus.tsx` — shows on **Tools** what keys the browser actually bound to the favorites shortcut. An unbound command looks exactly like a broken feature, and the only other place that shows it is the service worker console.
 - `SettingsHelp.tsx` — `<details>` accordion that keeps long explanations out of the way until asked for.

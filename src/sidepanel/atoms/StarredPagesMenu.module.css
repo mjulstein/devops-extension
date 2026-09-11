@@ -39,6 +39,10 @@
   position: fixed;
   z-index: 20;
   box-sizing: border-box;
+  /* Flush with the panel edges, so only the panel's own padding separates it
+     from the sides. */
+  border-inline: none;
+  border-radius: 0 0 6px 6px;
   max-height: 60vh;
   overflow-y: auto;
   padding: 4px;

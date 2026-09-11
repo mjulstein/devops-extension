@@ -5,15 +5,19 @@ import { rankFavorites, type StarredPage } from '../starredPages';
 import { getFavoriteIconUrl } from '../favoriteIcon';
 
 /**
- * The row the menu should match in width: the panel-wide header the trigger
- * sits in, rather than the trigger itself. Read from the DOM because the popup
- * has to break out of its own box to get there, and taken from the header so
- * the menu lines up with the panel's content column in the dev harness too,
- * where the panel is a framed region rather than the whole viewport.
+ * The box the menu should fill: the panel itself, edge to edge.
+ *
+ * Not the trigger, which is one control in a row, and not the header either —
+ * the header sits inside the panel's padding, so matching it leaves the menu
+ * inset by that padding on top of its own, which reads as a double margin. The
+ * panel root's rect includes the padding, so the menu reaches the panel edges.
+ *
+ * Read from the panel root rather than the viewport so the dev harness, where
+ * the panel is a framed region rather than the whole window, lines up too.
  */
-function getPanelRowRect(trigger: HTMLElement): DOMRect {
-  const row = trigger.closest('header');
-  return (row ?? document.documentElement).getBoundingClientRect();
+function getPanelRect(trigger: HTMLElement): DOMRect {
+  const panel = trigger.closest('header')?.parentElement;
+  return (panel ?? document.documentElement).getBoundingClientRect();
 }
 
 interface MenuBox {
@@ -63,11 +67,11 @@ export function StarredPagesMenu({
     if (!wrap) {
       return;
     }
-    const row = getPanelRowRect(wrap);
+    const panel = getPanelRect(wrap);
     setBox({
       top: wrap.getBoundingClientRect().bottom + 4,
-      left: row.left,
-      width: row.width
+      left: panel.left,
+      width: panel.width
     });
   }
 
