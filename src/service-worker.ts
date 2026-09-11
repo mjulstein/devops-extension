@@ -28,14 +28,21 @@ import { startBearerObserver } from './devops/auth/bearerObserver';
 // minting regardless of which realm issued the call.
 startBearerObserver();
 
-// Ctrl+Shift+K (user-configurable in chrome://extensions/shortcuts): open the
+// Ctrl+Period (user-configurable in chrome://extensions/shortcuts): open the
 // side panel and put the cursor in the starred-pages search. Opening the panel
 // from a command handler is allowed because the command counts as a user
 // gesture.
-// A suggested_key that clashes with a browser shortcut is silently left
-// unbound — Ctrl+Shift+K is Duplicate Tab in Edge, for instance — and the
-// command then does nothing with no error anywhere. Report what is actually
-// bound so that failure is diagnosable instead of mysterious.
+//
+// Picking the keys is most of the work here, because a combination that is
+// already taken is left unbound with no error anywhere: the command exists, has
+// no shortcut, and pressing it does nothing. Two rounds of that:
+//   - Ctrl+Shift+K is Duplicate Tab in Edge, and a browser shortcut always wins.
+//   - Alt+Shift+* can be swallowed by Windows itself, which uses Alt+Shift to
+//     switch keyboard layout, so Edge never sees the keypress to begin with.
+// Ctrl and punctuation avoids both: Edge binds nearly every Ctrl+letter and
+// Ctrl+digit, but not Ctrl+Period. Report what is actually bound so the next
+// collision is diagnosable instead of mysterious — the side panel shows the
+// same reading on Settings -> Tools.
 void chrome.commands?.getAll().then((commands) => {
   for (const command of commands) {
     if (!command.name) {

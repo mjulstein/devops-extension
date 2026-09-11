@@ -2,10 +2,10 @@ import { diagnoseShortcut } from './shortcutDiagnostics';
 
 describe('diagnoseShortcut', () => {
   it('reports the keys the browser actually bound', () => {
-    const result = diagnoseShortcut({ shortcut: 'Alt+Shift+K' });
+    const result = diagnoseShortcut({ shortcut: 'Ctrl+Period' });
 
     expect(result.isBound).toBe(true);
-    expect(result.text).toContain('Alt+Shift+K');
+    expect(result.text).toContain('Ctrl+Period');
     expect(result.settingsUrl).toBe('edge://extensions/shortcuts');
   });
 

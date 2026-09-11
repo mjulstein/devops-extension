@@ -3,9 +3,10 @@
 // A `suggested_key` that collides with a browser shortcut is silently left
 // unbound: the command exists, has no keys, and pressing anything does nothing,
 // with no error in any console the user would think to open. Edge reserves a
-// different set of combinations than Chrome and does not always apply a
-// suggested key for an unpacked extension at all, so what the manifest asks for
-// is not evidence of what is bound. Only `chrome.commands.getAll()` is.
+// different set of combinations than Chrome, and the operating system can take
+// a combination before the browser sees it at all (Windows uses Alt+Shift to
+// switch keyboard layout), so what the manifest asks for is not evidence of
+// what is bound. Only `chrome.commands.getAll()` is.
 
 /** The command id the manifest declares for the starred-pages search. */
 export const STARRED_SEARCH_COMMAND = 'open-starred-search';
