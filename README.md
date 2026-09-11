@@ -170,7 +170,11 @@ npm test
 8. Adjust the closed-date range inputs to refresh closed items for a specific window, or use **Reset to default** to restore the default today-to-7-days-ago range.
 9. Optionally enable **Show task parent details** to see the full hierarchy grouped instead, with each task under its parent.
 10. Use the per-day refetch button beside any closed-date heading to reload only that day.
-11. Star an Azure DevOps page with the toggle beside the favorites menu. Name a
+11. Star an Azure DevOps page with the toggle beside the favorites menu. The
+    menu opens at the full width of the side panel, and each entry shows the
+    page's icon taken from the browser's own favicon cache — the same icon the
+    bookmarks menu draws, so favorites synced in from another machine are
+    recognisable too. Name a
     bookmarks folder on Settings → **Favorites** and the list is kept in step
     with that folder in both directions, so favorites also appear in
     address-bar autocomplete and travel between machines over the browser's own

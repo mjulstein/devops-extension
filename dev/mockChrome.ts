@@ -316,6 +316,10 @@ export function installMockChrome(getScenario: () => Scenario): void {
     },
     runtime: {
       id: 'dev-harness',
+      // Resolves like the real one does, but the harness has no favicon cache
+      // behind `/_favicon/`, so favorite icons stay blank here and can only be
+      // seen in the loaded extension.
+      getURL: (path: string) => new URL(path, window.location.origin).toString(),
       sendMessage: (message: RuntimeMessage) => route(message, getScenario()),
       onMessage: noopEvent(),
       onStartup: noopEvent(),

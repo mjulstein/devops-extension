@@ -68,6 +68,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - `src/sidepanel/{App,Tabs,Link,DebugConsolePane}.tsx` + matching `*.module.css` files — side panel shell, tab chrome, link navigation helper, and in-panel debug log viewer
 - `src/sidepanel/navigateToWorkItem.ts` — shared Azure DevOps work-item navigation helper used by links and task buttons to reuse matching tabs when possible
 - `src/sidepanel/{atoms,useSidepanelController}.ts*` — shared shell atoms (including the one `SectionTabs` strip every tabbed region uses) plus the side-panel orchestration hook used by `App.tsx`
+- `src/sidepanel/favoriteIcon.ts` — favorite icons read from the browser's favicon cache through the `favicon` permission's `_favicon/` endpoint, so nothing is captured at star time and a favorite adopted from a synced bookmark gets an icon on the same terms
 - `src/sidepanel/starredPages.ts` — starred Azure DevOps pages: identity is URL + search params only, plus label disambiguation and ranked search
 - `src/sidepanel/bookmarkSync.ts` — two-way sync between favorites and a bookmarks folder. The folder is the shared copy because it is the half the browser syncs between machines; local favorites are a cache of it. The panel only wins for a favorite it has just added and not yet written, so a remote add/rename/delete is adopted. A stored baseline of the folder's last known state is what separates "added here" from "deleted elsewhere"
 - `src/sidepanel/workItemsDateRange.ts` — default closed-date range and validation helpers for the Work items tab

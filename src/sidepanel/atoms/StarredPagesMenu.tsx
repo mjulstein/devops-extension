@@ -2,6 +2,25 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import classes from './StarredPagesMenu.module.css';
 import { rankFavorites, type StarredPage } from '../starredPages';
+import { getFavoriteIconUrl } from '../favoriteIcon';
+
+/**
+ * The row the menu should match in width: the panel-wide header the trigger
+ * sits in, rather than the trigger itself. Read from the DOM because the popup
+ * has to break out of its own box to get there, and taken from the header so
+ * the menu lines up with the panel's content column in the dev harness too,
+ * where the panel is a framed region rather than the whole viewport.
+ */
+function getPanelRowRect(trigger: HTMLElement): DOMRect {
+  const row = trigger.closest('header');
+  return (row ?? document.documentElement).getBoundingClientRect();
+}
+
+interface MenuBox {
+  top: number;
+  left: number;
+  width: number;
+}
 
 interface StarredPagesMenuProps {
   /**
@@ -30,11 +49,30 @@ export function StarredPagesMenu({
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
   const itemElementsRef = useRef<(HTMLButtonElement | null)[]>([]);
+  // The menu is as wide as the side panel, not as wide as its trigger: the
+  // trigger is one control in a row, while the entries are long URLs that have
+  // nowhere to go in that width. Measured rather than styled because the popup
+  // has to escape the trigger's box to get there.
+  const [box, setBox] = useState<MenuBox | null>(null);
 
   // Title matches rank above address matches — see rankFavorites.
   const visible = useMemo(() => rankFavorites(pages, query), [pages, query]);
 
+  function measure() {
+    const wrap = wrapRef.current;
+    if (!wrap) {
+      return;
+    }
+    const row = getPanelRowRect(wrap);
+    setBox({
+      top: wrap.getBoundingClientRect().bottom + 4,
+      left: row.left,
+      width: row.width
+    });
+  }
+
   function open() {
+    measure();
     setIsOpen(true);
     setQuery('');
     setHighlight(0);
@@ -69,11 +107,30 @@ export function StarredPagesMenu({
     if (focusRequest === 0) {
       return;
     }
-    const frame = requestAnimationFrame(open);
+    // Inlined rather than calling open(), so this effect depends on nothing
+    // that changes every render.
+    const frame = requestAnimationFrame(() => {
+      measure();
+      setIsOpen(true);
+      setQuery('');
+      setHighlight(0);
+    });
     return () => {
       cancelAnimationFrame(frame);
     };
   }, [focusRequest]);
+
+  // A side panel is resized by dragging its edge, which does not reopen the
+  // menu, so the width has to follow.
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    window.addEventListener('resize', measure);
+    return () => {
+      window.removeEventListener('resize', measure);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -136,7 +193,13 @@ export function StarredPagesMenu({
       </button>
 
       {isOpen && (
-        <div className={classes.menu} role="menu">
+        <div
+          className={classes.menu}
+          role="menu"
+          style={
+            box ? { top: box.top, left: box.left, width: box.width } : undefined
+          }
+        >
           <input
             ref={searchRef}
             className={classes.search}
@@ -177,13 +240,42 @@ export function StarredPagesMenu({
                   void openPage(page.url);
                 }}
               >
-                {page.label}
-                <span className={classes.itemUrl}>{page.url}</span>
+                <FavoriteIcon url={page.url} />
+                <span className={classes.itemText}>
+                  {page.label}
+                  <span className={classes.itemUrl}>{page.url}</span>
+                </span>
               </button>
             ))
           )}
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * The page's icon from the browser's favicon cache.
+ *
+ * Kept silent on failure: an icon is a scanning aid, and a broken-image glyph
+ * beside a favorite would be worse than the blank space it replaces.
+ */
+function FavoriteIcon({ url }: { url: string }) {
+  const [isBroken, setIsBroken] = useState(false);
+  const source = useMemo(() => getFavoriteIconUrl(url), [url]);
+
+  if (source === null || isBroken) {
+    return <span className={classes.iconPlaceholder} aria-hidden="true" />;
+  }
+
+  return (
+    <img
+      className={classes.icon}
+      src={source}
+      alt=""
+      width={16}
+      height={16}
+      onError={() => setIsBroken(true)}
+    />
   );
 }

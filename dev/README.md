@@ -71,3 +71,9 @@ await devBookmarks.removeRemotely('102');
 The panel should adopt an addition or rename and drop a deletion. Note the fake
 bookmarks live in memory only, so a page reload empties the folder; the
 "changed while the panel was closed" case cannot be reproduced here.
+
+## Favorite icons
+
+`chrome.runtime.getURL` resolves in the harness, but there is no favicon cache
+behind `/_favicon/`, so favorite rows keep the icon column blank here. Icons can
+only be seen in the loaded extension.

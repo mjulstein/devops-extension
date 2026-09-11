@@ -29,7 +29,26 @@ void chrome.storage.local
         // reachable in the harness. Never real work-item ids.
         quickTaskParentId: '9000',
         quickTaskArchiveId: '9100',
-        bookmarkFolderName: 'dev-favorites'
+        bookmarkFolderName: 'dev-favorites',
+        // A few favorites so the starred menu has rows to lay out. Placeholder
+        // boards on the harness org only — never real pages.
+        starredPages: [
+          {
+            url: `https://dev.azure.com/${DEV_ORGANIZATION}/${DEV_PROJECT}/_boards/board/t/Frontend/Stories`,
+            label: 'Frontend board',
+            starredAt: 1
+          },
+          {
+            url: `https://dev.azure.com/${DEV_ORGANIZATION}/${DEV_PROJECT}/_queries/query/?wiql=recently-updated-items-assigned-to-me`,
+            label: 'Recently updated items assigned to me',
+            starredAt: 2
+          },
+          {
+            url: `https://dev.azure.com/${DEV_ORGANIZATION}/${DEV_PROJECT}/_dashboards`,
+            label: 'Dashboards',
+            starredAt: 3
+          }
+        ]
       });
     }
   });
