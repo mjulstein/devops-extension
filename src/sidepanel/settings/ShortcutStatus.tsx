@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react';
 import classes from './SettingsCard.module.css';
 import {
+  describeShortcutRun,
   diagnoseShortcut,
+  readShortcutRun,
   readStarredSearchBinding,
-  type ShortcutBinding
+  SHORTCUT_RUN_KEY,
+  type ShortcutBinding,
+  type ShortcutRun
 } from '../shortcutDiagnostics';
 
 /**
@@ -15,18 +19,42 @@ import {
  */
 export function ShortcutStatus() {
   const [binding, setBinding] = useState<ShortcutBinding | null>(null);
+  const [run, setRun] = useState<ShortcutRun | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    void readStarredSearchBinding().then((result) => {
-      if (!cancelled) {
-        setBinding(result);
-        setIsLoaded(true);
+    void Promise.all([readStarredSearchBinding(), readShortcutRun()]).then(
+      ([nextBinding, nextRun]) => {
+        if (!cancelled) {
+          setBinding(nextBinding);
+          setRun(nextRun);
+          setIsLoaded(true);
+        }
       }
-    });
+    );
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  // The panel is usually already open when the shortcut is pressed, so the
+  // reading has to update in place — reopening Settings to check would hide the
+  // very case being diagnosed.
+  useEffect(() => {
+    const storage = globalThis.chrome?.storage;
+    if (!storage?.onChanged) {
+      return;
+    }
+    function onChanged(changes: Record<string, { newValue?: unknown }>) {
+      const change = changes[SHORTCUT_RUN_KEY];
+      if (change) {
+        setRun((change.newValue as ShortcutRun | undefined) ?? null);
+      }
+    }
+    storage.onChanged.addListener(onChanged);
+    return () => {
+      storage.onChanged.removeListener(onChanged);
     };
   }, []);
 
@@ -45,6 +73,7 @@ export function ShortcutStatus() {
         // nothing. The address has to be pasted into the address bar.
         <code>{diagnosis.settingsUrl}</code>
       )}
+      <div>{describeShortcutRun(run)}</div>
     </div>
   );
 }

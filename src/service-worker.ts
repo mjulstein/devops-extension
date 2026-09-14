@@ -7,6 +7,7 @@ import {
   tryCreateLastVisitedDevOpsContext,
   tryCreateLastVisitedWorkItemRef
 } from './devops/lastVisitedContext';
+import { SHORTCUT_RUN_KEY } from './sidepanel/shortcutDiagnostics';
 import { fetchChildTasksForActiveParent } from './devops/childTasks';
 import { fetchPullRequestActivity } from './devops/pullRequestActivity';
 import { resolveActiveWorkItemContext } from './devops/activeParentContext';
@@ -65,6 +66,10 @@ chrome.commands?.onCommand.addListener((command) => {
   }
 
   void (async () => {
+    let opened = false;
+    let delivered = false;
+    let error: string | null = null;
+
     try {
       const [tab] = await chrome.tabs.query({
         active: true,
@@ -72,22 +77,47 @@ chrome.commands?.onCommand.addListener((command) => {
       });
       if (tab?.windowId != null) {
         await chrome.sidePanel.open({ windowId: tab.windowId });
+        opened = true;
       }
-      // The panel may have only just started, so retry briefly rather than
-      // firing once into a listener that does not exist yet.
-      for (let attempt = 0; attempt < 10; attempt += 1) {
-        try {
-          await chrome.runtime.sendMessage({ type: 'FOCUS_STARRED_SEARCH' });
-          return;
-        } catch {
-          await new Promise((resolve) => setTimeout(resolve, 150));
-        }
-      }
-    } catch (error) {
-      console.warn('[commands] could not open the starred search', error);
+    } catch (openError) {
+      // Opening can be refused — a browser may not count a command as the user
+      // gesture the API requires. That must not stop the focus message: when
+      // the panel is already open, delivering it is the whole job.
+      error = describeError(openError);
     }
+
+    // The panel may have only just started, so retry briefly rather than firing
+    // once into a listener that does not exist yet.
+    for (let attempt = 0; attempt < 10 && !delivered; attempt += 1) {
+      try {
+        await chrome.runtime.sendMessage({ type: 'FOCUS_STARRED_SEARCH' });
+        delivered = true;
+      } catch {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+    }
+
+    if (!delivered && error === null) {
+      console.warn('[commands] the panel never took the focus message');
+    }
+
+    // Recorded so the panel can say what happened. A shortcut that is bound and
+    // still does nothing is otherwise only diagnosable from the service worker
+    // console, which is several clicks into a page most people never open.
+    await chrome.storage.local.set({
+      [SHORTCUT_RUN_KEY]: {
+        at: Date.now(),
+        opened,
+        delivered,
+        error
+      }
+    });
   })();
 });
+
+function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 type RuntimeMessage =
   | {

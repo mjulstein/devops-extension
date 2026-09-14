@@ -1,4 +1,4 @@
-import { diagnoseShortcut } from './shortcutDiagnostics';
+import { describeShortcutRun, diagnoseShortcut } from './shortcutDiagnostics';
 
 describe('diagnoseShortcut', () => {
   it('reports the keys the browser actually bound', () => {
@@ -28,5 +28,51 @@ describe('diagnoseShortcut', () => {
     expect(result.isBound).toBe(false);
     expect(result.text).toContain('Reload the extension');
     expect(result.settingsUrl).toBeNull();
+  });
+});
+
+describe('describeShortcutRun', () => {
+  const at = 1_000_000;
+
+  it('separates never-pressed from pressed-and-failed', () => {
+    expect(describeShortcutRun(null)).toContain('Never pressed');
+  });
+
+  it('names the browser refusing to open the panel', () => {
+    const text = describeShortcutRun(
+      { at, opened: false, delivered: false, error: null },
+      at + 5000
+    );
+
+    expect(text).toContain('5s ago');
+    expect(text).toContain('refused to open');
+  });
+
+  it('separates an opened panel that never took the message', () => {
+    const text = describeShortcutRun(
+      { at, opened: true, delivered: false, error: null },
+      at + 120_000
+    );
+
+    expect(text).toContain('2m ago');
+    expect(text).toContain('did not take the focus message');
+  });
+
+  it('reports a thrown error verbatim, since that is the actual diagnosis', () => {
+    const text = describeShortcutRun(
+      { at, opened: false, delivered: false, error: 'user gesture required' },
+      at + 1000
+    );
+
+    expect(text).toContain('user gesture required');
+  });
+
+  it('says so plainly when the whole chain worked', () => {
+    expect(
+      describeShortcutRun(
+        { at, opened: true, delivered: true, error: null },
+        at
+      )
+    ).toContain('worked');
   });
 });

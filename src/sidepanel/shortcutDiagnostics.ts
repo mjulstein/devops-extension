@@ -67,3 +67,70 @@ export async function readStarredSearchBinding(): Promise<ShortcutBinding | null
   const command = all.find((entry) => entry.name === STARRED_SEARCH_COMMAND);
   return command ? { shortcut: command.shortcut ?? '' } : null;
 }
+
+/** Storage key the service worker writes each time the command fires. */
+export const SHORTCUT_RUN_KEY = 'lastShortcutRun';
+
+export interface ShortcutRun {
+  at: number;
+  /** Whether the side panel could be opened from the command handler. */
+  opened: boolean;
+  /** Whether the panel acknowledged the focus message. */
+  delivered: boolean;
+  error: string | null;
+}
+
+/**
+ * Plain-language account of the last keypress.
+ *
+ * A bound shortcut that does nothing has three possible culprits — the command
+ * never reached the worker, the browser refused to open the panel, or the panel
+ * never got the focus message — and they are indistinguishable from the outside.
+ * Recording the run makes them distinguishable without opening a console.
+ */
+export function describeShortcutRun(
+  run: ShortcutRun | null,
+  now = Date.now()
+): string {
+  if (run === null) {
+    return 'Never pressed since the extension was last reloaded — if pressing it changes nothing here, the keypress is not reaching the extension at all.';
+  }
+
+  const ago = formatAgo(now - run.at);
+  if (run.error !== null) {
+    return `Last pressed ${ago}: ${run.error}`;
+  }
+  if (!run.opened) {
+    return `Last pressed ${ago}: the browser refused to open the side panel.`;
+  }
+  if (!run.delivered) {
+    return `Last pressed ${ago}: the panel opened but did not take the focus message.`;
+  }
+  return `Last pressed ${ago}: worked.`;
+}
+
+function formatAgo(ms: number): string {
+  if (ms < 0) {
+    return 'just now';
+  }
+  const seconds = Math.round(ms / 1000);
+  if (seconds < 60) {
+    return `${seconds}s ago`;
+  }
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) {
+    return `${minutes}m ago`;
+  }
+  return `${Math.round(minutes / 60)}h ago`;
+}
+
+/** Reads the recorded run; null when nothing has been recorded yet. */
+export async function readShortcutRun(): Promise<ShortcutRun | null> {
+  const storage = globalThis.chrome?.storage?.local;
+  if (!storage) {
+    return null;
+  }
+  const stored = await storage.get(SHORTCUT_RUN_KEY);
+  const value = stored[SHORTCUT_RUN_KEY] as ShortcutRun | undefined;
+  return value ?? null;
+}
