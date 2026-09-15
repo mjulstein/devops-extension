@@ -91,9 +91,11 @@ Load `dist/` as the unpacked extension directory in Edge. After rebuilding, relo
 ## Theme
 
 The panel follows Azure DevOps's own light/dark setting rather than keeping a
-second preference. The switch on the panel's title bar shows which theme is in
-force and changes Azure DevOps's setting when clicked; it is disabled when there
-is no connection to read or change that setting. Colours are defined once in
+second preference. The switch beside the duplicate-tab
+button shows which theme is in force and changes Azure DevOps's setting when
+clicked. It always changes the panel, even when Azure DevOps cannot be reached;
+Azure DevOps wins on open, so a theme changed there is adopted next time the
+panel loads. Colours are defined once in
 [`src/theme.css`](./src/theme.css) as semantic tokens for both themes, and
 Settings → **Theme** lists every token for both palettes so any of them can be
 overridden. Overrides apply to the panel and to the favorites palette, and only

@@ -1139,9 +1139,9 @@ export function useSidepanelController() {
    * going, not something you are collecting.
    */
   /**
-   * Reads Azure DevOps's theme and adopts it. Failure leaves the switch
-   * disabled rather than guessing: without a connection there is no theme to
-   * mirror, and a switch that silently does nothing is worse than a dead one.
+   * Reads Azure DevOps's theme and adopts it, which is what makes Azure DevOps
+   * authoritative: whatever the panel was last set to, an answer here wins on
+   * open, so a theme changed in Azure DevOps is picked up rather than fought.
    */
   /**
    * Paints a theme: the stylesheet's tokens with the user's overrides on top,
@@ -1162,7 +1162,13 @@ export function useSidepanelController() {
   ) {
     const response = await getAdoTheme(currentSettings);
     if (!response.ok || response.result === null) {
+      // The panel keeps whatever theme it last had. Only the promise that the
+      // two are in step is lost, which is what the switch's tooltip says.
       setIsThemeKnown(false);
+      pushDebugLog(
+        'info',
+        `Could not read the Azure DevOps theme; the panel is using its own. ${response.ok ? '' : response.error}`.trim()
+      );
       return;
     }
     setTheme(response.result);
@@ -1171,26 +1177,34 @@ export function useSidepanelController() {
     await saveLastKnownTheme(response.result);
   }
 
+  /**
+   * Flips the theme. The panel always follows; Azure DevOps is told as well and
+   * is authoritative when it answers, but a failure there does not veto the
+   * change — how this panel looks is this panel's business, and a switch that
+   * refuses because a REST call failed is a broken switch.
+   */
   async function onToggleTheme() {
     const next: AdoTheme = theme === 'dark' ? 'light' : 'dark';
     setIsThemeChanging(true);
-    // Applied before the round trip: the switch is about how this panel looks,
-    // and waiting on the network to redraw it feels broken.
     setTheme(next);
     paintTheme(next);
+    await saveLastKnownTheme(next);
+
     try {
       const response = await setAdoTheme(
         getTrimmedSettingsFromState(settings),
         next
       );
-      if (!response.ok) {
-        setTheme(theme);
-        paintTheme(theme);
-        setStatusMessage({ kind: 'error', text: response.error });
-        return;
+      if (response.ok) {
+        setIsThemeKnown(true);
+        pushDebugLog('success', `Azure DevOps theme set to ${next}.`);
+      } else {
+        setIsThemeKnown(false);
+        pushDebugLog(
+          'error',
+          `Panel switched to ${next}, but Azure DevOps kept its own theme: ${response.error}`
+        );
       }
-      await saveLastKnownTheme(next);
-      pushDebugLog('success', `Azure DevOps theme set to ${next}.`);
     } finally {
       setIsThemeChanging(false);
     }

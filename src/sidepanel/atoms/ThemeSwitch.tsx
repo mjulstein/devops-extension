@@ -5,18 +5,19 @@ import type { AdoTheme } from '@/devops/theme';
 interface ThemeSwitchProps {
   theme: AdoTheme;
   /**
-   * False while the theme is unknown or unreachable — without a connection the
-   * switch cannot read or change Azure DevOps's setting, and a control that
-   * silently does nothing is worse than a disabled one.
+   * Whether Azure DevOps's own setting could be read. It changes what the
+   * tooltip promises, not whether the switch works: the panel's appearance is
+   * this panel's business, and refusing to restyle it because a REST call failed
+   * would be the wrong trade.
    */
-  isEnabled: boolean;
+  isAdoReachable: boolean;
   isBusy: boolean;
   onToggle: () => void;
 }
 
 export function ThemeSwitch({
   theme,
-  isEnabled,
+  isAdoReachable,
   isBusy,
   onToggle
 }: ThemeSwitchProps) {
@@ -26,13 +27,12 @@ export function ThemeSwitch({
     <button
       type="button"
       className={clsx(classes.button, isBusy && classes.busy)}
-      disabled={!isEnabled || isBusy}
       aria-pressed={theme === 'dark'}
-      aria-label={`Switch Azure DevOps to ${next} mode`}
+      aria-label={`Switch to ${next} mode`}
       title={
-        isEnabled
-          ? `Azure DevOps is in ${theme} mode. Switch to ${next}.`
-          : 'Connect to Azure DevOps to change its theme.'
+        isAdoReachable
+          ? `In ${theme} mode, matching Azure DevOps. Switch to ${next}.`
+          : `In ${theme} mode. Switch to ${next} — Azure DevOps's own setting could not be read, so this changes the panel only.`
       }
       onClick={onToggle}
     >

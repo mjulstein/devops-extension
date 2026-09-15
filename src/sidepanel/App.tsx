@@ -17,23 +17,9 @@ export function App() {
 
   return (
     <div className={classes.wrap} data-panel-root="">
-      {/* The browser's own side-panel header — the one with the extension name
-          and the close button — belongs to the browser and cannot be drawn
-          into, so the panel carries its own title bar. The theme switch sits
-          here rather than among the controls below: it acts on the whole panel,
-          not on any one of them. */}
-      <header className={classes.titleBar}>
-        <h1 className={classes.title}>DevOps Daily Export</h1>
-        <ThemeSwitch
-          theme={controller.theme}
-          isEnabled={controller.isThemeKnown}
-          isBusy={controller.isThemeChanging}
-          onToggle={() => {
-            void controller.onToggleTheme();
-          }}
-        />
-      </header>
-
+      {/* The browser draws its own side-panel header above this, with the
+          extension's name and close button, and an extension cannot touch it.
+          A second title bar of our own only repeated it. */}
       <div className={classes.bannerRow}>
         {/* The active-item banner used to live here; it now sits at the top of
             the Active item tab, where it is actually relevant. */}
@@ -50,6 +36,14 @@ export function App() {
         <DeduplicateTabsButton
           onClick={() => {
             void controller.onDeduplicateTabs();
+          }}
+        />
+        <ThemeSwitch
+          theme={controller.theme}
+          isAdoReachable={controller.isThemeKnown}
+          isBusy={controller.isThemeChanging}
+          onToggle={() => {
+            void controller.onToggleTheme();
           }}
         />
       </div>

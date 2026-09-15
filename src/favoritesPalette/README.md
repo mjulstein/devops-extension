@@ -29,6 +29,15 @@ a new tab instead, following the browser's own convention — the palette report
 which was asked for and the service worker does the navigating, since a content
 script cannot manage tabs.
 
+## Keyboard
+
+Key events are stopped at the host element. Azure DevOps binds single letters as
+page shortcuts and skips them when the keystroke came from an input — but an
+event crossing a shadow boundary is retargeted to the host, which is not an input
+as far as the page can tell, so the page acted on letters meant for the search
+box. Only the letters Azure DevOps does not bind could be typed, and their
+capitals worked because its shortcuts match lowercase.
+
 ## Styling
 
 Colour resolves in three steps: the side panel's own tokens first, passed in with

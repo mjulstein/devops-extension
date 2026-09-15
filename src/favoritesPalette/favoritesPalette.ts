@@ -248,6 +248,21 @@ export function openFavoritesPalette({
   }
 
   document.addEventListener('keydown', onDocumentKeyDown, true);
+
+  // Azure DevOps binds single letters as page shortcuts, and skips them when the
+  // keystroke came from an input. Our input is inside a shadow root, so by the
+  // time the event reaches the page's listeners it has been retargeted to the
+  // host element — not an input, as far as the page can tell — and the page
+  // acted on letters that were meant for the search box. That is why only the
+  // letters Azure DevOps does not bind could be typed. Stopping key events at
+  // the host keeps them from ever reaching those listeners; the input still gets
+  // them, because it is deeper than the point they are stopped at, and the
+  // navigation handler above runs earlier still, in the capture phase.
+  for (const type of ['keydown', 'keypress', 'keyup'] as const) {
+    host.addEventListener(type, (event) => {
+      event.stopPropagation();
+    });
+  }
   backdrop.addEventListener('mousedown', (event) => {
     // Only the backdrop itself — a click inside the dialog is not a dismissal.
     if (event.target === backdrop) {
