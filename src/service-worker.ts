@@ -72,7 +72,16 @@ chrome.commands?.onCommand.addListener((command) => {
     return;
   }
 
-  void (async () => {
+  void openFavoritesSearch();
+});
+
+/**
+ * Opens the favorites search wherever it belongs: over an Azure DevOps page when
+ * one is in front, otherwise in the side panel. Shared by the keyboard command
+ * and the panel's own trigger so both land on the same surface.
+ */
+async function openFavoritesSearch(): Promise<'overlay' | 'panel'> {
+  return await (async () => {
     let opened = false;
     let delivered = false;
     let error: string | null = null;
@@ -90,26 +99,40 @@ chrome.commands?.onCommand.addListener((command) => {
     // Anywhere else, and on a tab whose content script is not there to answer,
     // the side panel's own menu is the fallback rather than nothing at all.
     if (tab?.id != null && isAzureDevOpsUrl(tab.url)) {
+      const tabId = tab.id;
       try {
         const [favorites, tokens] = await Promise.all([
           loadStarredPages(),
           loadThemeTokens()
         ]);
-        await chrome.tabs.sendMessage(tab.id, {
+        const message = {
           type: 'OPEN_FAVORITES_PALETTE',
           payload: { favorites, tokens }
-        });
+        };
+
+        try {
+          await chrome.tabs.sendMessage(tabId, message);
+        } catch {
+          // A tab loaded before the extension was last reloaded has no content
+          // script, and refreshing it by hand is not something to ask of anyone
+          // — so inject one and ask again. This is the difference between the
+          // palette working sometimes and working always.
+          await chrome.scripting.executeScript({
+            target: { tabId },
+            files: ['content-script.js']
+          });
+          await chrome.tabs.sendMessage(tabId, message);
+        }
+
         await recordShortcutRun({
           opened: true,
           delivered: true,
           error: null,
           surface: 'overlay'
         });
-        return;
+        return 'overlay';
       } catch (paletteError) {
-        // Falls through to the side panel, but records why: the usual cause is
-        // a tab open since before the last extension reload, which has no
-        // content script to answer until it is refreshed.
+        // Falls through to the side panel, but records why.
         paletteFailure = describeError(paletteError);
       }
     }
@@ -148,8 +171,9 @@ chrome.commands?.onCommand.addListener((command) => {
       surface: 'panel',
       paletteError: paletteFailure
     });
+    return 'panel';
   })();
-});
+}
 
 /**
  * Records what the last keypress achieved, so the panel can say. A shortcut that
@@ -189,6 +213,10 @@ function describeError(error: unknown): string {
 type RuntimeMessage =
   | {
       type: 'PING_SERVICE_WORKER';
+      payload?: undefined;
+    }
+  | {
+      type: 'OPEN_FAVORITES_SEARCH';
       payload?: undefined;
     }
   | {
@@ -348,6 +376,17 @@ chrome.runtime.onMessage.addListener(
     if (message.type === 'PING_SERVICE_WORKER') {
       sendResponse({ ok: true, result: 'pong' });
       return;
+    }
+
+    if (message.type === 'OPEN_FAVORITES_SEARCH') {
+      // The panel's trigger goes through the worker too, so the button and the
+      // shortcut cannot disagree about where the search opens.
+      openFavoritesSearch()
+        .then((surface) => sendResponse({ ok: true, result: surface }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
     }
 
     if (message.type === 'OPEN_STARRED_PAGE') {

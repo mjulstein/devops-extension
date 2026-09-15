@@ -54,12 +54,19 @@ interface StarredPagesMenuProps {
    */
   focusRequest: number;
   onOpenStarredPage: (url: string, newTab: boolean) => Promise<void>;
+  /**
+   * Opens the favorites search wherever it belongs — the palette over an Azure
+   * DevOps page, this menu otherwise. Resolves false when this menu is the
+   * answer, which is when it opens itself.
+   */
+  onRequestFavoritesSearch: () => Promise<boolean>;
 }
 
 export function StarredPagesMenu({
   pages,
   focusRequest,
-  onOpenStarredPage
+  onOpenStarredPage,
+  onRequestFavoritesSearch
 }: StarredPagesMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -290,7 +297,19 @@ export function StarredPagesMenu({
         className={classes.trigger}
         aria-expanded={isOpen}
         aria-haspopup="menu"
-        onClick={() => (isOpen ? close() : open())}
+        onClick={() => {
+          if (isOpen) {
+            close();
+            return;
+          }
+          // The button opens the same surface the shortcut does. Only when that
+          // turns out to be this panel does the menu below open.
+          void onRequestFavoritesSearch().then((handledElsewhere) => {
+            if (!handledElsewhere) {
+              open();
+            }
+          });
+        }}
         title="Starred Azure DevOps pages"
       >
         Starred

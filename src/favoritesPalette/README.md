@@ -12,8 +12,13 @@ box. A dialog in the page has neither problem: it is centred where the user is
 already looking, and the page's document already has focus, so the search field
 simply takes it.
 
-Off Azure DevOps, and on a tab whose content script has not loaded, the shortcut
-still falls back to the side panel's menu, so the feature never simply fails.
+Off Azure DevOps the shortcut falls back to the side panel's menu, so the feature
+never simply fails. On an Azure DevOps tab whose content script predates the last
+extension reload, one is injected and the message retried — that is the
+difference between the palette working sometimes and working always.
+
+The panel's own favorites trigger routes through the same service-worker entry
+point, so the button and the shortcut always land on the same surface.
 
 ## Files in this directory
 

@@ -65,6 +65,7 @@ import {
   getActiveWorkItemContext,
   getAdoTheme,
   isActiveTabAzureDevOps,
+  openFavoritesSearch,
   setAdoTheme,
   retryConnection,
   setActiveWorkItemParent,
@@ -350,17 +351,26 @@ export function useSidepanelController() {
       }
 
       // The remembered theme paints immediately so the panel does not flash
-      // light before Azure DevOps answers; the live value replaces it below.
+      // light before Azure DevOps answers.
       const remembered = await loadLastKnownTheme();
       setTheme(remembered);
       paintTheme(remembered, hydratedSettings.themeOverrides);
-      void refreshAdoTheme(getTrimmedSettingsFromState(hydratedSettings));
 
       // Lazy ensure-valid PAT when the side panel opens (spec FR-005).
       const orgForConnection = hydratedSettings.organization.trim();
       if (orgForConnection) {
         void ensureConnection(orgForConnection)
-          .then((status) => setConnectionStatus(status))
+          .then((status) => {
+            setConnectionStatus(status);
+            // Only now is there anything to authenticate a read with. Asking
+            // first raced the connection and always failed with "Reconnect
+            // needed", which read as "the theme cannot be read at all".
+            if (status === 'connected') {
+              void refreshAdoTheme(
+                getTrimmedSettingsFromState(hydratedSettings)
+              );
+            }
+          })
           .catch(() => undefined);
       }
 
@@ -420,6 +430,15 @@ export function useSidepanelController() {
   useEffect(() => {
     reconcileBookmarksRef.current = () => {
       void reconcileBookmarks(starredPages, settings.bookmarkFolderName);
+    };
+  });
+
+  // Same reason: the runtime-message listener is registered once, but needs the
+  // current settings when a recovered connection makes the theme readable.
+  const refreshAdoThemeRef = useRef<() => void>(() => undefined);
+  useEffect(() => {
+    refreshAdoThemeRef.current = () => {
+      void refreshAdoTheme();
     };
   });
 
@@ -484,6 +503,11 @@ export function useSidepanelController() {
       }
       if (message.payload.status) {
         setConnectionStatus(message.payload.status);
+        // A connection recovered in the background is the other moment Azure
+        // DevOps's theme becomes readable.
+        if (message.payload.status === 'connected') {
+          refreshAdoThemeRef.current();
+        }
       }
       setAwaitingManualRetry(Boolean(message.payload.awaitingManualRetry));
     };
@@ -1210,6 +1234,20 @@ export function useSidepanelController() {
     }
   }
 
+  /**
+   * True when the favorites search opened somewhere else — the palette over an
+   * Azure DevOps page — so the in-panel menu should stay shut. A failure here
+   * means the panel is the surface, which is also the safe answer.
+   */
+  async function onRequestFavoritesSearch(): Promise<boolean> {
+    try {
+      const response = await openFavoritesSearch();
+      return response.ok && response.result === 'overlay';
+    } catch {
+      return false;
+    }
+  }
+
   async function onOpenStarredPage(url: string, newTab = false) {
     if (!newTab) {
       const [active] = await chrome.tabs.query({
@@ -1845,6 +1883,7 @@ export function useSidepanelController() {
     isActivePageStarred: isPageStarred(starredPages, activePage?.url),
     onToggleStarActivePage,
     onOpenStarredPage,
+    onRequestFavoritesSearch,
     onSaveStarredPages,
     refreshActivePage,
     quickTasks:

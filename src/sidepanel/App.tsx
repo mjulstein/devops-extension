@@ -32,6 +32,7 @@ export function App() {
           pages={controller.openableStarredPages}
           focusRequest={controller.starredFocusRequest}
           onOpenStarredPage={controller.onOpenStarredPage}
+          onRequestFavoritesSearch={controller.onRequestFavoritesSearch}
         />
         <DeduplicateTabsButton
           onClick={() => {
