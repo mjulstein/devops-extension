@@ -63,7 +63,9 @@ import {
   fetchWorkItems,
   getActiveTabId,
   getActiveWorkItemContext,
+  getAdoTheme,
   isActiveTabAzureDevOps,
+  setAdoTheme,
   retryConnection,
   setActiveWorkItemParent,
   type ConnectionStatus
@@ -91,6 +93,8 @@ import {
   toggleStarredPage,
   type StarredPage
 } from './starredPages';
+import { applyTheme, loadLastKnownTheme, saveLastKnownTheme } from './theme';
+import type { AdoTheme } from '@/devops/theme';
 import type { PullRequestActivityItem } from '@/types';
 import type { DebugLogEntry } from './DebugConsolePane';
 import type { SidepanelTabId } from './Tabs';
@@ -194,6 +198,11 @@ export function useSidepanelController() {
   // Bumped when the keyboard shortcut fires, so the menu opens and focuses its
   // search. A counter, so pressing it twice works.
   const [starredFocusRequest, setStarredFocusRequest] = useState(0);
+  // Azure DevOps's theme, mirrored rather than owned: the panel reads it, shows
+  // it, and writes changes straight back so the two cannot drift apart.
+  const [theme, setTheme] = useState<AdoTheme>('light');
+  const [isThemeKnown, setIsThemeKnown] = useState(false);
+  const [isThemeChanging, setIsThemeChanging] = useState(false);
   // Last known state of the mirrored folder, which is what lets a reconcile
   // tell a local addition from a deletion that arrived over bookmark sync.
   const bookmarkBaselineRef = useRef<BookmarkBaseline>({});
@@ -329,6 +338,13 @@ export function useSidepanelController() {
       ) {
         void saveSettings(hydratedSettings).catch(() => undefined);
       }
+
+      // The remembered theme paints immediately so the panel does not flash
+      // light before Azure DevOps answers; the live value replaces it below.
+      const remembered = await loadLastKnownTheme();
+      setTheme(remembered);
+      applyTheme(remembered);
+      void refreshAdoTheme(getTrimmedSettingsFromState(hydratedSettings));
 
       // Lazy ensure-valid PAT when the side panel opens (spec FR-005).
       const orgForConnection = hydratedSettings.organization.trim();
@@ -1100,6 +1116,50 @@ export function useSidepanelController() {
    * was held. In place is the default because a favorite is somewhere you are
    * going, not something you are collecting.
    */
+  /**
+   * Reads Azure DevOps's theme and adopts it. Failure leaves the switch
+   * disabled rather than guessing: without a connection there is no theme to
+   * mirror, and a switch that silently does nothing is worse than a dead one.
+   */
+  async function refreshAdoTheme(
+    currentSettings = getTrimmedSettingsFromState(settings)
+  ) {
+    const response = await getAdoTheme(currentSettings);
+    if (!response.ok || response.result === null) {
+      setIsThemeKnown(false);
+      return;
+    }
+    setTheme(response.result);
+    setIsThemeKnown(true);
+    applyTheme(response.result);
+    await saveLastKnownTheme(response.result);
+  }
+
+  async function onToggleTheme() {
+    const next: AdoTheme = theme === 'dark' ? 'light' : 'dark';
+    setIsThemeChanging(true);
+    // Applied before the round trip: the switch is about how this panel looks,
+    // and waiting on the network to redraw it feels broken.
+    setTheme(next);
+    applyTheme(next);
+    try {
+      const response = await setAdoTheme(
+        getTrimmedSettingsFromState(settings),
+        next
+      );
+      if (!response.ok) {
+        setTheme(theme);
+        applyTheme(theme);
+        setStatusMessage({ kind: 'error', text: response.error });
+        return;
+      }
+      await saveLastKnownTheme(next);
+      pushDebugLog('success', `Azure DevOps theme set to ${next}.`);
+    } finally {
+      setIsThemeChanging(false);
+    }
+  }
+
   async function onOpenStarredPage(url: string, newTab = false) {
     if (!newTab) {
       const [active] = await chrome.tabs.query({
@@ -1782,6 +1842,10 @@ export function useSidepanelController() {
     isActionDisabled: isLoading || isCreatingTask || isReconnectNeeded,
     isActiveItemPinned,
     connectionStatus,
+    theme,
+    isThemeKnown: isThemeKnown && !isReconnectNeeded,
+    isThemeChanging,
+    onToggleTheme,
     isReconnectNeeded,
     awaitingManualRetry,
     reconnectOrganization: settings.organization.trim(),

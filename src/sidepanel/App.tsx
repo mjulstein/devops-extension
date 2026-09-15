@@ -5,6 +5,7 @@ import { DeduplicateTabsButton } from './atoms/DeduplicateTabsButton';
 import { StarPageToggle } from './atoms/StarPageToggle';
 import { StarredPagesMenu } from './atoms/StarredPagesMenu';
 import { ReconnectBanner } from './atoms/ReconnectBanner';
+import { ThemeSwitch } from './atoms/ThemeSwitch';
 import classes from './App.module.css';
 import { Tabs } from './Tabs';
 import { useSidepanelController } from './useSidepanelController';
@@ -32,6 +33,16 @@ export function App() {
         <DeduplicateTabsButton
           onClick={() => {
             void controller.onDeduplicateTabs();
+          }}
+        />
+        {/* Kept at the panel's top right, as close to the browser's own close
+            button as an extension can put anything. */}
+        <ThemeSwitch
+          theme={controller.theme}
+          isEnabled={controller.isThemeKnown}
+          isBusy={controller.isThemeChanging}
+          onToggle={() => {
+            void controller.onToggleTheme();
           }}
         />
       </header>

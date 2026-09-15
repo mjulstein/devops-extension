@@ -4,32 +4,32 @@
   width: 100%;
   margin: 0;
   padding: 8px 10px;
-  background: #eef3ff;
-  border: 1px solid #ccd9f5;
+  background: var(--color-accent-surface);
+  border: 1px solid var(--color-accent-border);
   border-radius: 8px;
   text-align: left;
   cursor: pointer;
 }
 
 .banner:hover {
-  background: #e5edff;
+  background: var(--color-accent-surface);
 }
 
 .banner:focus-visible {
-  outline: 2px solid #4d88ff;
+  outline: 2px solid var(--color-accent-bright);
   outline-offset: 1px;
 }
 
 .label {
   font-size: 11px;
-  color: #5a6d96;
+  color: var(--color-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
 
 .title {
   font-size: 12px;
-  color: #1f2c4a;
+  color: var(--color-text);
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;

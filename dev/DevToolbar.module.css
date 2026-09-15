@@ -58,7 +58,8 @@
 }
 
 .frame {
-  background: #fff;
+  /* Follows the panel's theme, so dark mode is not a dark panel on a white card. */
+  background: var(--color-surface-sunken, #fff);
   border: 1px solid #30363d;
   border-radius: 8px;
   overflow: hidden;

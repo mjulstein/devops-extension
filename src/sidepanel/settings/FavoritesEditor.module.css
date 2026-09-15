@@ -12,12 +12,12 @@
 }
 
 .summary:hover {
-  color: #0a5bd3;
+  color: var(--color-accent);
 }
 
 .count {
   font-weight: 400;
-  color: #6e7781;
+  color: var(--color-text-muted);
 }
 
 .dirty {
@@ -25,8 +25,8 @@
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #9a6700;
-  background: #fff4d6;
+  color: var(--color-warning);
+  background: var(--color-warning-surface);
   border-radius: 999px;
   padding: 1px 6px;
 }
@@ -41,9 +41,9 @@
   font: inherit;
   font-size: 12px;
   padding: 4px 10px;
-  border: 1px solid #d0d7de;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: #f6f8fa;
+  background: var(--color-surface-raised);
   cursor: pointer;
 }
 
@@ -53,7 +53,7 @@
 }
 
 .button:hover:not(:disabled) {
-  border-color: #8b949e;
+  border-color: var(--color-text-subtle);
 }
 
 .section {
@@ -67,7 +67,7 @@
   gap: 6px;
   align-items: start;
   padding-block-end: 6px;
-  border-block-end: 1px solid #eaeef2;
+  border-block-end: 1px solid var(--color-border-subtle);
 }
 
 .fields {
@@ -80,14 +80,14 @@
   font: inherit;
   font-size: 12px;
   padding: 3px 6px;
-  border: 1px solid #d0d7de;
+  border: 1px solid var(--color-border);
   border-radius: 5px;
   min-width: 0;
 }
 
 .urlInput {
   font-size: 11px;
-  color: #57606a;
+  color: var(--color-text-secondary);
 }
 
 .actions {
@@ -100,16 +100,16 @@
   font-size: 12px;
   line-height: 1;
   padding: 3px 6px;
-  border: 1px solid #d0d7de;
+  border: 1px solid var(--color-border);
   border-radius: 5px;
-  background: #f6f8fa;
+  background: var(--color-surface-raised);
   cursor: pointer;
-  color: #57606a;
+  color: var(--color-text-secondary);
 }
 
 .iconButton:hover:not(:disabled) {
-  border-color: #8b949e;
-  color: #24292f;
+  border-color: var(--color-text-subtle);
+  color: var(--color-text);
 }
 
 .iconButton:disabled {
@@ -118,11 +118,11 @@
 }
 
 .remove:hover {
-  border-color: #b42318;
-  color: #b42318;
+  border-color: var(--color-danger);
+  color: var(--color-danger);
 }
 
 .empty {
   font-size: 12px;
-  color: #6e7781;
+  color: var(--color-text-muted);
 }

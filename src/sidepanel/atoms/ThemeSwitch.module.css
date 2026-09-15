@@ -1,0 +1,26 @@
+.button {
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  flex: 0 0 auto;
+  padding: 6px 7px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface-raised);
+  cursor: pointer;
+}
+
+.button:hover:enabled {
+  border-color: var(--color-border-strong);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Dimmed while the round trip to Azure DevOps is in flight, so a slow answer
+   reads as pending rather than ignored. */
+.busy {
+  opacity: 0.6;
+}

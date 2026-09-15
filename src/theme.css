@@ -1,0 +1,92 @@
+/*
+ * The one place colour is defined.
+ *
+ * Every colour in the side panel and the favorites palette resolves through a
+ * token here, so switching theme is a matter of swapping one set of values
+ * rather than hunting hex literals through thirty stylesheets. The light values
+ * are Azure DevOps's own light palette and the dark values its dark one, so the
+ * panel matches the product it reports on rather than approximating it.
+ *
+ * A theme is applied by setting `data-theme` on the document element; absent
+ * that, light is what you get. Settings may override individual tokens at
+ * runtime by setting them on the same element, which wins because an inline
+ * custom property beats a stylesheet one.
+ */
+
+:root {
+  /* Surfaces, from the page's own background outward to raised controls. */
+  --color-surface: #fff;
+  --color-surface-sunken: #f7f7f7;
+  --color-surface-raised: #f6f8fa;
+  --color-surface-hover: #f3f4f6;
+  --color-surface-muted: #eceff3;
+
+  /* Lines. */
+  --color-border: #d0d7de;
+  --color-border-strong: #8b949e;
+  --color-border-subtle: #eaeef2;
+
+  /* Text, from primary down to the faintest metadata. */
+  --color-text: #24292f;
+  --color-text-secondary: #57606a;
+  --color-text-muted: #6e7781;
+  --color-text-subtle: #8b949e;
+
+  /* Accent: links, selection, and the keyboard highlight. */
+  --color-accent: #0a5bd3;
+  --color-accent-strong: #0a3977;
+  --color-accent-bright: #4d88ff;
+  --color-accent-surface: #e8f1ff;
+  --color-accent-surface-strong: #ddeaff;
+  --color-accent-border: #ccd9f5;
+
+  /* Status tones, each a foreground on its own tinted ground. */
+  --color-success: #1a7f37;
+  --color-success-surface: #e8f8ee;
+  --color-warning: #9a6700;
+  --color-warning-surface: #fff4cc;
+  --color-danger: #b42318;
+  --color-danger-surface: #fdeaea;
+
+  --color-shadow: rgb(31 35 40 / 15%);
+}
+
+:root[data-theme='dark'] {
+  --color-surface: #1f1f1f;
+  --color-surface-sunken: #181818;
+  --color-surface-raised: #2b2b2b;
+  --color-surface-hover: #333;
+  --color-surface-muted: #2b2b2b;
+
+  --color-border: #3f3f3f;
+  --color-border-strong: #5a5a5a;
+  --color-border-subtle: #303030;
+
+  --color-text: #f0f0f0;
+  --color-text-secondary: #c9c9c9;
+  --color-text-muted: #a6a6a6;
+  --color-text-subtle: #8a8a8a;
+
+  --color-accent: #6cb0ff;
+  --color-accent-strong: #cfe3ff;
+  --color-accent-bright: #4d88ff;
+  --color-accent-surface: #16324f;
+  --color-accent-surface-strong: #1d4771;
+  --color-accent-border: #2d5b8a;
+
+  --color-success: #6fdd8b;
+  --color-success-surface: #12301d;
+  --color-warning: #e3b341;
+  --color-warning-surface: #3a2d0b;
+  --color-danger: #ff8080;
+  --color-danger-surface: #3d1717;
+
+  --color-shadow: rgb(0 0 0 / 45%);
+}
+
+/* The panel's own ground. Without this the document stays white behind themed
+   cards, which is the one surface no CSS module owns. */
+body {
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+}

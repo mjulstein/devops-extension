@@ -11,11 +11,11 @@
   align-items: baseline;
   font-size: 13px;
   padding-block-end: 2px;
-  border-block-end: 1px solid #eaeef2;
+  border-block-end: 1px solid var(--color-border-subtle);
 }
 
 .headerLink {
-  color: #0a5bd3;
+  color: var(--color-accent);
 }
 
 .headerType {
@@ -23,7 +23,7 @@
   text-overflow: clip;
   white-space: nowrap;
   min-width: 0;
-  color: #57606a;
+  color: var(--color-text-secondary);
 }
 
 .headerTitle {
@@ -37,7 +37,7 @@
 .headerFullRow {
   grid-column: 1 / -1;
   font-weight: 600;
-  color: #6e7781;
+  color: var(--color-text-muted);
 }
 
 /* Children sit slightly inset so the parent reads as the grouping level. */
@@ -45,5 +45,5 @@
   display: grid;
   gap: 2px;
   padding-inline-start: 8px;
-  border-inline-start: 2px solid #eaeef2;
+  border-inline-start: 2px solid var(--color-border-subtle);
 }

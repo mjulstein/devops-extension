@@ -15,7 +15,7 @@
   font: inherit;
   font-size: 13px;
   padding: 4px 6px;
-  border: 1px solid #d0d7de;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
 }
 
@@ -23,9 +23,9 @@
   font: inherit;
   font-weight: 600;
   padding: 4px 10px;
-  border: 1px solid #d0d7de;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: #f6f8fa;
+  background: var(--color-surface-raised);
   cursor: pointer;
 }
 
@@ -36,7 +36,7 @@
 
 .hint {
   font-size: 11px;
-  color: #6e7781;
+  color: var(--color-text-muted);
 }
 
 .list {
@@ -55,7 +55,7 @@
 }
 
 .rowFinished .title {
-  color: #6e7781;
+  color: var(--color-text-muted);
   text-decoration: line-through;
 }
 
@@ -97,7 +97,7 @@
 
 .id {
   font-variant-numeric: tabular-nums;
-  color: #0a5bd3;
+  color: var(--color-accent);
 }
 
 .title {
@@ -121,28 +121,28 @@
 }
 
 .stateTodo {
-  color: #4b5563;
-  background: #eceff3;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-muted);
 }
 
 .stateInProgress {
-  color: #8a5300;
-  background: #fdf0d5;
+  color: var(--color-warning);
+  background: var(--color-warning-surface);
 }
 
 .stateDone {
-  color: #14653a;
-  background: #dcf3e6;
+  color: var(--color-success);
+  background: var(--color-success-surface);
 }
 
 .stateBlocked {
-  color: #a4262c;
-  background: #fbe3e4;
+  color: var(--color-danger);
+  background: var(--color-danger-surface);
 }
 
 .stateUnknown {
-  color: #57606a;
-  background: #eceff3;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-muted);
 }
 
 .archive {
@@ -153,9 +153,9 @@
   border: none;
   background: none;
   cursor: pointer;
-  color: #8b949e;
+  color: var(--color-text-subtle);
 }
 
 .archive:hover {
-  color: #0a5bd3;
+  color: var(--color-accent);
 }

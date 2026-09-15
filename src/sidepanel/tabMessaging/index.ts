@@ -4,6 +4,7 @@ export { isActiveTabAzureDevOps } from './isActiveTabAzureDevOps';
 export { fetchWorkItems } from './fetchWorkItems';
 export { fetchAuthoredWorkItems } from './fetchAuthoredWorkItems';
 export { fetchClosedParentRollup } from './fetchClosedParentRollup';
+export { getAdoTheme, setAdoTheme } from './adoTheme';
 export { fetchPullRequestActivity } from './fetchPullRequestActivity';
 export { fetchQuickTasks } from './fetchQuickTasks';
 export { archiveQuickTask } from './archiveQuickTask';

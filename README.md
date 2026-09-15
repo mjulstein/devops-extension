@@ -88,6 +88,14 @@ Use the linked directory `README.md` files for structure details instead of expa
 
 Load `dist/` as the unpacked extension directory in Edge. After rebuilding, reload the extension in `edge://extensions`, then refresh any open Azure DevOps tab so the latest `token-interceptor.js` is re-injected.
 
+## Theme
+
+The panel follows Azure DevOps's own light/dark setting rather than keeping a
+second preference. The switch at the panel's top right shows which theme is in
+force and changes Azure DevOps's setting when clicked; it is disabled when there
+is no connection to read or change that setting. Colours are defined once in
+[`src/theme.css`](./src/theme.css) as semantic tokens for both themes.
+
 ## Configuration
 
 The extension stores runtime settings in browser storage.

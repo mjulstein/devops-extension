@@ -43,7 +43,7 @@
 
 .parentDetail {
   font-size: 12px;
-  color: #555;
+  color: var(--color-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -54,7 +54,7 @@
 }
 
 .parentLink {
-  color: #0a5bd3;
+  color: var(--color-accent);
 }
 
 .titleEmphasis {
@@ -73,7 +73,7 @@
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   text-decoration: none;
-  color: #0a5bd3;
+  color: var(--color-accent);
 }
 
 .pr:hover {
@@ -86,18 +86,18 @@
 }
 
 .prApproved {
-  color: #1a7f37;
+  color: var(--color-success);
   font-weight: 600;
 }
 
 .prRejected {
-  color: #b42318;
+  color: var(--color-danger);
 }
 
 .prWaiting {
-  color: #9a6700;
+  color: var(--color-warning);
 }
 
 .prDraft {
-  color: #6e7781;
+  color: var(--color-text-muted);
 }

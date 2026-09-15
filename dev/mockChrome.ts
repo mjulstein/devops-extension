@@ -9,6 +9,7 @@ import type { Scenario, ScenarioId } from './scenarios';
 // message router plus storage is enough to light up the whole UI.
 
 const STORAGE_KEY = 'devharness.storage';
+const HARNESS_THEME_KEY = 'devharness.adoTheme';
 const SCENARIO_KEY = 'devharness.scenario';
 
 export function readScenarioId(): ScenarioId {
@@ -112,6 +113,19 @@ async function route(
 
     case 'FETCH_WORK_ITEMS':
       return ok(scenario.workItems);
+
+    // Azure DevOps's theme, kept in the harness's own storage so the switch can
+    // be flipped and the panel seen in both themes without a real account.
+    case 'GET_ADO_THEME': {
+      return ok(readStore()[HARNESS_THEME_KEY] ?? 'light');
+    }
+
+    case 'SET_ADO_THEME': {
+      const theme = (message as { payload?: { theme?: unknown } }).payload
+        ?.theme;
+      writeStore({ ...readStore(), [HARNESS_THEME_KEY]: theme });
+      return ok(theme);
+    }
 
     case 'GET_ACTIVE_WORK_ITEM_CONTEXT':
       return scenario.activeContext

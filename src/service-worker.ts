@@ -15,6 +15,7 @@ import { isAzureDevOpsUrl } from './sidepanel/tabMessaging/isAzureDevOpsUrl';
 import { loadStarredPages } from './sidepanel/chromeStorage';
 import { fetchChildTasksForActiveParent } from './devops/childTasks';
 import { fetchPullRequestActivity } from './devops/pullRequestActivity';
+import { fetchAdoTheme, setAdoTheme, type AdoTheme } from './devops/theme';
 import { resolveActiveWorkItemContext } from './devops/activeParentContext';
 import { createChildTaskFromActivePage } from './devops/taskCreation';
 import { archiveQuickTask, createQuickTask } from './devops/quickTask';
@@ -197,6 +198,19 @@ type RuntimeMessage =
   | {
       type: 'FETCH_PULL_REQUEST_ACTIVITY';
       payload: FetchWorkItemsRequest;
+    }
+  | {
+      type: 'GET_ADO_THEME';
+      payload: {
+        settings: Settings;
+      };
+    }
+  | {
+      type: 'SET_ADO_THEME';
+      payload: {
+        settings: Settings;
+        theme: AdoTheme;
+      };
     }
   | {
       type: 'CREATE_QUICK_TASK';
@@ -539,6 +553,27 @@ chrome.runtime.onMessage.addListener(
           })
         )
         .then((result) => sendResponse({ ok: true, result }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'GET_ADO_THEME') {
+      resolveWorkItemsContext(message.payload.settings)
+        .then((context) => fetchAdoTheme(context.organization))
+        .then((result) => sendResponse({ ok: true, result }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'SET_ADO_THEME') {
+      const { theme } = message.payload;
+      resolveWorkItemsContext(message.payload.settings)
+        .then((context) => setAdoTheme(context.organization, theme))
+        .then(() => sendResponse({ ok: true, result: theme }))
         .catch((error: Error) =>
           sendResponse({ ok: false, error: error.message })
         );

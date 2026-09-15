@@ -9,9 +9,9 @@
   flex: 1 1 0;
   margin-top: 0;
   padding: 8px 12px;
-  border: 1px solid #c8c8c8;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #efefef;
+  background: var(--color-surface-hover);
   font-size: 12px;
   cursor: pointer;
 }
@@ -22,7 +22,7 @@
 }
 
 .tabHandle:focus-visible {
-  outline: 2px solid #4d88ff;
+  outline: 2px solid var(--color-accent-bright);
   outline-offset: 1px;
 }
 
@@ -60,11 +60,11 @@
 }
 
 .pinButtonPinned {
-  color: #0a5bd3;
+  color: var(--color-accent);
 }
 
 .pinButtonUnpinned {
-  color: #6a6a6a;
+  color: var(--color-text-muted);
 }
 
 .pinIcon {
@@ -81,7 +81,7 @@
 }
 
 .active {
-  background: #e8f1ff;
-  border-color: #9bb8e7;
+  background: var(--color-accent-surface);
+  border-color: var(--color-accent-border);
   font-weight: 600;
 }

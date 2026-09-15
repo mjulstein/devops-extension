@@ -109,7 +109,11 @@ export default defineConfig([
     ...cssRecommended,
     rules: {
       ...(cssRecommended.rules ?? {}),
-      'css/use-baseline': 'warn'
+      'css/use-baseline': 'warn',
+      // Colour tokens are declared once in `src/theme.css` and used from every
+      // CSS module. The rule lints each file alone, so it cannot see those
+      // declarations and would flag every token as unknown.
+      'css/no-invalid-properties': ['error', { allowUnknownVariables: true }]
     }
   }
 ]);

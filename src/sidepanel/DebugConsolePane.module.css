@@ -1,5 +1,5 @@
 .card {
-  background: #f7f7f7;
+  background: var(--color-surface-sunken);
   border-radius: 10px;
   padding: 14px;
   margin-bottom: 16px;
@@ -42,9 +42,9 @@
   max-height: 140px;
   overflow: auto;
   padding: 6px;
-  border: 1px solid #d4d4d4;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #fcfcfc;
+  background: var(--color-surface);
 }
 
 .debugConsoleEntry {
@@ -56,24 +56,24 @@
 }
 
 .debugConsoleTime {
-  color: #666;
+  color: var(--color-text-muted);
   white-space: nowrap;
 }
 
 .debugConsoleMessage {
-  color: #222;
+  color: var(--color-text);
   overflow-wrap: anywhere;
 }
 
 .successMessage {
-  color: #136b35;
+  color: var(--color-success);
 }
 
 .errorMessage {
-  color: #8b1b1b;
+  color: var(--color-danger);
 }
 
 .debugConsoleEmpty {
   font-size: 11px;
-  color: #666;
+  color: var(--color-text-muted);
 }
