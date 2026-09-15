@@ -9,6 +9,7 @@ import {
   writeScenarioId
 } from './mockChrome';
 import { DEV_ORGANIZATION, DEV_PROJECT, SCENARIOS } from './scenarios';
+import type { StarredPage } from '@/sidepanel/starredPages';
 import type { ScenarioId } from './scenarios';
 
 // The fake chrome global must exist before App (or anything it imports) runs.
@@ -60,11 +61,11 @@ const { openFavoritesPalette } = await import(
   '@/favoritesPalette/favoritesPalette'
 );
 (globalThis as unknown as { devPalette: unknown }).devPalette = async () => {
-  const stored = (await chrome.storage.local.get('starredPages')) as {
-    starredPages?: unknown;
-  };
+  const stored: Record<string, unknown> =
+    await chrome.storage.local.get('starredPages');
+  const favorites = stored.starredPages;
   openFavoritesPalette({
-    favorites: Array.isArray(stored.starredPages) ? stored.starredPages : [],
+    favorites: Array.isArray(favorites) ? (favorites as StarredPage[]) : [],
     onOpenPage: (url: string) => {
       (globalThis as unknown as { devPaletteOpened?: string }).devPaletteOpened =
         url;
