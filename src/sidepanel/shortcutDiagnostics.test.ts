@@ -76,3 +76,20 @@ describe('describeShortcutRun', () => {
     ).toContain('worked');
   });
 });
+
+describe('describeShortcutRun, palette surface', () => {
+  it('names the in-page palette, so a press that never touched the panel is not read as a failure', () => {
+    const text = describeShortcutRun(
+      {
+        at: 1_000_000,
+        opened: true,
+        delivered: true,
+        error: null,
+        surface: 'overlay'
+      },
+      1_000_000
+    );
+
+    expect(text).toContain('palette over the page');
+  });
+});

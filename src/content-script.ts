@@ -4,6 +4,8 @@ import { fetchChildTasksForActiveParent } from './devops/childTasks';
 import { createChildTaskFromActivePage } from './devops/taskCreation';
 import { setParentForActiveWorkItem } from './devops/parentAssignment';
 import { detectActiveWorkItemId } from './devops/activeWorkItemDom';
+import { openFavoritesPalette } from './favoritesPalette/favoritesPalette';
+import type { StarredPage } from './sidepanel/starredPages';
 type RuntimeMessage =
   | {
       type: 'REFRESH_TAB_ICONS';
@@ -32,6 +34,12 @@ type RuntimeMessage =
       type: 'SET_ACTIVE_WORK_ITEM_PARENT';
       payload: {
         parentId: number;
+      };
+    }
+  | {
+      type: 'OPEN_FAVORITES_PALETTE';
+      payload: {
+        favorites: StarredPage[];
       };
     };
 
@@ -72,6 +80,22 @@ window.addEventListener('message', (event) => {
 
 chrome.runtime.onMessage.addListener(
   (message: RuntimeMessage, _sender, sendResponse) => {
+    if (message.type === 'OPEN_FAVORITES_PALETTE') {
+      // The palette is drawn here rather than in the side panel because this
+      // document has focus, so its search field can simply take it.
+      openFavoritesPalette({
+        favorites: message.payload.favorites,
+        onOpenPage: (url) => {
+          void chrome.runtime.sendMessage({
+            type: 'OPEN_STARRED_PAGE',
+            payload: { url }
+          });
+        }
+      });
+      sendResponse({ ok: true, result: null });
+      return false;
+    }
+
     if (message.type === 'REFRESH_TAB_ICONS') {
       rescrapeTabIcons()
         .then(() => sendResponse({ ok: true, result: null }))

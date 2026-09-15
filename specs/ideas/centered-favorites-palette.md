@@ -2,7 +2,7 @@
 
 # Idea: Favorites As A Centered Command Palette
 
-**Status**: Incubating
+**Status**: Implemented — see `src/favoritesPalette/`; the open questions below that remain open are tracked in the theme idea
 **Created**: 2026-09-15
 **Source**: Conversation note — the favorites menu should open as a dialog in the centre of the screen rather than as a dropdown inside the side panel
 

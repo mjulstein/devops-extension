@@ -7,7 +7,12 @@ import {
   tryCreateLastVisitedDevOpsContext,
   tryCreateLastVisitedWorkItemRef
 } from './devops/lastVisitedContext';
-import { SHORTCUT_RUN_KEY } from './sidepanel/shortcutDiagnostics';
+import {
+  SHORTCUT_RUN_KEY,
+  type ShortcutRun
+} from './sidepanel/shortcutDiagnostics';
+import { isAzureDevOpsUrl } from './sidepanel/tabMessaging/isAzureDevOpsUrl';
+import { loadStarredPages } from './sidepanel/chromeStorage';
 import { fetchChildTasksForActiveParent } from './devops/childTasks';
 import { fetchPullRequestActivity } from './devops/pullRequestActivity';
 import { resolveActiveWorkItemContext } from './devops/activeParentContext';
@@ -70,11 +75,36 @@ chrome.commands?.onCommand.addListener((command) => {
     let delivered = false;
     let error: string | null = null;
 
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true
+    });
+
+    // On an Azure DevOps page the palette is drawn over the page itself, which
+    // is centred where the user is already looking and — because that document
+    // holds focus — can put the cursor in its search field without a fight.
+    // Anywhere else, and on a tab whose content script is not there to answer,
+    // the side panel's own menu is the fallback rather than nothing at all.
+    if (tab?.id != null && isAzureDevOpsUrl(tab.url)) {
+      try {
+        const favorites = await loadStarredPages();
+        await chrome.tabs.sendMessage(tab.id, {
+          type: 'OPEN_FAVORITES_PALETTE',
+          payload: { favorites }
+        });
+        await recordShortcutRun({
+          opened: true,
+          delivered: true,
+          error: null,
+          surface: 'overlay'
+        });
+        return;
+      } catch {
+        // Falls through to the side panel.
+      }
+    }
+
     try {
-      const [tab] = await chrome.tabs.query({
-        active: true,
-        currentWindow: true
-      });
       if (tab?.windowId != null) {
         await chrome.sidePanel.open({ windowId: tab.windowId });
         opened = true;
@@ -101,19 +131,34 @@ chrome.commands?.onCommand.addListener((command) => {
       console.warn('[commands] the panel never took the focus message');
     }
 
-    // Recorded so the panel can say what happened. A shortcut that is bound and
-    // still does nothing is otherwise only diagnosable from the service worker
-    // console, which is several clicks into a page most people never open.
-    await chrome.storage.local.set({
-      [SHORTCUT_RUN_KEY]: {
-        at: Date.now(),
-        opened,
-        delivered,
-        error
-      }
-    });
+    await recordShortcutRun({ opened, delivered, error, surface: 'panel' });
   })();
 });
+
+/**
+ * Records what the last keypress achieved, so the panel can say. A shortcut that
+ * is bound and still does nothing is otherwise only diagnosable from the service
+ * worker console, which is several clicks into a page most people never open.
+ */
+async function recordShortcutRun(run: Omit<ShortcutRun, 'at'>): Promise<void> {
+  await chrome.storage.local.set({
+    [SHORTCUT_RUN_KEY]: { ...run, at: Date.now() }
+  });
+}
+
+/** Reuses a tab already showing the page instead of piling up duplicates. */
+async function openStarredPage(url: string): Promise<void> {
+  const tabs = await chrome.tabs.query({});
+  const existing = tabs.find((tab) => tab.url?.split('#')[0] === url);
+  if (existing?.id != null) {
+    await chrome.tabs.update(existing.id, { active: true });
+    if (existing.windowId != null) {
+      await chrome.windows.update(existing.windowId, { focused: true });
+    }
+    return;
+  }
+  await chrome.tabs.create({ url });
+}
 
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -123,6 +168,12 @@ type RuntimeMessage =
   | {
       type: 'PING_SERVICE_WORKER';
       payload?: undefined;
+    }
+  | {
+      type: 'OPEN_STARRED_PAGE';
+      payload: {
+        url: string;
+      };
     }
   | {
       type: 'FETCH_WORK_ITEMS';
@@ -261,6 +312,16 @@ chrome.runtime.onMessage.addListener(
     if (message.type === 'PING_SERVICE_WORKER') {
       sendResponse({ ok: true, result: 'pong' });
       return;
+    }
+
+    if (message.type === 'OPEN_STARRED_PAGE') {
+      // Sent by the in-page palette, which cannot manage tabs itself.
+      openStarredPage(message.payload.url)
+        .then(() => sendResponse({ ok: true, result: null }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
     }
 
     if (message.type === 'GET_ACTIVE_WORK_ITEM_CONTEXT') {

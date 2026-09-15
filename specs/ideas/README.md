@@ -10,6 +10,7 @@ Keep ideas in Markdown only. Prefer one file per concept.
 
 - [`separate-open-closed-work-item-results.md`](./separate-open-closed-work-item-results.md) — explores stronger open/closed result typing and future independent refresh behavior for the Work items tab.
 - [`centered-favorites-palette.md`](./centered-favorites-palette.md) — opening favorites as a centred dialog with its own focused search: an overlay injected into Azure DevOps pages, falling back to the side-panel menu everywhere else.
+- [`shared-theme-with-azure-devops.md`](./shared-theme-with-azure-devops.md) — a switch in the panel that toggles Azure DevOps's own dark/light setting, with the panel following it instead of keeping a second preference.
 - [`provider-port-and-reconnect-generalization.md`](./provider-port-and-reconnect-generalization.md) — deferred follow-ups from the PAT redesign: a generic `RECONNECT` capability and provider-contributed settings UI toward the ADR-0001 provider port.
 
 ## Rules

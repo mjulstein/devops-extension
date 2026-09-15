@@ -53,6 +53,25 @@ void chrome.storage.local
     }
   });
 
+// The palette is drawn into an Azure DevOps page by the content script, which
+// the harness does not run. Exposed here so its layout and keyboard handling can
+// be exercised; over a real page it covers that page, not the panel.
+const { openFavoritesPalette } = await import(
+  '@/favoritesPalette/favoritesPalette'
+);
+(globalThis as unknown as { devPalette: unknown }).devPalette = async () => {
+  const stored = (await chrome.storage.local.get('starredPages')) as {
+    starredPages?: unknown;
+  };
+  openFavoritesPalette({
+    favorites: Array.isArray(stored.starredPages) ? stored.starredPages : [],
+    onOpenPage: (url: string) => {
+      (globalThis as unknown as { devPaletteOpened?: string }).devPaletteOpened =
+        url;
+    }
+  });
+};
+
 const { App } = await import('@/sidepanel/App');
 
 const WIDTH_KEY = 'devharness.width';

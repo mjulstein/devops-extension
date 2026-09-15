@@ -75,9 +75,14 @@ export interface ShortcutRun {
   at: number;
   /** Whether the side panel could be opened from the command handler. */
   opened: boolean;
-  /** Whether the panel acknowledged the focus message. */
+  /** Whether the surface acknowledged the message. */
   delivered: boolean;
   error: string | null;
+  /**
+   * Which surface answered: the palette drawn over an Azure DevOps page, or the
+   * side panel's own menu. Optional for runs recorded before the palette.
+   */
+  surface?: 'overlay' | 'panel';
 }
 
 /**
@@ -97,6 +102,9 @@ export function describeShortcutRun(
   }
 
   const ago = formatAgo(now - run.at);
+  if (run.surface === 'overlay' && run.delivered) {
+    return `Last pressed ${ago}: opened the palette over the page.`;
+  }
   if (run.error !== null) {
     return `Last pressed ${ago}: ${run.error}`;
   }

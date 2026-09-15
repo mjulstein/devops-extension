@@ -175,7 +175,9 @@ npm test
     page's icon taken from the browser's own favicon cache — the same icon the
     bookmarks menu draws, so favorites synced in from another machine are
     recognisable too.
-    **Ctrl+Period** opens the panel straight into that search; Settings →
+    **Ctrl+Period** opens a centred favorites palette over the Azure DevOps page
+    you are on, with its search already focused; on any other page it opens the
+    panel straight into the same search instead; Settings →
     **Tools** shows which keys the browser actually bound to it, and browsers
     silently leave the suggested combination unbound when it clashes with one of
     their own — assign your own at `edge://extensions/shortcuts` if it is blank. Name a
