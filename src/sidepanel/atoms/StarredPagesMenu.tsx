@@ -24,6 +24,15 @@ function getPanelRect(trigger: HTMLElement): DOMRect {
 const FOCUS_ATTEMPTS = 20;
 const FOCUS_RETRY_MS = 60;
 
+/**
+ * How long the menu may sit untouched before closing itself.
+ *
+ * A side panel can lose focus without any event this document can see, which
+ * leaves the menu covering the panel with no click of yours able to reach it.
+ * Closing on its own is the safety net for that.
+ */
+const IDLE_CLOSE_MS = 5000;
+
 interface MenuBox {
   top: number;
   left: number;
@@ -68,6 +77,7 @@ export function StarredPagesMenu({
   // Whether the search has actually taken focus, which decides whether losing
   // window focus means "the user clicked away" or "focus never arrived".
   const isFocusSettledRef = useRef(false);
+  const idleTimerRef = useRef(0);
 
   // Title matches rank above address matches — see rankFavorites.
   const visible = useMemo(() => rankFavorites(pages, query), [pages, query]);
@@ -96,6 +106,20 @@ export function StarredPagesMenu({
   function close() {
     setIsOpen(false);
     isFocusSettledRef.current = false;
+    window.clearTimeout(idleTimerRef.current);
+  }
+
+  /**
+   * Restarts the idle countdown. Called from the menu's own events rather than
+   * the document's, so activity anywhere else in the panel still counts as
+   * leaving the menu alone.
+   */
+  function markActivity() {
+    window.clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = window.setTimeout(() => {
+      setIsOpen(false);
+      isFocusSettledRef.current = false;
+    }, IDLE_CLOSE_MS);
   }
 
   async function openPage(url: string) {
@@ -166,6 +190,17 @@ export function StarredPagesMenu({
       cancelAnimationFrame(frame);
     };
   }, [focusRequest]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    markActivity();
+    return () => {
+      window.clearTimeout(idleTimerRef.current);
+    };
+    // Restarted by the menu's own handlers; this only starts the first count.
+  }, [isOpen, focusToken]);
 
   // Clicking outside the side panel entirely — anywhere in the page — should
   // dismiss the menu like clicking elsewhere in the panel does. The pointer
@@ -266,20 +301,36 @@ export function StarredPagesMenu({
           style={
             box ? { top: box.top, left: box.left, width: box.width } : undefined
           }
+          onMouseMove={markActivity}
+          onKeyDown={markActivity}
+          onPointerDown={markActivity}
         >
-          <input
-            ref={searchRef}
-            className={classes.search}
-            type="text"
-            value={query}
-            placeholder="Search favorites"
-            aria-label="Search favorites"
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setHighlight(0);
-            }}
-            onKeyDown={onNavigationKeyDown}
-          />
+          <div className={classes.searchRow}>
+            <input
+              ref={searchRef}
+              className={classes.search}
+              type="text"
+              value={query}
+              placeholder="Search favorites"
+              aria-label="Search favorites"
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setHighlight(0);
+              }}
+              onKeyDown={onNavigationKeyDown}
+            />
+            {/* The menu can fill the panel, so it needs a way out that does not
+                depend on finding panel left uncovered to click. */}
+            <button
+              type="button"
+              className={classes.closeButton}
+              aria-label="Close favorites"
+              title="Close"
+              onClick={close}
+            >
+              ✕
+            </button>
+          </div>
 
           {visible.length === 0 ? (
             <p className={classes.empty}>
