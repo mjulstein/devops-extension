@@ -77,3 +77,12 @@ bookmarks live in memory only, so a page reload empties the folder; the
 `chrome.runtime.getURL` resolves in the harness, but there is no favicon cache
 behind `/_favicon/`, so favorite rows keep the icon column blank here. Icons can
 only be seen in the loaded extension.
+
+## Simulating the keyboard shortcut
+
+The command lives in the service worker, which the harness does not run.
+`devShortcut()` in the console dispatches the same `FOCUS_STARRED_SEARCH`
+message the command sends, so the panel's half — opening the favorites menu and
+taking focus — can be exercised. The harness is one ordinary window, so window
+focus and blur behave more simply here than they do for a real side panel beside
+a page.

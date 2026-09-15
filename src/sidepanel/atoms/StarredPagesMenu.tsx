@@ -20,6 +20,10 @@ function getPanelRect(trigger: HTMLElement): DOMRect {
   return (panel ?? document.documentElement).getBoundingClientRect();
 }
 
+/** How long to keep trying to place the cursor, and how often. */
+const FOCUS_ATTEMPTS = 20;
+const FOCUS_RETRY_MS = 60;
+
 interface MenuBox {
   top: number;
   left: number;
@@ -58,6 +62,12 @@ export function StarredPagesMenu({
   // nowhere to go in that width. Measured rather than styled because the popup
   // has to escape the trigger's box to get there.
   const [box, setBox] = useState<MenuBox | null>(null);
+  // Bumped every time the cursor should go back to the search box: opening the
+  // menu, and pressing the shortcut again while it is already open.
+  const [focusToken, setFocusToken] = useState(0);
+  // Whether the search has actually taken focus, which decides whether losing
+  // window focus means "the user clicked away" or "focus never arrived".
+  const isFocusSettledRef = useRef(false);
 
   // Title matches rank above address matches — see rankFavorites.
   const visible = useMemo(() => rankFavorites(pages, query), [pages, query]);
@@ -80,10 +90,12 @@ export function StarredPagesMenu({
     setIsOpen(true);
     setQuery('');
     setHighlight(0);
+    setFocusToken((token) => token + 1);
   }
 
   function close() {
     setIsOpen(false);
+    isFocusSettledRef.current = false;
   }
 
   async function openPage(url: string) {
@@ -92,21 +104,51 @@ export function StarredPagesMenu({
   }
 
   // The search box is the point of the menu, so it takes focus however the menu
-  // was opened — mouse or shortcut. Deferred a frame because the input does not
-  // exist until the render that opens the menu has committed.
+  // was opened — mouse or shortcut.
+  //
+  // One `focus()` call is not enough. When the browser opens the side panel from
+  // a keyboard command, the panel's window does not necessarily hold focus yet,
+  // and focusing an element inside an unfocused document does not route
+  // keystrokes to it — which is why typing only worked after a click somewhere
+  // in the panel. So the request is retried on a short timer, and again whenever
+  // the panel gains focus, until the input really holds it.
   useEffect(() => {
-    if (!isOpen) {
+    if (!isOpen || focusToken === 0) {
       return;
     }
-    const frame = requestAnimationFrame(() => {
-      searchRef.current?.focus();
-    });
-    return () => {
-      cancelAnimationFrame(frame);
-    };
-  }, [isOpen]);
 
-  // A second press of the shortcut re-opens and clears the previous search.
+    let attempts = 0;
+    let timer = 0;
+
+    function attemptFocus() {
+      const input = searchRef.current;
+      if (!input) {
+        return;
+      }
+      input.focus();
+      attempts += 1;
+      const hasFocus = document.activeElement === input && document.hasFocus();
+      if (hasFocus) {
+        isFocusSettledRef.current = true;
+        return;
+      }
+      if (attempts < FOCUS_ATTEMPTS) {
+        timer = window.setTimeout(attemptFocus, FOCUS_RETRY_MS);
+      }
+    }
+
+    isFocusSettledRef.current = false;
+    timer = window.setTimeout(attemptFocus, 0);
+    window.addEventListener('focus', attemptFocus);
+
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('focus', attemptFocus);
+    };
+  }, [isOpen, focusToken]);
+
+  // A press of the shortcut opens the menu, and a second press while it is
+  // already open puts the cursor back in the search rather than doing nothing.
   useEffect(() => {
     if (focusRequest === 0) {
       return;
@@ -118,11 +160,32 @@ export function StarredPagesMenu({
       setIsOpen(true);
       setQuery('');
       setHighlight(0);
+      setFocusToken((token) => token + 1);
     });
     return () => {
       cancelAnimationFrame(frame);
     };
   }, [focusRequest]);
+
+  // Clicking outside the side panel entirely — anywhere in the page — should
+  // dismiss the menu like clicking elsewhere in the panel does. The pointer
+  // never reaches this document in that case; losing window focus is the only
+  // signal. Only acted on once the search has actually taken focus, so the
+  // retries above cannot close the menu they are trying to focus.
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    function onWindowBlur() {
+      if (isFocusSettledRef.current) {
+        close();
+      }
+    }
+    window.addEventListener('blur', onWindowBlur);
+    return () => {
+      window.removeEventListener('blur', onWindowBlur);
+    };
+  }, [isOpen]);
 
   // A side panel is resized by dragging its edge, which does not reopen the
   // menu, so the width has to follow.

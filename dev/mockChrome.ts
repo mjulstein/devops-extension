@@ -297,6 +297,8 @@ export function installMockChrome(getScenario: () => Scenario): void {
     title: 'Azure DevOps (dev harness)'
   };
 
+  const runtimeMessages = fakeEvent<[unknown]>();
+
   const mock = {
     storage: {
       local: {
@@ -321,7 +323,7 @@ export function installMockChrome(getScenario: () => Scenario): void {
       // seen in the loaded extension.
       getURL: (path: string) => new URL(path, window.location.origin).toString(),
       sendMessage: (message: RuntimeMessage) => route(message, getScenario()),
-      onMessage: noopEvent(),
+      onMessage: runtimeMessages,
       onStartup: noopEvent(),
       onInstalled: noopEvent(),
       reload: () => window.location.reload(),
@@ -359,6 +361,13 @@ export function installMockChrome(getScenario: () => Scenario): void {
   };
 
   (globalThis as unknown as { chrome: unknown }).chrome = mock;
+
+  // The keyboard command lives in the service worker, which the harness does not
+  // run. This is the message that command sends, so the panel's side of the
+  // shortcut — opening the favorites menu and taking focus — can be exercised.
+  (globalThis as unknown as { devShortcut: unknown }).devShortcut = () => {
+    runtimeMessages.dispatch({ type: 'FOCUS_STARRED_SEARCH' });
+  };
 
   // Exposed so the toolbar (and a CDP session) can act as "another machine":
   // change the folder behind the panel's back and see whether it notices.
