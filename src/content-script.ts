@@ -85,10 +85,10 @@ chrome.runtime.onMessage.addListener(
       // document has focus, so its search field can simply take it.
       openFavoritesPalette({
         favorites: message.payload.favorites,
-        onOpenPage: (url) => {
+        onOpenPage: (url, newTab) => {
           void chrome.runtime.sendMessage({
             type: 'OPEN_STARRED_PAGE',
-            payload: { url }
+            payload: { url, newTab }
           });
         }
       });

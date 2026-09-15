@@ -146,16 +146,22 @@ async function recordShortcutRun(run: Omit<ShortcutRun, 'at'>): Promise<void> {
   });
 }
 
-/** Reuses a tab already showing the page instead of piling up duplicates. */
-async function openStarredPage(url: string): Promise<void> {
-  const tabs = await chrome.tabs.query({});
-  const existing = tabs.find((tab) => tab.url?.split('#')[0] === url);
-  if (existing?.id != null) {
-    await chrome.tabs.update(existing.id, { active: true });
-    if (existing.windowId != null) {
-      await chrome.windows.update(existing.windowId, { focused: true });
+/**
+ * Navigates to a favorite: in place by default, in a new tab when asked.
+ *
+ * Falls back to a new tab when there is no active tab to navigate, which is the
+ * only thing left to do rather than silently dropping the request.
+ */
+async function openStarredPage(url: string, newTab: boolean): Promise<void> {
+  if (!newTab) {
+    const [active] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true
+    });
+    if (active?.id != null) {
+      await chrome.tabs.update(active.id, { url });
+      return;
     }
-    return;
   }
   await chrome.tabs.create({ url });
 }
@@ -173,6 +179,7 @@ type RuntimeMessage =
       type: 'OPEN_STARRED_PAGE';
       payload: {
         url: string;
+        newTab?: boolean;
       };
     }
   | {
@@ -316,7 +323,7 @@ chrome.runtime.onMessage.addListener(
 
     if (message.type === 'OPEN_STARRED_PAGE') {
       // Sent by the in-page palette, which cannot manage tabs itself.
-      openStarredPage(message.payload.url)
+      openStarredPage(message.payload.url, message.payload.newTab === true)
         .then(() => sendResponse({ ok: true, result: null }))
         .catch((error: Error) =>
           sendResponse({ ok: false, error: error.message })

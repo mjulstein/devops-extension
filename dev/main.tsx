@@ -66,9 +66,12 @@ const { openFavoritesPalette } = await import(
   const favorites = stored.starredPages;
   openFavoritesPalette({
     favorites: Array.isArray(favorites) ? (favorites as StarredPage[]) : [],
-    onOpenPage: (url: string) => {
-      (globalThis as unknown as { devPaletteOpened?: string }).devPaletteOpened =
-        url;
+    onOpenPage: (url: string, newTab: boolean) => {
+      (
+        globalThis as unknown as {
+          devPaletteOpened?: { url: string; newTab: boolean };
+        }
+      ).devPaletteOpened = { url, newTab };
     }
   });
 };

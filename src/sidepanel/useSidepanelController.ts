@@ -1095,16 +1095,21 @@ export function useSidepanelController() {
     await commitStarredPages(next);
   }
 
-  async function onOpenStarredPage(url: string) {
-    // Reuse a tab already showing the page instead of piling up duplicates.
-    const tabs = await chrome.tabs.query({});
-    const existing = tabs.find((tab) => tab.url?.split('#')[0] === url);
-    if (existing?.id != null) {
-      await chrome.tabs.update(existing.id, { active: true });
-      if (existing.windowId != null) {
-        await chrome.windows.update(existing.windowId, { focused: true });
+  /**
+   * Navigates to a favorite in the current tab, or in a new one when Ctrl/Cmd
+   * was held. In place is the default because a favorite is somewhere you are
+   * going, not something you are collecting.
+   */
+  async function onOpenStarredPage(url: string, newTab = false) {
+    if (!newTab) {
+      const [active] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true
+      });
+      if (active?.id != null) {
+        await chrome.tabs.update(active.id, { url });
+        return;
       }
-      return;
     }
     await chrome.tabs.create({ url });
   }

@@ -15,7 +15,7 @@
 // focus — it is what the user is looking at — so the search field simply takes
 // it, with none of the retrying the side panel needs.
 
-import type { StarredPage } from '@/sidepanel/starredPages';
+import { wantsNewTab, type StarredPage } from '@/sidepanel/starredPages';
 import {
   buildPaletteView,
   resolvePaletteKey,
@@ -26,8 +26,11 @@ const HOST_ID = 'devops-ext-favorites-palette';
 
 export interface PaletteOptions {
   favorites: StarredPage[];
-  /** Called with the chosen page's url. The palette closes first. */
-  onOpenPage: (url: string) => void;
+  /**
+   * Called with the chosen page's url, and whether the user asked for a new tab
+   * (Ctrl or Cmd). The palette closes first either way.
+   */
+  onOpenPage: (url: string, newTab: boolean) => void;
   /** Where to attach. Defaults to the document body. */
   container?: HTMLElement;
 }
@@ -153,13 +156,13 @@ export function openFavoritesPalette({
     document.removeEventListener('keydown', onDocumentKeyDown, true);
   }
 
-  function openRow(index: number) {
+  function openRow(index: number, event: MouseEvent | KeyboardEvent) {
     const target = view.rows[index];
     if (!target) {
       return;
     }
     close();
-    onOpenPage(target.url);
+    onOpenPage(target.url, wantsNewTab(event));
   }
 
   function render() {
@@ -193,7 +196,7 @@ export function openFavoritesPalette({
         view = { ...view, highlight: index };
         render();
       });
-      row.addEventListener('click', () => openRow(index));
+      row.addEventListener('click', (event) => openRow(index, event));
       list.append(row);
     });
 
@@ -226,7 +229,7 @@ export function openFavoritesPalette({
       render();
       return;
     }
-    openRow(action.index);
+    openRow(action.index, event);
   }
 
   document.addEventListener('keydown', onDocumentKeyDown, true);

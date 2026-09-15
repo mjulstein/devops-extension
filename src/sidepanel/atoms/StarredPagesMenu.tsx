@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import classes from './StarredPagesMenu.module.css';
-import { rankFavorites, type StarredPage } from '../starredPages';
+import { rankFavorites, wantsNewTab, type StarredPage } from '../starredPages';
 import { getFavoriteIconUrl } from '../favoriteIcon';
 
 /**
@@ -50,7 +50,7 @@ interface StarredPagesMenuProps {
    * second press re-opens and re-focuses even if the menu is already open.
    */
   focusRequest: number;
-  onOpenStarredPage: (url: string) => Promise<void>;
+  onOpenStarredPage: (url: string, newTab: boolean) => Promise<void>;
 }
 
 export function StarredPagesMenu({
@@ -122,9 +122,12 @@ export function StarredPagesMenu({
     }, IDLE_CLOSE_MS);
   }
 
-  async function openPage(url: string) {
+  async function openPage(
+    url: string,
+    event: React.MouseEvent | React.KeyboardEvent
+  ) {
     close();
-    await onOpenStarredPage(url);
+    await onOpenStarredPage(url, wantsNewTab(event));
   }
 
   // The search box is the point of the menu, so it takes focus however the menu
@@ -272,7 +275,7 @@ export function StarredPagesMenu({
       const target = visible[highlight] ?? visible[0];
       if (target) {
         event.preventDefault();
-        void openPage(target.url);
+        void openPage(target.url, event);
       }
     }
   }
@@ -354,8 +357,8 @@ export function StarredPagesMenu({
                 title={page.url}
                 onMouseEnter={() => setHighlight(index)}
                 onKeyDown={onNavigationKeyDown}
-                onClick={() => {
-                  void openPage(page.url);
+                onClick={(event) => {
+                  void openPage(page.url, event);
                 }}
               >
                 <FavoriteIcon url={page.url} />

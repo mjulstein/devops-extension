@@ -24,6 +24,11 @@ still falls back to the side panel's menu, so the feature never simply fails.
 - `favoritesPalette.ts` — the dialog itself, built by hand rather than with the
   side panel's React components because it renders into a page it does not own.
 
+Choosing a favorite navigates the current tab. Holding Ctrl (or Cmd) opens it in
+a new tab instead, following the browser's own convention — the palette reports
+which was asked for and the service worker does the navigating, since a content
+script cannot manage tabs.
+
 ## Styling
 
 The shadow root is for layout, not for colour: the host page's rules cannot

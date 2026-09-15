@@ -10,6 +10,7 @@ import {
   sanitizeStarredPages,
   toggleStarredPage,
   updateStarredPage,
+  wantsNewTab,
   type StarredPage
 } from './starredPages';
 
@@ -465,5 +466,17 @@ describe('sanitizeStarredPages', () => {
     ]);
     expect(result.map((p) => p.label)).toEqual(['B', 'A']);
     expect(result[0]?.starredAt).toBe(NOW);
+  });
+});
+
+describe('wantsNewTab', () => {
+  it('opens in place by default, which is what keeps tabs from piling up', () => {
+    expect(wantsNewTab({})).toBe(false);
+    expect(wantsNewTab({ ctrlKey: false, metaKey: false })).toBe(false);
+  });
+
+  it('treats Ctrl and Cmd alike, following the browser itself', () => {
+    expect(wantsNewTab({ ctrlKey: true })).toBe(true);
+    expect(wantsNewTab({ metaKey: true })).toBe(true);
   });
 });

@@ -295,3 +295,18 @@ export function sanitizeStarredPages(pages: StarredPage[]): StarredPage[] {
 
   return result;
 }
+
+/**
+ * Whether a favorite should open in a new tab rather than in place.
+ *
+ * Opening in the current tab is the default because a favorite is somewhere you
+ * are going, not something you are collecting — the old behaviour left a trail
+ * of tabs behind an afternoon's navigation. Ctrl (or Cmd) is the browser's own
+ * convention for "and keep this one", so it is what asks for a new tab.
+ */
+export function wantsNewTab(event: {
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+}): boolean {
+  return Boolean(event.ctrlKey) || Boolean(event.metaKey);
+}

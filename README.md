@@ -175,6 +175,7 @@ npm test
     page's icon taken from the browser's own favicon cache — the same icon the
     bookmarks menu draws, so favorites synced in from another machine are
     recognisable too.
+    A favorite opens in the current tab; hold **Ctrl** to open it in a new one.
     **Ctrl+Period** opens a centred favorites palette over the Azure DevOps page
     you are on, with its search already focused; on any other page it opens the
     panel straight into the same search instead; Settings →
