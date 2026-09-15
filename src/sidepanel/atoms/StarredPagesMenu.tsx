@@ -16,7 +16,10 @@ import { getFavoriteIconUrl } from '../favoriteIcon';
  * the panel is a framed region rather than the whole window, lines up too.
  */
 function getPanelRect(trigger: HTMLElement): DOMRect {
-  const panel = trigger.closest('header')?.parentElement;
+  // Marked on the panel root rather than inferred from the markup around the
+  // trigger, which has already moved once and would silently take the menu's
+  // width with it.
+  const panel = trigger.closest('[data-panel-root]');
   return (panel ?? document.documentElement).getBoundingClientRect();
 }
 

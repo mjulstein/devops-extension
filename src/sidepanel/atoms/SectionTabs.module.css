@@ -1,4 +1,4 @@
-/* Strip plus a pinned action area. The strip scrolls; the actions do not, so a
+/* Strip plus a pinned action area. The strip wraps; the actions do not, so a
    region-wide control stays reachable at any panel width. */
 .row {
   display: flex;
@@ -8,9 +8,7 @@
   border-block-end: 1px solid var(--color-border);
 }
 
-/* Tabs plus an action rarely fit a 360px panel, so the strip scrolls. */
 .stripWrap {
-  position: relative;
   display: flex;
   flex: 1 1 auto;
   min-width: 0;
@@ -23,18 +21,6 @@
   border-block-end: none;
 }
 
-/* The fade on the trailing edge is what makes a half-shown tab read as "scroll
-   for more" rather than as a clipping bug. Matches the card it sits on. */
-.stripWrap::after {
-  content: '';
-  position: absolute;
-  inset-block: 0;
-  inset-inline-end: 0;
-  width: 20px;
-  background: linear-gradient(to right, rgb(247 247 247 / 0%), var(--color-surface-sunken));
-  pointer-events: none;
-}
-
 .actions {
   flex: 0 0 auto;
   display: flex;
@@ -42,20 +28,16 @@
   padding-block-end: 4px;
 }
 
-/* The panel can be as narrow as 320px, so a strip that does not fit scrolls
-   rather than wrapping labels onto two lines or clipping the last tab. */
+/* The panel can be as narrow as 320px. Tabs wrap onto as many lines as they
+   need: a strip that scrolls hides the tabs that did not fit, and a tab you
+   cannot see is a tab you cannot reach. */
 .tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 2px;
   align-items: stretch;
   margin-block-end: 8px;
   border-block-end: 1px solid var(--color-border);
-  overflow-x: auto;
-}
-
-/* Chromium-only target, so the vendor rule is enough to hide the strip's bar. */
-.tabs::-webkit-scrollbar {
-  display: none;
 }
 
 .tab {

@@ -16,8 +16,25 @@ export function App() {
   const controller = useSidepanelController();
 
   return (
-    <div className={classes.wrap}>
-      <header className={classes.bannerRow}>
+    <div className={classes.wrap} data-panel-root="">
+      {/* The browser's own side-panel header — the one with the extension name
+          and the close button — belongs to the browser and cannot be drawn
+          into, so the panel carries its own title bar. The theme switch sits
+          here rather than among the controls below: it acts on the whole panel,
+          not on any one of them. */}
+      <header className={classes.titleBar}>
+        <h1 className={classes.title}>DevOps Daily Export</h1>
+        <ThemeSwitch
+          theme={controller.theme}
+          isEnabled={controller.isThemeKnown}
+          isBusy={controller.isThemeChanging}
+          onToggle={() => {
+            void controller.onToggleTheme();
+          }}
+        />
+      </header>
+
+      <div className={classes.bannerRow}>
         {/* The active-item banner used to live here; it now sits at the top of
             the Active item tab, where it is actually relevant. */}
         <StarPageToggle
@@ -35,17 +52,7 @@ export function App() {
             void controller.onDeduplicateTabs();
           }}
         />
-        {/* Kept at the panel's top right, as close to the browser's own close
-            button as an extension can put anything. */}
-        <ThemeSwitch
-          theme={controller.theme}
-          isEnabled={controller.isThemeKnown}
-          isBusy={controller.isThemeChanging}
-          onToggle={() => {
-            void controller.onToggleTheme();
-          }}
-        />
-      </header>
+      </div>
 
       <Tabs
         activeTab={controller.activeTab}
