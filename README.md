@@ -94,7 +94,10 @@ The panel follows Azure DevOps's own light/dark setting rather than keeping a
 second preference. The switch at the panel's top right shows which theme is in
 force and changes Azure DevOps's setting when clicked; it is disabled when there
 is no connection to read or change that setting. Colours are defined once in
-[`src/theme.css`](./src/theme.css) as semantic tokens for both themes.
+[`src/theme.css`](./src/theme.css) as semantic tokens for both themes, and
+Settings → **Theme** lists every token for both palettes so any of them can be
+overridden. Overrides apply to the panel and to the favorites palette, and only
+what you change is stored — anything left alone keeps following the defaults.
 
 ## Configuration
 

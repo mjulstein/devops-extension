@@ -7,5 +7,6 @@ export const defaultSettings: Settings = {
   todoStates: [],
   quickTaskParentId: '',
   quickTaskArchiveId: '',
-  bookmarkFolderName: ''
+  bookmarkFolderName: '',
+  themeOverrides: { light: {}, dark: {} }
 };

@@ -31,6 +31,11 @@ script cannot manage tabs.
 
 ## Styling
 
+Colour resolves in three steps: the side panel's own tokens first, passed in with
+the open message so the dialog matches the panel including anything overridden in
+Settings; then Azure DevOps's page variables, so it is still themed with the page
+when no tokens were passed; then a light literal.
+
 The shadow root is for layout, not for colour: the host page's rules cannot
 reach in and break the dialog, but CSS custom properties are inherited
 properties and cross the shadow boundary freely. Every colour reads Azure

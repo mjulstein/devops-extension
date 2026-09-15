@@ -1,4 +1,5 @@
 import '@/theme.css';
+import { loadThemeTokens } from '@/sidepanel/theme';
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { DevToolbar } from './DevToolbar';
@@ -65,8 +66,12 @@ const { openFavoritesPalette } = await import(
   const stored: Record<string, unknown> =
     await chrome.storage.local.get('starredPages');
   const favorites = stored.starredPages;
+  const tokens = await loadThemeTokens();
   openFavoritesPalette({
     favorites: Array.isArray(favorites) ? (favorites as StarredPage[]) : [],
+    // The service worker passes these in the extension; here they come straight
+    // from the storage the panel wrote them to.
+    tokens,
     onOpenPage: (url: string, newTab: boolean) => {
       (
         globalThis as unknown as {

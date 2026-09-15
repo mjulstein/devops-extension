@@ -27,7 +27,8 @@ describe('fetchWorkItems.test.ts', () => {
         todoStates: [],
         quickTaskParentId: '',
         quickTaskArchiveId: '',
-        bookmarkFolderName: ''
+        bookmarkFolderName: '',
+        themeOverrides: { light: {}, dark: {} }
       },
       closedDateRange: {
         start: '2026-03-10',
@@ -73,7 +74,8 @@ describe('fetchWorkItems.test.ts', () => {
           todoStates: [],
           quickTaskParentId: '',
           quickTaskArchiveId: '',
-          bookmarkFolderName: ''
+          bookmarkFolderName: '',
+          themeOverrides: { light: {}, dark: {} }
         },
         closedDateRange: {
           start: '2026-03-10',
@@ -98,7 +100,8 @@ describe('fetchWorkItems.test.ts', () => {
         todoStates: [],
         quickTaskParentId: '',
         quickTaskArchiveId: '',
-        bookmarkFolderName: ''
+        bookmarkFolderName: '',
+        themeOverrides: { light: {}, dark: {} }
       },
       closedDateRange: {
         start: '2026-03-10',

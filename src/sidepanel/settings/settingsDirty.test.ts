@@ -11,7 +11,8 @@ const SAVED: Settings = {
   todoStates: ['To Do', 'In Progress'],
   quickTaskParentId: '9000',
   quickTaskArchiveId: '9100',
-  bookmarkFolderName: 'my-favorites'
+  bookmarkFolderName: 'my-favorites',
+  themeOverrides: { light: {}, dark: {} }
 };
 
 describe('findChangedSettingsTabs', () => {

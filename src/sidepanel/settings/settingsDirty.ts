@@ -8,6 +8,7 @@ export type SettingsTab =
   | 'connection'
   | 'quick'
   | 'favorites'
+  | 'theme'
   | 'token'
   | 'maintenance';
 
@@ -15,7 +16,8 @@ export type SettingsTab =
 export const SAVABLE_SETTINGS_TABS = [
   'connection',
   'quick',
-  'favorites'
+  'favorites',
+  'theme'
 ] as const satisfies readonly SettingsTab[];
 
 export type SavableSettingsTab = (typeof SAVABLE_SETTINGS_TABS)[number];
@@ -23,13 +25,15 @@ export type SavableSettingsTab = (typeof SAVABLE_SETTINGS_TABS)[number];
 const FIELDS_BY_TAB: Record<SavableSettingsTab, (keyof Settings)[]> = {
   connection: ['organization', 'project', 'assignedTo', 'todoStates'],
   quick: ['quickTaskParentId', 'quickTaskArchiveId'],
-  favorites: ['bookmarkFolderName']
+  favorites: ['bookmarkFolderName'],
+  theme: ['themeOverrides']
 };
 
 export const SETTINGS_TAB_LABELS: Record<SettingsTab, string> = {
   connection: 'Project',
   quick: 'Quick',
   favorites: 'Favorites',
+  theme: 'Theme',
   token: 'Token',
   maintenance: 'Tools'
 };
@@ -42,11 +46,11 @@ function isFieldChanged(
   const next = draft[field];
   const previous = saved[field];
 
-  if (Array.isArray(next) && Array.isArray(previous)) {
-    return (
-      next.length !== previous.length ||
-      next.some((value, index) => value !== previous[index])
-    );
+  // Settings fields are strings, string arrays, or the nested theme-override
+  // record — all small, and all compared by value, so a serialised comparison
+  // covers every case without a walk per shape.
+  if (typeof next === 'object' && next !== null) {
+    return JSON.stringify(next) !== JSON.stringify(previous);
   }
 
   return next !== previous;

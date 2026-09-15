@@ -5,11 +5,13 @@
 //
 // The shadow root is for layout, not for colour. The host page's rules cannot
 // reach in and break the dialog, but CSS custom properties are inherited
-// properties and cross the boundary freely — so every colour here reads Azure
-// DevOps's own theme variables and falls back to a light default only when they
-// are absent. The palette therefore follows the page into dark mode without
-// knowing anything about themes. Do not reintroduce `all: initial` on the host:
-// it severs exactly that inheritance.
+// properties and cross the boundary freely.
+//
+// Colour therefore resolves in three steps: the panel's own tokens first, when
+// they were passed in; then Azure DevOps's page variables, so the dialog is
+// still themed with the page when they were not; then a light literal. Do not
+// reintroduce `all: initial` on the host — it severs the inheritance the middle
+// step depends on.
 //
 // The payoff for living in the page is focus. The page's document already has
 // focus — it is what the user is looking at — so the search field simply takes
@@ -26,6 +28,12 @@ const HOST_ID = 'devops-ext-favorites-palette';
 
 export interface PaletteOptions {
   favorites: StarredPage[];
+  /**
+   * The side panel's resolved colour tokens, so the dialog matches the panel
+   * rather than only the page. Absent, it falls back to Azure DevOps's own
+   * variables, which is still a themed dialog.
+   */
+  tokens?: Record<string, string>;
   /**
    * Called with the chosen page's url, and whether the user asked for a new tab
    * (Ctrl or Cmd). The palette closes first either way.
@@ -56,9 +64,9 @@ const STYLES = `
     max-height: 70vh;
     display: flex;
     flex-direction: column;
-    background: var(--background-color, #fff);
-    color: var(--text-primary-color, #1f2328);
-    border: 1px solid var(--palette-neutral-20, #d0d7de);
+    background: var(--color-surface, var(--background-color, #fff));
+    color: var(--color-text, var(--text-primary-color, #1f2328));
+    border: 1px solid var(--color-border, var(--palette-neutral-20, #d0d7de));
     border-radius: 10px;
     box-shadow: 0 16px 48px rgb(31 35 40 / 32%);
     overflow: hidden;
@@ -68,7 +76,7 @@ const STYLES = `
     font-size: 15px;
     padding: 12px 14px;
     border: none;
-    border-block-end: 1px solid var(--palette-neutral-20, #d0d7de);
+    border-block-end: 1px solid var(--color-border, var(--palette-neutral-20, #d0d7de));
     background: transparent;
     color: inherit;
     outline: none;
@@ -88,14 +96,14 @@ const STYLES = `
     color: inherit;
     cursor: pointer;
   }
-  .row:hover { background: var(--palette-neutral-4, #f3f4f6); }
+  .row:hover { background: var(--color-surface-hover, var(--palette-neutral-4, #f3f4f6)); }
   .rowHighlighted, .rowHighlighted:hover {
-    background: var(--communication-background, #ddeaff);
-    color: var(--text-on-communication-background, #0a3977);
+    background: var(--color-accent-surface-strong, var(--communication-background, #ddeaff));
+    color: var(--color-accent-strong, var(--text-on-communication-background, #0a3977));
   }
   .url {
     font-size: 11px;
-    color: var(--text-secondary-color, #6e7781);
+    color: var(--color-text-muted, var(--text-secondary-color, #6e7781));
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -103,7 +111,7 @@ const STYLES = `
   .empty {
     padding: 14px;
     font-size: 13px;
-    color: var(--text-secondary-color, #6e7781);
+    color: var(--color-text-muted, var(--text-secondary-color, #6e7781));
   }
 `;
 
@@ -116,6 +124,7 @@ const STYLES = `
 export function openFavoritesPalette({
   favorites,
   onOpenPage,
+  tokens,
   container = document.body
 }: PaletteOptions): PaletteHandle {
   closeFavoritesPalette(container);
@@ -126,6 +135,12 @@ export function openFavoritesPalette({
 
   const style = document.createElement('style');
   style.textContent = STYLES;
+
+  // Set on the host so they are inherited into the shadow tree, where the
+  // dialog's own rules read them ahead of the page's.
+  for (const [token, value] of Object.entries(tokens ?? {})) {
+    host.style.setProperty(`--${token}`, value);
+  }
 
   const backdrop = document.createElement('div');
   backdrop.className = 'backdrop';

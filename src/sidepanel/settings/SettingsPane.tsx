@@ -1,4 +1,5 @@
 import type { PatRecord, Settings } from '@/types';
+import type { AdoTheme } from '@/devops/theme';
 import { useEffect, useState } from 'react';
 import {
   clearPatData,
@@ -22,6 +23,7 @@ import classes from './SettingsCard.module.css';
 import { FavoritesEditor } from './FavoritesEditor';
 import { SettingsHelp } from './SettingsHelp';
 import { ShortcutStatus } from './ShortcutStatus';
+import { ThemeEditor } from './ThemeEditor';
 import type { StarredPage } from '../starredPages';
 
 interface SettingsCardProps {
@@ -35,6 +37,8 @@ interface SettingsCardProps {
   savedSettings: Settings;
   bookmarkSyncStatus: string | null;
   onSaveStarredPages: (pages: StarredPage[]) => Promise<void>;
+  /** The theme in force, so the theme editor opens on the one in view. */
+  activeTheme: AdoTheme;
 }
 
 export function SettingsPane({
@@ -46,7 +50,8 @@ export function SettingsPane({
   starredPages,
   savedSettings,
   bookmarkSyncStatus,
-  onSaveStarredPages
+  onSaveStarredPages,
+  activeTheme
 }: SettingsCardProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('connection');
   const [todoStatesText, setTodoStatesText] = useState(() =>
@@ -202,6 +207,11 @@ export function SettingsPane({
       title: 'Starred pages and bookmark syncing'
     },
     {
+      id: 'theme',
+      label: SETTINGS_TAB_LABELS.theme,
+      title: 'Colours for light and dark mode'
+    },
+    {
       id: 'token',
       label: SETTINGS_TAB_LABELS.token,
       title: 'Personal access token status'
@@ -224,7 +234,8 @@ export function SettingsPane({
       todoStates: parseTodoStatesInput(todoStatesText),
       quickTaskParentId: settings.quickTaskParentId.trim(),
       quickTaskArchiveId: settings.quickTaskArchiveId.trim(),
-      bookmarkFolderName: settings.bookmarkFolderName.trim()
+      bookmarkFolderName: settings.bookmarkFolderName.trim(),
+      themeOverrides: settings.themeOverrides
     },
     savedSettings
   );
@@ -494,6 +505,26 @@ export function SettingsPane({
               {patActionMessage}
             </span>
           )}
+        </>
+      )}
+
+      {activeTab === 'theme' && (
+        <>
+          <SettingsHelp summary="About theme colours">
+            <p>
+              The panel follows Azure DevOps&apos;s light/dark setting — the
+              switch at the top right changes it for both. These are the colours
+              each theme uses; change one and it applies to the panel and to the
+              favorites palette. Only what you change is stored, so anything
+              left alone keeps following the defaults.
+            </p>
+          </SettingsHelp>
+
+          <ThemeEditor
+            settings={settings}
+            activeTheme={activeTheme}
+            onChange={onChange}
+          />
         </>
       )}
 

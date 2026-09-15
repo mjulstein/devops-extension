@@ -93,7 +93,17 @@ import {
   toggleStarredPage,
   type StarredPage
 } from './starredPages';
-import { applyTheme, loadLastKnownTheme, saveLastKnownTheme } from './theme';
+import {
+  applyTheme,
+  loadLastKnownTheme,
+  saveLastKnownTheme,
+  saveThemeTokens
+} from './theme';
+import {
+  applyThemeOverrides,
+  readThemePalettes,
+  resolvePalette
+} from './themeTokens';
 import type { AdoTheme } from '@/devops/theme';
 import type { PullRequestActivityItem } from '@/types';
 import type { DebugLogEntry } from './DebugConsolePane';
@@ -343,7 +353,7 @@ export function useSidepanelController() {
       // light before Azure DevOps answers; the live value replaces it below.
       const remembered = await loadLastKnownTheme();
       setTheme(remembered);
-      applyTheme(remembered);
+      paintTheme(remembered, hydratedSettings.themeOverrides);
       void refreshAdoTheme(getTrimmedSettingsFromState(hydratedSettings));
 
       // Lazy ensure-valid PAT when the side panel opens (spec FR-005).
@@ -578,6 +588,18 @@ export function useSidepanelController() {
       return tryCreateLastVisitedDevOpsContext(tab.url ?? '');
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * Colour edits repaint as they are typed rather than on save: a palette is
+   * judged by looking at it, and a preview that waits for Save cannot be judged
+   * at all. Saving is still what makes them persist.
+   */
+  function onChangeSettings(next: Settings) {
+    setSettings(next);
+    if (next.themeOverrides !== settings.themeOverrides) {
+      paintTheme(theme, next.themeOverrides);
     }
   }
 
@@ -1121,6 +1143,20 @@ export function useSidepanelController() {
    * disabled rather than guessing: without a connection there is no theme to
    * mirror, and a switch that silently does nothing is worse than a dead one.
    */
+  /**
+   * Paints a theme: the stylesheet's tokens with the user's overrides on top,
+   * then a copy of the result left in storage for the favorites palette, which
+   * is opened from the service worker and has no document to read them from.
+   */
+  function paintTheme(next: AdoTheme, overrides = settings.themeOverrides) {
+    applyTheme(next);
+    const palettes = readThemePalettes();
+    applyThemeOverrides(next, overrides, palettes);
+    void saveThemeTokens(resolvePalette(palettes[next], overrides[next])).catch(
+      () => undefined
+    );
+  }
+
   async function refreshAdoTheme(
     currentSettings = getTrimmedSettingsFromState(settings)
   ) {
@@ -1131,7 +1167,7 @@ export function useSidepanelController() {
     }
     setTheme(response.result);
     setIsThemeKnown(true);
-    applyTheme(response.result);
+    paintTheme(response.result, currentSettings.themeOverrides);
     await saveLastKnownTheme(response.result);
   }
 
@@ -1141,7 +1177,7 @@ export function useSidepanelController() {
     // Applied before the round trip: the switch is about how this panel looks,
     // and waiting on the network to redraw it feels broken.
     setTheme(next);
-    applyTheme(next);
+    paintTheme(next);
     try {
       const response = await setAdoTheme(
         getTrimmedSettingsFromState(settings),
@@ -1149,7 +1185,7 @@ export function useSidepanelController() {
       );
       if (!response.ok) {
         setTheme(theme);
-        applyTheme(theme);
+        paintTheme(theme);
         setStatusMessage({ kind: 'error', text: response.error });
         return;
       }
@@ -1867,7 +1903,7 @@ export function useSidepanelController() {
     onActiveItemBannerClick,
     onDeduplicateTabs,
     onChangeDebugLogs: setDebugLogs,
-    onChangeSettings: setSettings,
+    onChangeSettings: onChangeSettings,
     savedSettings,
     onClosedDateRangeChange,
     onCreateTaskFromCurrentWorkItem,
@@ -1900,7 +1936,10 @@ function getTrimmedSettingsFromState(settings: Settings): Settings {
     todoStates: normalizeTodoStates(settings.todoStates),
     quickTaskParentId: settings.quickTaskParentId.trim(),
     quickTaskArchiveId: settings.quickTaskArchiveId.trim(),
-    bookmarkFolderName: settings.bookmarkFolderName.trim()
+    bookmarkFolderName: settings.bookmarkFolderName.trim(),
+    // Not text, so there is nothing to trim — carried through as it is, or
+    // saving would wipe every colour the user set.
+    themeOverrides: settings.themeOverrides
   };
 }
 

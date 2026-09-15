@@ -13,6 +13,7 @@ import {
 } from './sidepanel/shortcutDiagnostics';
 import { isAzureDevOpsUrl } from './sidepanel/tabMessaging/isAzureDevOpsUrl';
 import { loadStarredPages } from './sidepanel/chromeStorage';
+import { loadThemeTokens } from './sidepanel/theme';
 import { fetchChildTasksForActiveParent } from './devops/childTasks';
 import { fetchPullRequestActivity } from './devops/pullRequestActivity';
 import { fetchAdoTheme, setAdoTheme, type AdoTheme } from './devops/theme';
@@ -88,10 +89,13 @@ chrome.commands?.onCommand.addListener((command) => {
     // the side panel's own menu is the fallback rather than nothing at all.
     if (tab?.id != null && isAzureDevOpsUrl(tab.url)) {
       try {
-        const favorites = await loadStarredPages();
+        const [favorites, tokens] = await Promise.all([
+          loadStarredPages(),
+          loadThemeTokens()
+        ]);
         await chrome.tabs.sendMessage(tab.id, {
           type: 'OPEN_FAVORITES_PALETTE',
-          payload: { favorites }
+          payload: { favorites, tokens }
         });
         await recordShortcutRun({
           opened: true,

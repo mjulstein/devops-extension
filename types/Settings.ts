@@ -20,5 +20,17 @@ export interface Settings {
    * choose and is never assumed.
    */
   bookmarkFolderName: string;
+  /**
+   * Colour tokens overridden per theme, keyed by custom-property name without
+   * the leading dashes. Absent tokens fall through to the defaults in
+   * `src/theme.css`, so this holds only what the user actually changed rather
+   * than a full copy of the palette that would silently freeze against it.
+   */
+  themeOverrides: ThemeOverrides;
+}
+
+export interface ThemeOverrides {
+  light: Record<string, string>;
+  dark: Record<string, string>;
 }
 
