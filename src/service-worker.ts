@@ -77,6 +77,8 @@ chrome.commands?.onCommand.addListener((command) => {
     let delivered = false;
     let error: string | null = null;
 
+    let paletteFailure: string | undefined;
+
     const [tab] = await chrome.tabs.query({
       active: true,
       currentWindow: true
@@ -104,8 +106,11 @@ chrome.commands?.onCommand.addListener((command) => {
           surface: 'overlay'
         });
         return;
-      } catch {
-        // Falls through to the side panel.
+      } catch (paletteError) {
+        // Falls through to the side panel, but records why: the usual cause is
+        // a tab open since before the last extension reload, which has no
+        // content script to answer until it is refreshed.
+        paletteFailure = describeError(paletteError);
       }
     }
 
@@ -136,7 +141,13 @@ chrome.commands?.onCommand.addListener((command) => {
       console.warn('[commands] the panel never took the focus message');
     }
 
-    await recordShortcutRun({ opened, delivered, error, surface: 'panel' });
+    await recordShortcutRun({
+      opened,
+      delivered,
+      error,
+      surface: 'panel',
+      paletteError: paletteFailure
+    });
   })();
 });
 

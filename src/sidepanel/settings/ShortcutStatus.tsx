@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import classes from './SettingsCard.module.css';
 import {
+  describeActiveTab,
+  readActiveTab,
+  type ActiveTabReading
+} from '../activeTabDiagnostics';
+import {
   describeShortcutRun,
   diagnoseShortcut,
   readShortcutRun,
@@ -20,19 +25,23 @@ import {
 export function ShortcutStatus() {
   const [binding, setBinding] = useState<ShortcutBinding | null>(null);
   const [run, setRun] = useState<ShortcutRun | null>(null);
+  const [activeTab, setActiveTab] = useState<ActiveTabReading | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    void Promise.all([readStarredSearchBinding(), readShortcutRun()]).then(
-      ([nextBinding, nextRun]) => {
-        if (!cancelled) {
-          setBinding(nextBinding);
-          setRun(nextRun);
-          setIsLoaded(true);
-        }
+    void Promise.all([
+      readStarredSearchBinding(),
+      readShortcutRun(),
+      readActiveTab()
+    ]).then(([nextBinding, nextRun, nextTab]) => {
+      if (!cancelled) {
+        setBinding(nextBinding);
+        setRun(nextRun);
+        setActiveTab(nextTab);
+        setIsLoaded(true);
       }
-    );
+    });
     return () => {
       cancelled = true;
     };
@@ -74,6 +83,11 @@ export function ShortcutStatus() {
         <code>{diagnosis.settingsUrl}</code>
       )}
       <div>{describeShortcutRun(run)}</div>
+      {activeTab && (
+        <div>
+          <strong>Active tab:</strong> {describeActiveTab(activeTab)}
+        </div>
+      )}
     </div>
   );
 }
