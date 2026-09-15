@@ -44,41 +44,69 @@ has to be one of these, and they are not equivalent:
    heavier object than an overlay.
 3. **Keep it in the side panel** as it is today.
 
-Option 2 is the one that always works; option 1 is the one that looks right.
-A hybrid — inject where allowed, fall back to a popup window — is possible but
-doubles the surface to maintain and to test.
+### Leading design: overlay on Azure DevOps, side panel everywhere else
+
+Option 1 is cheap specifically where it matters. `dev.azure.com` is already in
+`host_permissions` and already runs a content script at `document_idle`, so an
+overlay there needs no new permission and no new injection plumbing. On any other
+page the shortcut keeps doing exactly what it does today, which means there is
+one new surface rather than a replacement, and no page where the feature simply
+fails.
+
+This also sidesteps the problem that produced the focus-retry loop in the side
+panel. An overlay lives in the page's own document, and that document already has
+focus, because the page is what the user is looking at — so `autofocus` on its
+search field is enough. The side panel is a separate window that does not reliably
+hold focus, which is why the panel's menu needs retries at all.
+
+Option 2 stays the answer only if the palette must also appear over browser pages,
+which is a bigger ask than what this idea is for.
 
 ## User-Facing Flow
 
-1. Press the shortcut anywhere in the browser.
-2. A dialog appears centred, with an empty search field already focused, whether
-   or not the side panel is open.
+1. Press the shortcut on an Azure DevOps page.
+2. A dialog appears centred over the page, with an empty search field already
+   focused. The side panel is not opened and not needed.
 3. Typing filters favorites with the existing ranking; Up/Down move, Enter opens
    the page in a reused tab, Escape dismisses.
-4. Dismissing returns focus to where it was.
+4. Dismissing returns focus to the page.
+
+On any other page the shortcut behaves as it does today: the side panel opens
+with its own menu focused.
 
 ## Open Questions
 
-- Which surface: injected overlay, popup window, or both with a fallback?
-- What happens on a page that cannot be injected into — silently fall back to the
-  side panel menu, or say why?
-- Does the side panel keep its own dropdown as well, or does the trigger open the
-  same dialog? Two code paths for one list is the cost of keeping both.
+- The side panel keeps its own dropdown either way, so the same list has two
+  renderings. Share the ranking and row markup, or accept a second, simpler
+  renderer in the overlay and keep them independent?
+- The overlay needs the favorites list. Read `chrome.storage.local` from the
+  content script, or have the service worker hand the list over with the open
+  message? The second keeps storage shapes out of the page context.
+- Style isolation: a shadow root keeps the host page's CSS out, but the panel's
+  CSS modules do not cross into it for free.
+- Key handling has to stop at the overlay — Azure DevOps binds plenty of single
+  keys, and Enter or Escape reaching the page underneath would be worse than no
+  palette.
+- What does the shortcut do when the active tab is Azure DevOps but the content
+  script has not loaded yet (a fresh tab, a page mid-navigation)? Falling back to
+  the side panel is probably right, but it must not hang waiting.
 - Should the palette do more than favorites once it exists (work items, quick
   task capture)? If yes, the search field is a router, not a filter, and that
   changes its design.
-- Where does focus return to after dismissing, given the dialog may have taken
-  focus from a page, the panel, or another window?
 
 ## Promotion Criteria
 
-Ready to promote when the surface is chosen, the non-injectable-page behaviour is
-decided, and it is clear whether the side-panel menu stays or is replaced.
+Ready to promote when it is decided how the overlay gets the favorites list, how
+much rendering it shares with the side-panel menu, and what the shortcut does on
+an Azure DevOps tab whose content script is not ready yet.
 
 ## Related
 
 - `src/sidepanel/atoms/StarredPagesMenu.tsx` — the current menu, its ranking, and
   the focus-retry and idle-close behaviour that exist because a side panel loses
   focus without telling its own document.
+- `src/content-script.ts` — the generic message bridge already loaded on
+  `dev.azure.com`; per `AGENTS.md` it stays generic, so anything Azure
+  DevOps-specific about the overlay belongs under `src/devops/`.
 - `src/sidepanel/shortcutDiagnostics.ts` — what the keyboard command actually
   bound and what happened on the last press.

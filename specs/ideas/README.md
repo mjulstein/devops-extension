@@ -9,7 +9,7 @@ This directory is the incubator for new features before they become promoted spe
 Keep ideas in Markdown only. Prefer one file per concept.
 
 - [`separate-open-closed-work-item-results.md`](./separate-open-closed-work-item-results.md) — explores stronger open/closed result typing and future independent refresh behavior for the Work items tab.
-- [`centered-favorites-palette.md`](./centered-favorites-palette.md) — opening favorites as a centred dialog with its own focused search instead of a dropdown inside the side panel, and which surface could actually draw it.
+- [`centered-favorites-palette.md`](./centered-favorites-palette.md) — opening favorites as a centred dialog with its own focused search: an overlay injected into Azure DevOps pages, falling back to the side-panel menu everywhere else.
 - [`provider-port-and-reconnect-generalization.md`](./provider-port-and-reconnect-generalization.md) — deferred follow-ups from the PAT redesign: a generic `RECONNECT` capability and provider-contributed settings UI toward the ADR-0001 provider port.
 
 ## Rules
