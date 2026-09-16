@@ -10,8 +10,38 @@
 // reports that it could not read the theme rather than guessing.
 
 import { authFetch } from './authFetch';
+import { readPatRecord } from './auth/patStore';
 
 export type AdoTheme = 'light' | 'dark';
+
+/** Raised when the token cannot reach the settings API, which is not a failure to retry. */
+export class ThemeScopeUnavailableError extends Error {
+  constructor() {
+    super(
+      'Azure DevOps did not grant this extension the settings scope, so its theme cannot be read or changed here.'
+    );
+    this.name = 'ThemeScopeUnavailableError';
+  }
+}
+
+/** Whether a PAT's scope reaches the settings API the theme lives in. */
+export function scopeCoversTheme(scope: string | undefined): boolean {
+  return scope?.includes('vso.settings') ?? false;
+}
+
+/**
+ * Refuses the call when the token could not reach the settings API anyway.
+ *
+ * Without this, each attempt would meet a 401, force a rotation, and mint a
+ * fresh token that is refused in exactly the same way — a new credential per
+ * keystroke on the theme switch, and never a working one.
+ */
+async function assertThemeScope(): Promise<void> {
+  const record = await readPatRecord();
+  if (record && !scopeCoversTheme(record.scope)) {
+    throw new ThemeScopeUnavailableError();
+  }
+}
 
 const SETTINGS_ENTRIES_URL = (organization: string) =>
   `https://dev.azure.com/${encodeURIComponent(organization)}/_apis/settings/entries/me?api-version=3.2-preview.1`;
@@ -52,6 +82,7 @@ export function buildAdoThemeSetting(theme: AdoTheme): Record<string, string> {
 export async function fetchAdoTheme(
   organization: string
 ): Promise<AdoTheme | null> {
+  await assertThemeScope();
   const response = await authFetch(SETTINGS_ENTRIES_URL(organization));
   if (!response.ok) {
     throw new Error(
@@ -66,6 +97,7 @@ export async function setAdoTheme(
   organization: string,
   theme: AdoTheme
 ): Promise<void> {
+  await assertThemeScope();
   const response = await authFetch(SETTINGS_ENTRIES_URL(organization), {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },

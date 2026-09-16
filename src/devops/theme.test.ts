@@ -1,4 +1,8 @@
-import { buildAdoThemeSetting, parseAdoThemeSetting } from './theme';
+import {
+  buildAdoThemeSetting,
+  parseAdoThemeSetting,
+  scopeCoversTheme
+} from './theme';
 
 describe('parseAdoThemeSetting', () => {
   it('reads the two theme ids Azure DevOps ships with', () => {
@@ -27,5 +31,21 @@ describe('buildAdoThemeSetting', () => {
     expect(buildAdoThemeSetting('light')).toEqual({
       'WebPlatform/Theme': 'ms.vss-web.vsts-theme'
     });
+  });
+});
+
+describe('scopeCoversTheme', () => {
+  it('accepts a scope that reaches the settings API', () => {
+    expect(scopeCoversTheme('vso.work_write vso.code vso.settings_write')).toBe(
+      true
+    );
+  });
+
+  it('rejects the fallback scope an organization policy can leave us with', () => {
+    expect(scopeCoversTheme('vso.work_write vso.code')).toBe(false);
+  });
+
+  it('rejects a record from before scopes were tracked', () => {
+    expect(scopeCoversTheme(undefined)).toBe(false);
   });
 });

@@ -80,3 +80,48 @@ describe('decideRotation', () => {
     });
   });
 });
+
+describe('decideRotation, scope fallbacks', () => {
+  const now = Date.now();
+  const healthy = {
+    token: 't',
+    authorizationId: 'a',
+    displayName: 'd',
+    expiresAt: now + 60 * 24 * 60 * 60 * 1000
+  };
+
+  it('rotates a token minted with an out-of-date scope', () => {
+    expect(
+      decideRotation(
+        { ...healthy, scope: 'vso.work_write' },
+        now,
+        'vso.work_write vso.code'
+      )
+    ).toBe('rotate');
+  });
+
+  it('keeps using a narrower scope the organization forced, rather than minting it again forever', () => {
+    expect(
+      decideRotation(
+        { ...healthy, scope: 'vso.work_write vso.code', scopeFallback: true },
+        now,
+        'vso.work_write vso.code vso.settings_write'
+      )
+    ).toBe('use');
+  });
+
+  it('still rotates a fallback token once it nears expiry, which is when the full scope is retried', () => {
+    expect(
+      decideRotation(
+        {
+          ...healthy,
+          expiresAt: now + 60 * 60 * 1000,
+          scope: 'vso.work_write vso.code',
+          scopeFallback: true
+        },
+        now,
+        'vso.work_write vso.code vso.settings_write'
+      )
+    ).toBe('rotate');
+  });
+});

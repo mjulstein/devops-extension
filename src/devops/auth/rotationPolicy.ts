@@ -15,7 +15,9 @@ export const PAT_ROTATION_THRESHOLD_MS = 12 * 60 * 60 * 1000;
 //
 // A stored PAT whose scope differs from PAT_SCOPE (including legacy records that
 // predate scope tracking) is rotated rather than reconnected: the narrow PAT still
-// serves work-item calls, so the panel keeps working while the credential catches up.
+// serves work-item calls, so the panel keeps working while the credential catches
+// up. A record marked `scopeFallback` is the exception — Azure DevOps refused the
+// preferred scope, so minting again would only produce the same token.
 export type RotationDecision = 'use' | 'rotate' | 'reconnect';
 
 export function decideRotation(
@@ -37,7 +39,11 @@ export function decideRotation(
     return 'rotate';
   }
 
-  if (record.scope !== requiredScope) {
+  // A token deliberately minted with fewer scopes, because the organization
+  // refused the preferred ones, is not out of date — rotating it would mint the
+  // same narrow token again on every single call. Expiry still brings it around
+  // to trying the full scope again, so a relaxed policy is picked up.
+  if (record.scope !== requiredScope && record.scopeFallback !== true) {
     return 'rotate';
   }
 

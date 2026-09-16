@@ -19,6 +19,24 @@ const PAT_API_VERSION = '7.1-preview.1';
 // Widening this list rotates every existing PAT: decideRotation treats a stored
 // scope that differs from this one as a reason to mint a new token.
 export const PAT_SCOPE = 'vso.work_write vso.code vso.settings_write';
+
+// What to ask for, best first. An organization can forbid a scope by policy, and
+// the whole extension runs on this token — so being refused the settings scope
+// must cost the theme switch, not work items. The narrower scope is tried next
+// and marked as a fallback so it is not mistaken for an out-of-date token.
+export const PAT_CORE_SCOPE = 'vso.work_write vso.code';
+const PAT_SCOPE_PREFERENCES = [PAT_SCOPE, PAT_CORE_SCOPE] as const;
+
+/**
+ * Whether a failed creation is worth retrying with fewer scopes.
+ *
+ * Only a refusal is: the request was understood and declined. A 500, or a
+ * network error, says nothing about the scope and must not quietly narrow the
+ * token the user ends up with.
+ */
+export function isScopeRefusal(status: number): boolean {
+  return status === 400 || status === 401 || status === 403;
+}
 const PAT_FETCH_TIMEOUT_MS = 15_000;
 
 export interface RemotePatSummary {
@@ -33,6 +51,38 @@ export async function createPat(
   displayName: string,
   validToMs: number
 ): Promise<PatRecord> {
+  let lastError: Error | null = null;
+
+  for (const scope of PAT_SCOPE_PREFERENCES) {
+    try {
+      return await createPatWithScope(
+        bearerToken,
+        organization,
+        displayName,
+        validToMs,
+        scope
+      );
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      if (!(error instanceof ScopeRefusedError)) {
+        throw lastError;
+      }
+    }
+  }
+
+  throw lastError ?? new Error('PAT creation failed.');
+}
+
+/** Raised when Azure DevOps declines the request, which a narrower scope may fix. */
+class ScopeRefusedError extends Error {}
+
+async function createPatWithScope(
+  bearerToken: string,
+  organization: string,
+  displayName: string,
+  validToMs: number,
+  scope: string
+): Promise<PatRecord> {
   const validTo = new Date(validToMs).toISOString();
 
   const response = await patApiFetch(bearerToken, patListUrl(organization), {
@@ -40,7 +90,7 @@ export async function createPat(
     headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
     body: JSON.stringify({
       displayName,
-      scope: PAT_SCOPE,
+      scope,
       validTo,
       allOrgs: false
     })
@@ -48,7 +98,10 @@ export async function createPat(
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`PAT creation failed: HTTP ${response.status}\n${text}`);
+    const message = `PAT creation failed: HTTP ${response.status}\n${text}`;
+    throw isScopeRefusal(response.status)
+      ? new ScopeRefusedError(message)
+      : new Error(message);
   }
 
   const contentType = response.headers.get('content-type') ?? '';
@@ -68,7 +121,8 @@ export async function createPat(
     authorizationId: created.authorizationId,
     expiresAt: new Date(created.validTo).getTime(),
     displayName,
-    scope: PAT_SCOPE
+    scope,
+    scopeFallback: scope !== PAT_SCOPE
   };
 }
 
