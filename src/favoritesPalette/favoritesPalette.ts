@@ -101,6 +101,13 @@ const STYLES = `
     background: var(--color-accent-surface-strong, var(--communication-background, #ddeaff));
     color: var(--color-accent-strong, var(--text-on-communication-background, #0a3977));
   }
+  /* The muted grey a url uses on the plain ground is unreadable on the
+     highlight, so it takes the row's own colour and steps back with weight
+     instead of with contrast. */
+  .rowHighlighted .url {
+    color: inherit;
+    opacity: 0.85;
+  }
   .url {
     font-size: 11px;
     color: var(--color-text-muted, var(--text-secondary-color, #6e7781));

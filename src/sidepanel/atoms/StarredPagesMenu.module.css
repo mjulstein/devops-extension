@@ -152,3 +152,10 @@
   background: var(--color-accent-surface-strong);
   color: var(--color-accent-strong);
 }
+
+/* Same reason as in the palette: the url's muted grey does not survive the
+   highlight, so it steps back with weight rather than with contrast. */
+.itemHighlighted .itemUrl {
+  color: inherit;
+  opacity: 0.85;
+}

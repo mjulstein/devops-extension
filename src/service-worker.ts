@@ -187,6 +187,22 @@ async function recordShortcutRun(run: Omit<ShortcutRun, 'at'>): Promise<void> {
 }
 
 /**
+ * Reloads the Azure DevOps page in front, if that is what is in front.
+ *
+ * Azure DevOps reads its theme when the page loads, so changing the setting
+ * leaves the open page looking exactly as it did — the switch appears to have
+ * done nothing until the next reload. Only the active tab is reloaded: other
+ * Azure DevOps tabs may hold half-written comments or work items, and losing
+ * those to a theme change would be a poor trade.
+ */
+async function reloadActiveAzureDevOpsTab(): Promise<void> {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab?.id != null && isAzureDevOpsUrl(tab.url)) {
+    await chrome.tabs.reload(tab.id);
+  }
+}
+
+/**
  * Navigates to a favorite: in place by default, in a new tab when asked.
  *
  * Falls back to a new tab when there is no active tab to navigate, which is the
@@ -627,6 +643,7 @@ chrome.runtime.onMessage.addListener(
       const { theme } = message.payload;
       resolveWorkItemsContext(message.payload.settings)
         .then((context) => setAdoTheme(context.organization, theme))
+        .then(() => reloadActiveAzureDevOpsTab())
         .then(() => sendResponse({ ok: true, result: theme }))
         .catch((error: Error) =>
           sendResponse({ ok: false, error: error.message })
