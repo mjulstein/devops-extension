@@ -6,6 +6,7 @@ import { setParentForActiveWorkItem } from './devops/parentAssignment';
 import { detectActiveWorkItemId } from './devops/activeWorkItemDom';
 import { openFavoritesPalette } from './favoritesPalette/favoritesPalette';
 import type { StarredPage } from './sidepanel/starredPages';
+import type { FoldedBookmark } from './sidepanel/favoritesListing';
 type RuntimeMessage =
   | {
       type: 'REFRESH_TAB_ICONS';
@@ -40,6 +41,7 @@ type RuntimeMessage =
       type: 'OPEN_FAVORITES_PALETTE';
       payload: {
         favorites: StarredPage[];
+        quickTasks?: StarredPage[];
         tokens?: Record<string, string>;
       };
     };
@@ -86,7 +88,19 @@ chrome.runtime.onMessage.addListener(
       // document has focus, so its search field can simply take it.
       openFavoritesPalette({
         favorites: message.payload.favorites,
+        quickTasks: message.payload.quickTasks,
         tokens: message.payload.tokens,
+        searchAllBookmarks: async (term: string) => {
+          const response: { ok: boolean; result?: FoldedBookmark[] } =
+            await chrome.runtime.sendMessage({
+              type: 'SEARCH_BOOKMARKS',
+              payload: { term }
+            });
+          return response.ok ? (response.result ?? []) : [];
+        },
+        onOpenBookmarkManager: () => {
+          void chrome.runtime.sendMessage({ type: 'OPEN_BOOKMARK_MANAGER' });
+        },
         onOpenPage: (url, newTab) => {
           void chrome.runtime.sendMessage({
             type: 'OPEN_STARRED_PAGE',

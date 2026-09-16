@@ -32,6 +32,9 @@ const PINNED_QUICK_TASK_IDS_KEY = 'pinnedQuickTaskIds';
 // Additive, browser-local: Azure DevOps pages the user starred as shortcuts.
 const STARRED_PAGES_KEY = 'starredPages';
 const BOOKMARK_BASELINE_KEY = 'bookmarkSyncBaseline';
+// The in-progress quick tasks, left where the service worker can read them: it
+// opens the favorites palette and has no panel to ask for the current list.
+const QUICK_TASK_LINKS_KEY = 'quickTaskLinks';
 const PARENT_SUGGESTIONS_KEY = 'parentSuggestions';
 const PINNED_ACTIVE_WORK_ITEM_CONTEXT_KEY = 'pinnedActiveWorkItemContext';
 const WORK_ITEMS_CLOSED_DATE_RANGE_KEY = 'workItemsClosedDateRange';
@@ -523,4 +526,14 @@ function isActiveWorkItemContext(
     typeof value.current.workItemType === 'string' &&
     typeof value.current.url === 'string'
   );
+}
+
+export async function saveQuickTaskLinks(links: StarredPage[]): Promise<void> {
+  await chrome.storage.local.set({ [QUICK_TASK_LINKS_KEY]: links });
+}
+
+export async function loadQuickTaskLinks(): Promise<StarredPage[]> {
+  const stored = await chrome.storage.local.get(QUICK_TASK_LINKS_KEY);
+  const value: unknown = stored[QUICK_TASK_LINKS_KEY];
+  return Array.isArray(value) ? (value as StarredPage[]) : [];
 }

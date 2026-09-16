@@ -1,4 +1,5 @@
 import { normalizePageUrl, type StarredPage } from './starredPages';
+import type { FoldedBookmark } from './favoritesListing';
 
 // Keeps starred pages and a browser bookmarks folder in step, so favorites also
 // surface in omnibox autocomplete and — the reason this is two-way — travel
@@ -292,7 +293,7 @@ export type BookmarkSyncResult =
   | { ok: true; plan: BookmarkSyncPlan }
   | { ok: false; error: string };
 
-async function findOrCreateFolder(
+export async function findOrCreateFolderByName(
   folderName: string
 ): Promise<{ id: string } | { error: string }> {
   const tree = await chrome.bookmarks.getTree();
@@ -367,7 +368,7 @@ export async function reconcileBookmarkFolder({
   }
 
   try {
-    const folder = await findOrCreateFolder(name);
+    const folder = await findOrCreateFolderByName(name);
     if ('error' in folder) {
       return { ok: false, error: folder.error };
     }
@@ -437,4 +438,98 @@ export function describeReconcile(
   }
 
   return `“${folderName}”: ${parts.join(', ')}.`;
+}
+
+/**
+ * A folder with this title directly under `parentId`, created if absent.
+ *
+ * Scoped to one parent rather than searched for by name across the tree: a
+ * sub-folder's name is only meaningful inside its parent, and "Quick tasks"
+ * elsewhere in someone's bookmarks is not ours to write into.
+ */
+export async function findOrCreateChildFolder(
+  parentId: string,
+  title: string
+): Promise<{ id: string } | { error: string }> {
+  try {
+    const children = await chrome.bookmarks.getChildren(parentId);
+    const existing = children.find(
+      (node) => !node.url && node.title === title && node.id
+    );
+    if (existing) {
+      return { id: existing.id };
+    }
+
+    const created = await chrome.bookmarks.create({ parentId, title });
+    return { id: created.id };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/**
+ * Every bookmark matching a term, with the folder each one lives in.
+ *
+ * Folders are dropped — there is nowhere to go — and the result is capped,
+ * because a two-letter term against a large collection returns more rows than
+ * anyone reads and the menu has to stay responsive while typing. The folder name
+ * comes along because in a collection that size it is most of what tells two
+ * similar titles apart.
+ */
+export async function searchAllBookmarks(
+  term: string,
+  limit = 40
+): Promise<FoldedBookmark[]> {
+  if (!chrome.bookmarks?.search) {
+    return [];
+  }
+
+  const matches = await chrome.bookmarks.search(term);
+  const seen = new Set<string>();
+  const kept: { url: string; title: string; parentId?: string }[] = [];
+
+  for (const node of matches) {
+    if (!node.url || seen.has(node.url)) {
+      continue;
+    }
+    seen.add(node.url);
+    kept.push({
+      url: node.url,
+      title: node.title || node.url,
+      parentId: node.parentId
+    });
+    if (kept.length >= limit) {
+      break;
+    }
+  }
+
+  const folders = await readFolderTitles(kept);
+
+  return kept.map((entry) => ({
+    page: { url: entry.url, label: entry.title, starredAt: 0 },
+    folder: entry.parentId ? (folders.get(entry.parentId) ?? '') : ''
+  }));
+}
+
+/** Parent titles, fetched once per folder rather than once per bookmark. */
+async function readFolderTitles(
+  entries: { parentId?: string }[]
+): Promise<Map<string, string>> {
+  const titles = new Map<string, string>();
+  const parentIds = [
+    ...new Set(entries.map((entry) => entry.parentId).filter(Boolean))
+  ] as string[];
+
+  for (const parentId of parentIds) {
+    try {
+      const [node] = await chrome.bookmarks.get(parentId);
+      if (node?.title) {
+        titles.set(parentId, node.title);
+      }
+    } catch {
+      // A parent that cannot be read simply leaves the bookmark ungrouped.
+    }
+  }
+
+  return titles;
 }

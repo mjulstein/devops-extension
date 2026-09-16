@@ -4,13 +4,20 @@
 // necessarily imperative. Everything that decides *what should happen* lives
 // here instead, where it can be tested without a browser.
 
-import { rankFavorites, type StarredPage } from '@/sidepanel/starredPages';
+import {
+  buildFavoritesListing,
+  type FavoritesSection,
+  type FoldedBookmark
+} from '@/sidepanel/favoritesListing';
+import type { StarredPage } from '@/sidepanel/starredPages';
 
 export interface PaletteView {
-  /** Favorites to show, ranked for the current query. */
+  /** Rows to show, ranked for the current query: favorites, then quick tasks. */
   rows: StarredPage[];
   /** Row the keyboard is on, always a valid index unless there are no rows. */
   highlight: number;
+  /** The rows grouped as they are shown, each with its own divider label. */
+  sections: FavoritesSection[];
 }
 
 /**
@@ -22,13 +29,20 @@ export interface PaletteView {
 export function buildPaletteView(
   pages: StarredPage[],
   query: string,
-  highlight: number
+  highlight: number,
+  quickTasks: StarredPage[] = [],
+  allBookmarks: FoldedBookmark[] = []
 ): PaletteView {
-  const rows = rankFavorites(pages, query);
+  const listing = buildFavoritesListing(pages, quickTasks, query, allBookmarks);
+  const rows = listing.rows;
   if (rows.length === 0) {
-    return { rows, highlight: 0 };
+    return { rows, highlight: 0, sections: [] };
   }
-  return { rows, highlight: Math.min(Math.max(highlight, 0), rows.length - 1) };
+  return {
+    rows,
+    highlight: Math.min(Math.max(highlight, 0), rows.length - 1),
+    sections: listing.sections
+  };
 }
 
 export type PaletteKeyAction =

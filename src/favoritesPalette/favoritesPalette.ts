@@ -18,16 +18,31 @@
 // it, with none of the retrying the side panel needs.
 
 import { wantsNewTab, type StarredPage } from '@/sidepanel/starredPages';
+import type { FoldedBookmark } from '@/sidepanel/favoritesListing';
 import {
   buildPaletteView,
   resolvePaletteKey,
   type PaletteView
 } from './paletteModel';
+import { parseFavoritesQuery } from '@/sidepanel/favoritesQuery';
 
 const HOST_ID = 'devops-ext-favorites-palette';
 
 export interface PaletteOptions {
   favorites: StarredPage[];
+  /** Quick tasks in progress, listed under the favorites behind a divider. */
+  quickTasks?: StarredPage[];
+  /**
+   * Widened search, used when the query starts with the scope character. A page
+   * cannot read bookmarks itself, so the caller supplies this — in the extension
+   * it is a round trip to the service worker.
+   */
+  searchAllBookmarks?: (term: string) => Promise<FoldedBookmark[]>;
+  /**
+   * Opens the browser's own bookmark manager. A page cannot navigate to a
+   * browser page, so this too is the caller's job.
+   */
+  onOpenBookmarkManager?: () => void;
   /**
    * The side panel's resolved colour tokens, so the dialog matches the panel
    * rather than only the page. Absent, it falls back to Azure DevOps's own
@@ -71,15 +86,37 @@ const STYLES = `
     box-shadow: 0 16px 48px rgb(31 35 40 / 32%);
     overflow: hidden;
   }
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-inline-end: 10px;
+    border-block-end: 1px solid var(--color-border, var(--palette-neutral-20, #d0d7de));
+  }
   .search {
     font: inherit;
     font-size: 15px;
+    flex: 1 1 auto;
+    min-width: 0;
     padding: 12px 14px;
     border: none;
-    border-block-end: 1px solid var(--color-border, var(--palette-neutral-20, #d0d7de));
     background: transparent;
     color: inherit;
     outline: none;
+  }
+  .manage {
+    font: inherit;
+    font-size: 12px;
+    flex: 0 0 auto;
+    padding: 5px 9px;
+    border: 1px solid var(--color-border, var(--palette-neutral-20, #d0d7de));
+    border-radius: 6px;
+    background: var(--color-surface-raised, transparent);
+    color: inherit;
+    cursor: pointer;
+  }
+  .manage:hover {
+    border-color: var(--color-border-strong, #8b949e);
   }
   .list { overflow-y: auto; }
   .row {
@@ -115,6 +152,28 @@ const STYLES = `
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  /* A visible break: what is below it is work in progress, not a place you
+     chose, and the search never reorders across it. */
+  /* One line: a label with a rule running off it, so a group reads as a break
+     without costing the height of a row. */
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--color-text-muted, var(--text-secondary-color, #6e7781));
+    padding: 6px 14px;
+  }
+  .divider::after {
+    content: '';
+    flex: 1 1 auto;
+    border-block-start: 1px solid var(--color-border, var(--palette-neutral-20, #d0d7de));
+  }
+  .indented { padding-inline-start: 28px; }
   .empty {
     padding: 14px;
     font-size: 13px;
@@ -130,7 +189,10 @@ const STYLES = `
  */
 export function openFavoritesPalette({
   favorites,
+  quickTasks = [],
   onOpenPage,
+  searchAllBookmarks,
+  onOpenBookmarkManager,
   tokens,
   container = document.body
 }: PaletteOptions): PaletteHandle {
@@ -160,18 +222,39 @@ export function openFavoritesPalette({
   const search = document.createElement('input');
   search.className = 'search';
   search.type = 'text';
-  search.placeholder = 'Search favorites';
+  search.placeholder = 'Search favorites — . for all bookmarks';
   search.setAttribute('aria-label', 'Search favorites');
 
   const list = document.createElement('div');
   list.className = 'list';
 
-  dialog.append(search, list);
+  const header = document.createElement('div');
+  header.className = 'header';
+  header.append(search);
+
+  if (onOpenBookmarkManager) {
+    // Where a bookmark gets renamed, moved or deleted — none of which belongs in
+    // a search box, and all of which people come looking for once the widened
+    // search shows them everything they have.
+    const manage = document.createElement('button');
+    manage.type = 'button';
+    manage.className = 'manage';
+    manage.textContent = 'Bookmarks';
+    manage.title = "Open the browser's bookmark manager";
+    manage.addEventListener('click', () => {
+      close();
+      onOpenBookmarkManager();
+    });
+    header.append(manage);
+  }
+
+  dialog.append(header, list);
   backdrop.append(dialog);
   shadow.append(style, backdrop);
   container.append(host);
 
-  let view: PaletteView = buildPaletteView(favorites, '', 0);
+  let allBookmarks: FoldedBookmark[] = [];
+  let view: PaletteView = buildPaletteView(favorites, '', 0, quickTasks);
 
   function close() {
     host.remove();
@@ -201,10 +284,40 @@ export function openFavoritesPalette({
       return;
     }
 
+    const sectionStarts = new Map(
+      view.sections
+        .filter((section) => section.label !== null)
+        .map((section) => [section.startIndex, section])
+    );
+    const indentedFrom = view.sections.filter((section) => section.indent);
+
     view.rows.forEach((page, index) => {
+      const section = sectionStarts.get(index);
+      if (section) {
+        const divider = document.createElement('div');
+        divider.className = 'divider';
+        divider.setAttribute('role', 'separator');
+        divider.textContent = section.label;
+        list.append(divider);
+      }
+
       const row = document.createElement('button');
       row.type = 'button';
-      row.className = index === view.highlight ? 'row rowHighlighted' : 'row';
+      // Assigned in one go: setting className afterwards would drop the indent
+      // class again, which is exactly what it did.
+      row.className = [
+        'row',
+        index === view.highlight ? 'rowHighlighted' : '',
+        indentedFrom.some(
+          (part) =>
+            index >= part.startIndex &&
+            index < part.startIndex + part.rows.length
+        )
+          ? 'indented'
+          : ''
+      ]
+        .filter(Boolean)
+        .join(' ');
       row.title = page.url;
 
       const label = document.createElement('span');
@@ -222,12 +335,37 @@ export function openFavoritesPalette({
       list.append(row);
     });
 
-    list.children[view.highlight]?.scrollIntoView({ block: 'nearest' });
+    list
+      .querySelectorAll('.row')
+      [view.highlight]?.scrollIntoView({ block: 'nearest' });
+  }
+
+  function rebuild() {
+    view = buildPaletteView(
+      favorites,
+      search.value,
+      0,
+      quickTasks,
+      allBookmarks
+    );
+    render();
   }
 
   search.addEventListener('input', () => {
-    view = buildPaletteView(favorites, search.value, 0);
-    render();
+    rebuild();
+
+    const parsed = parseFavoritesQuery(search.value);
+    if (parsed.scope !== 'all' || !searchAllBookmarks) {
+      return;
+    }
+    const asked = search.value;
+    void searchAllBookmarks(parsed.term).then((results) => {
+      // Ignore an answer to a query the user has already typed past.
+      if (search.value === asked) {
+        allBookmarks = results;
+        rebuild();
+      }
+    });
   });
 
   // Captured on the document, and stopped there. Azure DevOps binds plenty of

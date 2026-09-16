@@ -38,6 +38,7 @@ import {
   saveSettings,
   saveShowWorkItemParentDetails,
   saveWorkItemsClosedDateRange,
+  saveQuickTaskLinks,
   setParentSuggestionPinned,
   upsertParentSuggestion
 } from './chromeStorage';
@@ -100,6 +101,11 @@ import {
   isShortcutRun,
   SHORTCUT_RUN_KEY
 } from './shortcutDiagnostics';
+import {
+  buildQuickTaskLinks,
+  describeQuickTaskBookmarkSync,
+  syncQuickTaskBookmarks
+} from './quickTaskBookmarks';
 import {
   applyTheme,
   loadLastKnownTheme,
@@ -215,6 +221,7 @@ export function useSidepanelController() {
   // Bumped when the keyboard shortcut fires, so the menu opens and focuses its
   // search. A counter, so pressing it twice works.
   const [starredFocusRequest, setStarredFocusRequest] = useState(0);
+  const [quickTaskPages, setQuickTaskPages] = useState<StarredPage[]>([]);
   // Azure DevOps's theme, mirrored rather than owned: the panel reads it, shows
   // it, and writes changes straight back so the two cannot drift apart.
   const [theme, setTheme] = useState<AdoTheme>('light');
@@ -1064,6 +1071,10 @@ export function useSidepanelController() {
           'success',
           `Quick tasks returned ${response.result.length} task(s).`
         );
+        // Only once the list is known: the folder mirrors what was fetched, so
+        // syncing against a stale or partial list would delete bookmarks for
+        // tasks that are still in progress.
+        await mirrorQuickTasksToBookmarks(response.result);
       } else {
         setQuickTasksError(response.error);
         pushDebugLog('error', `Quick task fetch failed: ${response.error}`);
@@ -1074,6 +1085,36 @@ export function useSidepanelController() {
       pushDebugLog('error', `Quick task fetch threw: ${message}`);
     } finally {
       setIsQuickTasksLoading(false);
+    }
+  }
+
+  /**
+   * Mirrors the in-progress quick tasks into a sub-folder of the favorites
+   * folder, and leaves the same list where the palette can find it.
+   *
+   * The bookmarks are how a task in progress reaches the other machine — the
+   * browser's own sync carries the folder — and the stored copy is how the
+   * palette lists them, since it is opened by the service worker with no panel
+   * to ask.
+   */
+  async function mirrorQuickTasksToBookmarks(tasks: WorkItem[]) {
+    const links = buildQuickTaskLinks(tasks);
+    setQuickTaskPages(links);
+    await saveQuickTaskLinks(links).catch(() => undefined);
+
+    const folderName = settings.bookmarkFolderName.trim();
+    if (!folderName) {
+      return;
+    }
+
+    const result = await syncQuickTaskBookmarks(folderName, tasks);
+    if (!result.ok) {
+      pushDebugLog('error', `Quick task bookmarks: ${result.error}`);
+      return;
+    }
+    const summary = describeQuickTaskBookmarkSync(result.plan);
+    if (summary) {
+      pushDebugLog('success', summary);
     }
   }
 
@@ -1911,6 +1952,7 @@ export function useSidepanelController() {
     starredPages,
     bookmarkSyncStatus,
     openableStarredPages: listOpenablePages(starredPages, activePage?.url),
+    quickTaskPages: listOpenablePages(quickTaskPages, activePage?.url),
     starredFocusRequest,
     canStarActivePage: isAzureDevOpsUrl(activePage?.url),
     isActivePageStarred: isPageStarred(starredPages, activePage?.url),

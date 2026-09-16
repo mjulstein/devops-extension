@@ -292,6 +292,25 @@ function createBookmarksMock() {
       nodes.delete(id);
       onRemoved.dispatch(id, { parentId: node.parentId });
     },
+    get: async (id: string) => {
+      const node = nodes.get(id);
+      if (!node) throw new Error(`No bookmark ${id}`);
+      return [{ ...node }];
+    },
+    // Matches the real one closely enough for the widened favorites search:
+    // title or url, case-insensitive, an empty term meaning everything.
+    search: async (term: string) => {
+      const needle = term.trim().toLowerCase();
+      return [...nodes.values()]
+        .filter((node) => Boolean(node.url))
+        .filter(
+          (node) =>
+            needle === '' ||
+            node.title.toLowerCase().includes(needle) ||
+            (node.url ?? '').toLowerCase().includes(needle)
+        )
+        .map((node) => ({ ...node }));
+    },
     onCreated,
     onChanged,
     onRemoved,

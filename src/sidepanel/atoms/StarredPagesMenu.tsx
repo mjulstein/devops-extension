@@ -1,7 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import classes from './StarredPagesMenu.module.css';
-import { rankFavorites, wantsNewTab, type StarredPage } from '../starredPages';
+import { wantsNewTab, type StarredPage } from '../starredPages';
+import {
+  buildFavoritesListing,
+  type FavoritesListing,
+  type FoldedBookmark
+} from '../favoritesListing';
+import { parseFavoritesQuery } from '../favoritesQuery';
+import { searchAllBookmarks } from '../bookmarkSync';
 import { getFavoriteIconUrl } from '../favoriteIcon';
 
 /**
@@ -49,6 +56,12 @@ interface StarredPagesMenuProps {
    */
   pages: StarredPage[];
   /**
+   * Quick tasks currently in progress. Listed after the favorites and never
+   * mixed in: a favorite is a place you chose, a quick task is work that is open
+   * right now and will disappear when it is done.
+   */
+  quickTaskPages: StarredPage[];
+  /**
    * Incremented by the keyboard shortcut. A counter rather than a boolean so a
    * second press re-opens and re-focuses even if the menu is already open.
    */
@@ -64,6 +77,7 @@ interface StarredPagesMenuProps {
 
 export function StarredPagesMenu({
   pages,
+  quickTaskPages,
   focusRequest,
   onOpenStarredPage,
   onRequestFavoritesSearch
@@ -81,6 +95,9 @@ export function StarredPagesMenu({
   // nowhere to go in that width. Measured rather than styled because the popup
   // has to escape the trigger's box to get there.
   const [box, setBox] = useState<MenuBox | null>(null);
+  // Results of a widened search. Fetched rather than held, because "every
+  // bookmark" is the browser's list and can change while the menu is open.
+  const [allBookmarks, setAllBookmarks] = useState<FoldedBookmark[]>([]);
   // Bumped every time the cursor should go back to the search box: opening the
   // menu, and pressing the shortcut again while it is already open.
   const [focusToken, setFocusToken] = useState(0);
@@ -90,7 +107,11 @@ export function StarredPagesMenu({
   const idleTimerRef = useRef(0);
 
   // Title matches rank above address matches — see rankFavorites.
-  const visible = useMemo(() => rankFavorites(pages, query), [pages, query]);
+  const listing = useMemo(
+    () => buildFavoritesListing(pages, quickTaskPages, query, allBookmarks),
+    [pages, quickTaskPages, query, allBookmarks]
+  );
+  const visible = listing.rows;
 
   function measure() {
     const wrap = wrapRef.current;
@@ -139,6 +160,24 @@ export function StarredPagesMenu({
     close();
     await onOpenStarredPage(url, wantsNewTab(event));
   }
+
+  // Only asked for while the widened search is actually in use, so the common
+  // case never touches the bookmarks API.
+  useEffect(() => {
+    const parsed = parseFavoritesQuery(query);
+    if (!isOpen || parsed.scope !== 'all') {
+      return;
+    }
+    let cancelled = false;
+    void searchAllBookmarks(parsed.term).then((results) => {
+      if (!cancelled) {
+        setAllBookmarks(results);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, query]);
 
   // The search box is the point of the menu, so it takes focus however the menu
   // was opened — mouse or shortcut.
@@ -336,7 +375,7 @@ export function StarredPagesMenu({
               className={classes.search}
               type="text"
               value={query}
-              placeholder="Search favorites"
+              placeholder="Search favorites — . for all bookmarks"
               aria-label="Search favorites"
               onChange={(event) => {
                 setQuery(event.target.value);
@@ -359,36 +398,43 @@ export function StarredPagesMenu({
 
           {visible.length === 0 ? (
             <p className={classes.empty}>
-              {pages.length === 0
+              {pages.length + quickTaskPages.length === 0
                 ? 'No other favorites to open.'
                 : 'Nothing matches that search.'}
             </p>
           ) : (
             visible.map((page, index) => (
-              <button
-                key={page.url}
-                type="button"
-                role="menuitem"
-                ref={(element) => {
-                  itemElementsRef.current[index] = element;
-                }}
-                className={clsx(
-                  classes.item,
-                  index === highlight && classes.itemHighlighted
+              <Fragment key={page.url}>
+                {sectionLabelAt(listing, index) !== null && (
+                  <div className={classes.divider} role="separator">
+                    {sectionLabelAt(listing, index)}
+                  </div>
                 )}
-                title={page.url}
-                onMouseEnter={() => setHighlight(index)}
-                onKeyDown={onNavigationKeyDown}
-                onClick={(event) => {
-                  void openPage(page.url, event);
-                }}
-              >
-                <FavoriteIcon url={page.url} />
-                <span className={classes.itemText}>
-                  {page.label}
-                  <span className={classes.itemUrl}>{page.url}</span>
-                </span>
-              </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  ref={(element) => {
+                    itemElementsRef.current[index] = element;
+                  }}
+                  className={clsx(
+                    classes.item,
+                    isIndented(listing, index) && classes.itemIndented,
+                    index === highlight && classes.itemHighlighted
+                  )}
+                  title={page.url}
+                  onMouseEnter={() => setHighlight(index)}
+                  onKeyDown={onNavigationKeyDown}
+                  onClick={(event) => {
+                    void openPage(page.url, event);
+                  }}
+                >
+                  <FavoriteIcon url={page.url} />
+                  <span className={classes.itemText}>
+                    {page.label}
+                    <span className={classes.itemUrl}>{page.url}</span>
+                  </span>
+                </button>
+              </Fragment>
             ))
           )}
         </div>
@@ -420,5 +466,26 @@ function FavoriteIcon({ url }: { url: string }) {
       height={16}
       onError={() => setIsBroken(true)}
     />
+  );
+}
+
+/** The divider label that belongs above this row, if any. */
+function sectionLabelAt(
+  listing: FavoritesListing,
+  index: number
+): string | null {
+  const section = listing.sections.find(
+    (candidate) => candidate.startIndex === index
+  );
+  return section?.label ?? null;
+}
+
+/** Rows of a folder sit in from the edge, which is what makes them read as one. */
+function isIndented(listing: FavoritesListing, index: number): boolean {
+  return listing.sections.some(
+    (section) =>
+      section.indent &&
+      index >= section.startIndex &&
+      index < section.startIndex + section.rows.length
   );
 }

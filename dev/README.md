@@ -78,7 +78,14 @@ bookmarks live in memory only, so a page reload empties the folder; the
 behind `/_favicon/`, so favorite rows keep the icon column blank here. Icons can
 only be seen in the loaded extension.
 
-## Storage change events
+## Searching all bookmarks
+
+The fake `chrome.bookmarks` implements `search` and `get`, so the widened
+favorites search (a query starting with `.`) and its folder grouping can be
+exercised here. Create folders and bookmarks from the console with
+`chrome.bookmarks.create` to give it something to find.
+
+## Storage change events## Storage change events
 
 `chrome.storage.local.set` raises `onChanged` here as the real one does. Panel
 behaviour hangs off it — the favorites shortcut's outcome reaches the debug

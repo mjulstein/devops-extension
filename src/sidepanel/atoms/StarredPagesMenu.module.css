@@ -103,6 +103,33 @@
 }
 
 
+/* One line: a label with a rule running off it. The rows below it are a
+   different kind of thing and the search never reorders across it, but the break
+   should not cost the height of a row to say so. */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+  padding: 5px 6px;
+}
+
+.divider::after {
+  content: '';
+  flex: 1 1 auto;
+  border-block-start: 1px solid var(--color-border);
+}
+
+/* Rows of a folder sit in from the edge, which is what groups them by eye. */
+.itemIndented {
+  padding-inline-start: 20px;
+}
+
 .empty {
   font-size: 11px;
   color: var(--color-text-muted);

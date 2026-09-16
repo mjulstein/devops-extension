@@ -67,11 +67,20 @@ const { openFavoritesPalette } = await import(
     await chrome.storage.local.get('starredPages');
   const favorites = stored.starredPages;
   const tokens = await loadThemeTokens();
+  const { loadQuickTaskLinks } = await import('@/sidepanel/chromeStorage');
+  const { searchAllBookmarks } = await import('@/sidepanel/bookmarkSync');
+  const quickTasks = await loadQuickTaskLinks();
   openFavoritesPalette({
     favorites: Array.isArray(favorites) ? (favorites as StarredPage[]) : [],
     // The service worker passes these in the extension; here they come straight
     // from the storage the panel wrote them to.
     tokens,
+    quickTasks,
+    searchAllBookmarks: (term: string) => searchAllBookmarks(term),
+    onOpenBookmarkManager: () => {
+      (globalThis as unknown as { devOpenedManager?: boolean }).devOpenedManager =
+        true;
+    },
     onOpenPage: (url: string, newTab: boolean) => {
       (
         globalThis as unknown as {

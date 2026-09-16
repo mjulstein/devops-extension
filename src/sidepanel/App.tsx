@@ -30,6 +30,7 @@ export function App() {
         />
         <StarredPagesMenu
           pages={controller.openableStarredPages}
+          quickTaskPages={controller.quickTaskPages}
           focusRequest={controller.starredFocusRequest}
           onOpenStarredPage={controller.onOpenStarredPage}
           onRequestFavoritesSearch={controller.onRequestFavoritesSearch}

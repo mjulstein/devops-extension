@@ -12,8 +12,12 @@ import {
   type ShortcutRun
 } from './sidepanel/shortcutDiagnostics';
 import { isAzureDevOpsUrl } from './sidepanel/tabMessaging/isAzureDevOpsUrl';
-import { loadStarredPages } from './sidepanel/chromeStorage';
+import {
+  loadQuickTaskLinks,
+  loadStarredPages
+} from './sidepanel/chromeStorage';
 import { loadThemeTokens } from './sidepanel/theme';
+import { searchAllBookmarks } from './sidepanel/bookmarkSync';
 import { fetchChildTasksForActiveParent } from './devops/childTasks';
 import { fetchPullRequestActivity } from './devops/pullRequestActivity';
 import { fetchAdoTheme, setAdoTheme, type AdoTheme } from './devops/theme';
@@ -101,13 +105,14 @@ async function openFavoritesSearch(): Promise<'overlay' | 'panel'> {
     if (tab?.id != null && isAzureDevOpsUrl(tab.url)) {
       const tabId = tab.id;
       try {
-        const [favorites, tokens] = await Promise.all([
+        const [favorites, quickTasks, tokens] = await Promise.all([
           loadStarredPages(),
+          loadQuickTaskLinks(),
           loadThemeTokens()
         ]);
         const message = {
           type: 'OPEN_FAVORITES_PALETTE',
-          payload: { favorites, tokens }
+          payload: { favorites, quickTasks, tokens }
         };
 
         try {
@@ -203,6 +208,25 @@ async function reloadActiveAzureDevOpsTab(): Promise<void> {
 }
 
 /**
+ * Opens the browser's bookmark manager.
+ *
+ * Its address differs by browser and is not something to guess at from the user
+ * agent, so the known ones are tried in turn until one opens.
+ */
+async function openBookmarkManager(): Promise<void> {
+  const candidates = ['chrome://bookmarks/', 'edge://favorites/'];
+  for (const url of candidates) {
+    try {
+      await chrome.tabs.create({ url });
+      return;
+    } catch {
+      // Try the next address.
+    }
+  }
+  throw new Error("Could not open the browser's bookmark manager.");
+}
+
+/**
  * Navigates to a favorite: in place by default, in a new tab when asked.
  *
  * Falls back to a new tab when there is no active tab to navigate, which is the
@@ -233,6 +257,16 @@ type RuntimeMessage =
     }
   | {
       type: 'OPEN_FAVORITES_SEARCH';
+      payload?: undefined;
+    }
+  | {
+      type: 'SEARCH_BOOKMARKS';
+      payload: {
+        term: string;
+      };
+    }
+  | {
+      type: 'OPEN_BOOKMARK_MANAGER';
       payload?: undefined;
     }
   | {
@@ -399,6 +433,25 @@ chrome.runtime.onMessage.addListener(
       // shortcut cannot disagree about where the search opens.
       openFavoritesSearch()
         .then((surface) => sendResponse({ ok: true, result: surface }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'SEARCH_BOOKMARKS') {
+      // The palette runs in a page, which has no bookmarks API of its own.
+      searchAllBookmarks(message.payload.term)
+        .then((result) => sendResponse({ ok: true, result }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'OPEN_BOOKMARK_MANAGER') {
+      openBookmarkManager()
+        .then(() => sendResponse({ ok: true, result: null }))
         .catch((error: Error) =>
           sendResponse({ ok: false, error: error.message })
         );

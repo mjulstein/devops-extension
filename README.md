@@ -191,6 +191,12 @@ npm test
     bookmarks menu draws, so favorites synced in from another machine are
     recognisable too.
     A favorite opens in the current tab; hold **Ctrl** to open it in a new one.
+    Quick tasks that are in progress are listed under the favorites behind a
+    divider, and mirrored into a **Quick tasks** sub-folder of the bookmarks
+    folder — so they reach a machine with no extension installed, and their
+    bookmarks disappear as the tasks are finished. Start the search with `.` to
+    search every bookmark in the browser instead, grouped by folder; the palette
+    also has a button to open the browser's own bookmark manager.
     **Ctrl+Period** opens a centred favorites palette over the Azure DevOps page
     you are on, with its search already focused; on any other page it opens the
     panel straight into the same search instead; Settings →
