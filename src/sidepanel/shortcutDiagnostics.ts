@@ -151,3 +151,30 @@ export async function readShortcutRun(): Promise<ShortcutRun | null> {
   const value = stored[SHORTCUT_RUN_KEY] as ShortcutRun | undefined;
   return value ?? null;
 }
+
+/**
+ * How loudly a run should be reported. A press that reached its surface is
+ * confirmation, not noise; one that fell back or errored is worth the console's
+ * attention, because it is the case the user is trying to explain.
+ */
+export function getShortcutRunLevel(
+  run: ShortcutRun
+): 'info' | 'success' | 'error' {
+  if (run.error !== null || run.paletteError !== undefined) {
+    return 'error';
+  }
+  return run.delivered ? 'success' : 'error';
+}
+
+/** Narrows a stored value to a run, since storage holds whatever was last written. */
+export function isShortcutRun(value: unknown): value is ShortcutRun {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const candidate = value as Partial<ShortcutRun>;
+  return (
+    typeof candidate.at === 'number' &&
+    typeof candidate.opened === 'boolean' &&
+    typeof candidate.delivered === 'boolean'
+  );
+}

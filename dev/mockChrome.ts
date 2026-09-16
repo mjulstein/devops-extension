@@ -312,6 +312,9 @@ export function installMockChrome(getScenario: () => Scenario): void {
   };
 
   const runtimeMessages = fakeEvent<[unknown]>();
+  const storageChanges = fakeEvent<
+    [Record<string, { newValue?: unknown; oldValue?: unknown }>, string]
+  >();
 
   const mock = {
     storage: {
@@ -319,7 +322,19 @@ export function installMockChrome(getScenario: () => Scenario): void {
         get: async (query?: string | string[] | Record<string, unknown> | null) =>
           getFromStore(query),
         set: async (values: Record<string, unknown>) => {
-          writeStore({ ...readStore(), ...values });
+          const before = readStore();
+          writeStore({ ...before, ...values });
+          // The real storage raises this, and panel behaviour hangs off it —
+          // the favorites shortcut's outcome reaches the debug console this way.
+          storageChanges.dispatch(
+            Object.fromEntries(
+              Object.entries(values).map(([key, newValue]) => [
+                key,
+                { newValue, oldValue: before[key] }
+              ])
+            ),
+            'local'
+          );
         },
         remove: async (keys: string | string[]) => {
           const store = readStore();
@@ -328,7 +343,7 @@ export function installMockChrome(getScenario: () => Scenario): void {
         },
         clear: async () => writeStore({})
       },
-      onChanged: noopEvent()
+      onChanged: storageChanges
     },
     runtime: {
       id: 'dev-harness',

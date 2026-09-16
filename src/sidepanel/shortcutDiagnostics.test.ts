@@ -1,4 +1,9 @@
-import { describeShortcutRun, diagnoseShortcut } from './shortcutDiagnostics';
+import {
+  describeShortcutRun,
+  diagnoseShortcut,
+  getShortcutRunLevel,
+  isShortcutRun
+} from './shortcutDiagnostics';
 
 describe('diagnoseShortcut', () => {
   it('reports the keys the browser actually bound', () => {
@@ -91,5 +96,37 @@ describe('describeShortcutRun, palette surface', () => {
     );
 
     expect(text).toContain('palette over the page');
+  });
+});
+
+describe('getShortcutRunLevel', () => {
+  const base = { at: 1, opened: true, delivered: true, error: null };
+
+  it('treats a delivered press as confirmation', () => {
+    expect(getShortcutRunLevel(base)).toBe('success');
+  });
+
+  it('treats a fallback to the panel as worth reporting', () => {
+    expect(
+      getShortcutRunLevel({ ...base, paletteError: 'no receiving end' })
+    ).toBe('error');
+  });
+
+  it('treats an undelivered press as an error even without a message', () => {
+    expect(getShortcutRunLevel({ ...base, delivered: false })).toBe('error');
+  });
+});
+
+describe('isShortcutRun', () => {
+  it('accepts a recorded run', () => {
+    expect(
+      isShortcutRun({ at: 1, opened: true, delivered: true, error: null })
+    ).toBe(true);
+  });
+
+  it('rejects whatever else storage might hold', () => {
+    expect(isShortcutRun(undefined)).toBe(false);
+    expect(isShortcutRun('dark')).toBe(false);
+    expect(isShortcutRun({ at: 'soon' })).toBe(false);
   });
 });

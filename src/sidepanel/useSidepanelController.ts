@@ -95,6 +95,12 @@ import {
   type StarredPage
 } from './starredPages';
 import {
+  describeShortcutRun,
+  getShortcutRunLevel,
+  isShortcutRun,
+  SHORTCUT_RUN_KEY
+} from './shortcutDiagnostics';
+import {
   applyTheme,
   loadLastKnownTheme,
   saveLastKnownTheme,
@@ -433,8 +439,35 @@ export function useSidepanelController() {
     };
   });
 
+  // Every shortcut press is recorded by the service worker, which has no console
+  // of its own that anyone would think to open. Mirroring each run into the
+  // panel's console puts the outcome — palette, fallback, or failure — where the
+  // rest of the panel's story already is.
+  useEffect(() => {
+    function onStorageChanged(
+      changes: Record<string, chrome.storage.StorageChange>
+    ) {
+      const change = changes[SHORTCUT_RUN_KEY];
+      if (!change || !isShortcutRun(change.newValue)) {
+        return;
+      }
+      pushDebugLogRef.current(
+        getShortcutRunLevel(change.newValue),
+        `Favorites shortcut: ${describeShortcutRun(change.newValue)}`
+      );
+    }
+
+    chrome.storage?.onChanged?.addListener(onStorageChanged);
+    return () => {
+      chrome.storage?.onChanged?.removeListener(onStorageChanged);
+    };
+  }, []);
+
   // Same reason: the runtime-message listener is registered once, but needs the
   // current settings when a recovered connection makes the theme readable.
+  const pushDebugLogRef = useRef(pushDebugLog);
+  pushDebugLogRef.current = pushDebugLog;
+
   const refreshAdoThemeRef = useRef<() => void>(() => undefined);
   useEffect(() => {
     refreshAdoThemeRef.current = () => {

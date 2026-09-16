@@ -78,6 +78,13 @@ bookmarks live in memory only, so a page reload empties the folder; the
 behind `/_favicon/`, so favorite rows keep the icon column blank here. Icons can
 only be seen in the loaded extension.
 
+## Storage change events
+
+`chrome.storage.local.set` raises `onChanged` here as the real one does. Panel
+behaviour hangs off it — the favorites shortcut's outcome reaches the debug
+console that way — so writing a `lastShortcutRun` record from the console is
+enough to see how a press would be reported.
+
 ## Simulating the keyboard shortcut
 
 The command lives in the service worker, which the harness does not run.
