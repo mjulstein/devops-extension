@@ -443,12 +443,12 @@ export function SettingsPane({
               </strong>
             </span>
             {patRecord && (
-              <span style={{ color: '#555' }}>
+              <span style={{ color: 'var(--color-text-secondary)' }}>
                 · expires {formatExpiry(patRecord.expiresAt)}
               </span>
             )}
             {patDeviceId && (
-              <div style={{ color: '#888', marginTop: 2 }}>
+              <div style={{ color: 'var(--color-text-subtle)', marginTop: 2 }}>
                 ID: {patDeviceId}-devopsext
               </div>
             )}
@@ -495,8 +495,8 @@ export function SettingsPane({
               style={{
                 fontSize: 12,
                 color: /failed|error/i.test(patActionMessage)
-                  ? '#c62828'
-                  : '#2e7d32',
+                  ? 'var(--color-danger)'
+                  : 'var(--color-success)',
                 marginTop: 6,
                 display: 'block',
                 fontWeight: 500
@@ -583,11 +583,11 @@ function getPatStatusLabel(record: PatRecord | null): string {
 }
 
 function getPatStatusColor(record: PatRecord | null): string {
-  if (!record) return '#888';
+  if (!record) return 'var(--color-text-subtle)';
   const msLeft = record.expiresAt - Date.now();
-  if (msLeft <= 0) return '#d32f2f';
-  if (msLeft < EXPIRING_SOON_MS) return '#f57c00';
-  return '#388e3c';
+  if (msLeft <= 0) return 'var(--color-danger)';
+  if (msLeft < EXPIRING_SOON_MS) return 'var(--color-warning)';
+  return 'var(--color-success)';
 }
 
 function formatExpiry(ms: number): string {

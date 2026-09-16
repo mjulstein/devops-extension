@@ -48,7 +48,13 @@ export async function authFetch(
   const rotated = await mintToken(organization, true, deps);
   const retry = await patFetch(deps.fetchFn, url, init, rotated);
   if (retry.status === 401) {
-    throw new ReconnectNeededError();
+    // Naming the request matters: a freshly minted token being refused is far
+    // more often a scope that does not cover this API than a lost session, and
+    // the generic "connection is unavailable" sent two debugging sessions after
+    // the wrong thing.
+    throw new ReconnectNeededError(
+      `Azure DevOps refused a freshly minted token for ${describeRequest(url)}. Its scope may not cover that API.`
+    );
   }
   return retry;
 }
@@ -80,6 +86,15 @@ function patFetch(
   const headers = new Headers(init.headers);
   headers.set('Authorization', `Basic ${btoa(`:${token}`)}`);
   return fetchFn(url, { ...init, credentials: 'omit', headers });
+}
+
+/** The API path, which is what identifies the call without leaking identifiers. */
+function describeRequest(url: string): string {
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return 'that request';
+  }
 }
 
 function organizationFromUrl(url: string): string | null {

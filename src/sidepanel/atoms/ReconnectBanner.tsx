@@ -17,13 +17,13 @@ export function ReconnectBanner({
     <div
       role="alert"
       style={{
-        border: '1px solid #f0b8b8',
-        background: '#fdecec',
+        border: '1px solid var(--color-danger)',
+        background: 'var(--color-danger-surface)',
         borderRadius: 6,
         padding: '10px 12px',
         margin: '8px 0',
         fontSize: 13,
-        color: '#7a1f1f'
+        color: 'var(--color-danger)'
       }}
     >
       <div style={{ fontWeight: 600, marginBottom: 4 }}>Reconnect needed</div>

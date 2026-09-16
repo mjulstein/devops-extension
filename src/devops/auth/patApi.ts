@@ -6,11 +6,19 @@ import type { PatRecord } from '@/types';
 // (`PUT validTo`) operation is deliberately never used. See CONTEXT.md + spec FR-004.
 
 const PAT_API_VERSION = '7.1-preview.1';
-// vso.work_write: read/write work items (the core feature).
-// vso.code:       read pull requests so the side panel can show an item's active
-//                 PR and whether it is approved. Azure DevOps has no PR-only
-//                 scope, so this also permits reading repository contents.
-export const PAT_SCOPE = 'vso.work_write vso.code';
+// vso.work_write:    read/write work items (the core feature).
+// vso.code:          read pull requests so the side panel can show an item's
+//                    active PR and whether it is approved. Azure DevOps has no
+//                    PR-only scope, so this also permits reading repository
+//                    contents.
+// vso.settings_write: read and set the user's own theme, so the panel can follow
+//                    Azure DevOps's light/dark setting and change it from the
+//                    switch. The settings entries API rejects a token without
+//                    it, which is a 401 and reads as a lost connection.
+//
+// Widening this list rotates every existing PAT: decideRotation treats a stored
+// scope that differs from this one as a reason to mint a new token.
+export const PAT_SCOPE = 'vso.work_write vso.code vso.settings_write';
 const PAT_FETCH_TIMEOUT_MS = 15_000;
 
 export interface RemotePatSummary {

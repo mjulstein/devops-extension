@@ -52,34 +52,40 @@
 }
 
 :root[data-theme='dark'] {
-  --color-surface: #1f1f1f;
-  --color-surface-sunken: #181818;
-  --color-surface-raised: #2b2b2b;
-  --color-surface-hover: #333;
-  --color-surface-muted: #2b2b2b;
+  /* Surfaces are kept a visible step apart: in dark mode a card that is only a
+     few percent lighter than the page reads as a rendering artefact rather than
+     as a card. */
+  --color-surface: #1e1e1e;
+  --color-surface-sunken: #121212;
+  --color-surface-raised: #2d2d2d;
+  --color-surface-hover: #383838;
+  --color-surface-muted: #2a2a2a;
 
-  --color-border: #3f3f3f;
-  --color-border-strong: #5a5a5a;
-  --color-border-subtle: #303030;
+  /* Borders carry the layout when shadows cannot, so they are held above the
+     3:1 the guidelines ask of a non-text boundary rather than left as the
+     hairlines that work on white. */
+  --color-border: #6e6e6e;
+  --color-border-strong: #909090;
+  --color-border-subtle: #3d3d3d;
 
-  --color-text: #f0f0f0;
-  --color-text-secondary: #c9c9c9;
-  --color-text-muted: #a6a6a6;
-  --color-text-subtle: #8a8a8a;
+  --color-text: #f5f5f5;
+  --color-text-secondary: #d6d6d6;
+  --color-text-muted: #b0b0b0;
+  --color-text-subtle: #949494;
 
-  --color-accent: #6cb0ff;
-  --color-accent-strong: #cfe3ff;
-  --color-accent-bright: #4d88ff;
+  --color-accent: #7cb8ff;
+  --color-accent-strong: #d6e6ff;
+  --color-accent-bright: #5b96ff;
   --color-accent-surface: #16324f;
-  --color-accent-surface-strong: #1d4771;
-  --color-accent-border: #2d5b8a;
+  --color-accent-surface-strong: #21507e;
+  --color-accent-border: #3a6d9e;
 
-  --color-success: #6fdd8b;
-  --color-success-surface: #12301d;
-  --color-warning: #e3b341;
-  --color-warning-surface: #3a2d0b;
-  --color-danger: #ff8080;
-  --color-danger-surface: #3d1717;
+  --color-success: #7ee095;
+  --color-success-surface: #14351f;
+  --color-warning: #eec05a;
+  --color-warning-surface: #40320c;
+  --color-danger: #ff9494;
+  --color-danger-surface: #441919;
 
   --color-shadow: rgb(0 0 0 / 45%);
 }
@@ -89,4 +95,14 @@
 body {
   background: var(--color-surface-sunken);
   color: var(--color-text);
+}
+
+/* Links that no CSS module styles otherwise keep the browser's default blue,
+   which on a dark ground is barely legible. */
+a {
+  color: var(--color-accent);
+}
+
+a:visited {
+  color: var(--color-accent);
 }

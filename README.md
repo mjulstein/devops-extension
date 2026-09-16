@@ -91,7 +91,9 @@ Load `dist/` as the unpacked extension directory in Edge. After rebuilding, relo
 ## Theme
 
 The panel follows Azure DevOps's own light/dark setting rather than keeping a
-second preference. The switch beside the duplicate-tab
+second preference. Reading and setting it needs the `vso.settings_write` scope,
+which is why the runtime PAT carries it alongside the work-item and code scopes;
+changing that list rotates the existing token automatically. The switch beside the duplicate-tab
 button shows which theme is in force and changes Azure DevOps's setting when
 clicked. It always changes the panel, even when Azure DevOps cannot be reached;
 Azure DevOps wins on open, so a theme changed there is adopted next time the
