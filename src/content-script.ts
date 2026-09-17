@@ -4,6 +4,7 @@ import { fetchChildTasksForActiveParent } from './devops/childTasks';
 import { createChildTaskFromActivePage } from './devops/taskCreation';
 import { setParentForActiveWorkItem } from './devops/parentAssignment';
 import { detectActiveWorkItemId } from './devops/activeWorkItemDom';
+import { readAdoThemeColorsFromPage } from './devops/pageTheme';
 import { openFavoritesPalette } from './favoritesPalette/favoritesPalette';
 import type { StarredPage } from './sidepanel/starredPages';
 import type { FoldedBookmark } from './sidepanel/favoritesListing';
@@ -36,6 +37,10 @@ type RuntimeMessage =
       payload: {
         parentId: number;
       };
+    }
+  | {
+      type: 'READ_ADO_THEME_COLORS';
+      payload?: undefined;
     }
   | {
       type: 'OPEN_FAVORITES_PALETTE';
@@ -109,6 +114,12 @@ chrome.runtime.onMessage.addListener(
         }
       });
       sendResponse({ ok: true, result: null });
+      return false;
+    }
+
+    if (message.type === 'READ_ADO_THEME_COLORS') {
+      // Only the page knows what Azure DevOps's current theme actually is.
+      sendResponse({ ok: true, result: readAdoThemeColorsFromPage() });
       return false;
     }
 

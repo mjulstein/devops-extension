@@ -116,6 +116,15 @@ async function route(
 
     // Azure DevOps's theme, kept in the harness's own storage so the switch can
     // be flipped and the panel seen in both themes without a real account.
+    // Stands in for an Azure DevOps page's computed theme variables, so the
+    // "use Azure DevOps colours" action can be exercised without one.
+    case 'READ_ADO_THEME_COLORS':
+      return ok({
+        'color-surface': 'rgb(31, 31, 31)',
+        'color-text': 'rgb(240, 240, 240)',
+        'color-accent': 'rgb(108, 176, 255)'
+      });
+
     case 'GET_ADO_THEME': {
       return ok(readStore()[HARNESS_THEME_KEY] ?? 'light');
     }

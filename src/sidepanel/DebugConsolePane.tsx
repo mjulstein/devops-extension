@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import classes from './DebugConsolePane.module.css';
+import { Button } from './atoms/Button';
 
 export interface DebugLogEntry {
   id: string;
@@ -18,14 +19,9 @@ export function DebugConsolePane({ entries, onClear }: DebugConsolePaneProps) {
     <section className={clsx(classes.card, classes.debugConsole)}>
       <div className={classes.debugConsoleHeader}>
         <h3 className={classes.heading}>Developer console</h3>
-        <button
-          type="button"
-          className={classes.debugConsoleClear}
-          onClick={onClear}
-          disabled={!entries.length}
-        >
+        <Button size="compact" onClick={onClear} disabled={!entries.length}>
           Clear
-        </button>
+        </Button>
       </div>
 
       <div className={classes.debugConsoleList} role="log" aria-live="polite">

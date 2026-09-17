@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import classes from './StarPageToggle.module.css';
+import { Button } from './Button';
 
 interface StarPageToggleProps {
   /** The active tab is an Azure DevOps page, so it can be starred. */
@@ -14,23 +15,21 @@ export function StarPageToggle({
   onToggle
 }: StarPageToggleProps) {
   return (
-    <button
-      type="button"
-      className={clsx(classes.toggle, isStarred && classes.starred)}
-      disabled={!canStar}
-      aria-pressed={isStarred}
-      title={
+    <Button
+      icon={isStarred ? '★' : '☆'}
+      description={
         canStar
           ? isStarred
             ? 'This page is a favorite — click to remove it'
             : 'Add this page to favorites'
           : 'Only Azure DevOps pages can be starred'
       }
+      className={clsx(isStarred && classes.starred)}
+      disabled={!canStar}
+      isPressed={isStarred}
       onClick={() => {
         void onToggle();
       }}
-    >
-      <span aria-hidden="true">{isStarred ? '★' : '☆'}</span>
-    </button>
+    />
   );
 }

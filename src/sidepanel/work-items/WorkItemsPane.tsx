@@ -6,6 +6,7 @@ import type {
   WorkItemResult
 } from '@/types';
 import classes from './StatusCard.module.css';
+import { Button } from '@/sidepanel/atoms/Button';
 import { ClosedDateRangeControls } from './atoms/ClosedDateRangeControls';
 import { WorkItemsToolbar } from './atoms/WorkItemsToolbar';
 import {
@@ -173,39 +174,37 @@ export function WorkItemsPane({
             )}
           >
             <span>{statusMessage.text}</span>
-            <button
-              type="button"
+            <Button
+              variant="quiet"
+              size="compact"
+              icon="×"
+              description="Dismiss this message"
               className={classes.dismiss}
-              title="Dismiss"
-              aria-label="Dismiss this message"
               onClick={onDismissStatusMessage}
-            >
-              ×
-            </button>
+            />
           </div>
         )}
 
         {!!createdQuickTask && (
           <div className={classes.createdNotice}>
-            <button
-              type="button"
+            <Button
+              variant="quiet"
+              size="compact"
               className={classes.createdLink}
-              title="Open the new task in a new tab"
+              description="Open the new task in a new tab"
               onClick={() => {
                 void onOpenCreatedQuickTask();
               }}
             >
               Created #{createdQuickTask.id}
-            </button>
-            <button
-              type="button"
-              className={classes.createdDismiss}
-              title="Dismiss"
-              aria-label="Dismiss the created-task notice"
+            </Button>
+            <Button
+              variant="quiet"
+              size="compact"
+              icon="×"
+              description="Dismiss the created-task notice"
               onClick={onDismissCreatedQuickTask}
-            >
-              ×
-            </button>
+            />
           </div>
         )}
 

@@ -24,6 +24,7 @@ import { FavoritesEditor } from './FavoritesEditor';
 import { SettingsHelp } from './SettingsHelp';
 import { ShortcutStatus } from './ShortcutStatus';
 import { ThemeEditor } from './ThemeEditor';
+import { Button } from '../atoms/Button';
 import type { StarredPage } from '../starredPages';
 
 interface SettingsCardProps {
@@ -249,14 +250,15 @@ export function SettingsPane({
         activeTab={activeTab}
         onSelectTab={setActiveTab}
         actions={
-          <button
-            className={classes.saveButton}
+          <Button
+            variant="primary"
+            size="compact"
             onClick={handleSaveClick}
             disabled={isLoading || !hasUnsavedSettings}
             title={describeUnsavedSettings(changedTabs)}
           >
             Save
-          </button>
+          </Button>
         }
       />
 
@@ -467,28 +469,27 @@ export function SettingsPane({
           </div>
 
           <div className={classes.buttonRow}>
-            <button
-              className={classes.button}
+            <Button
               onClick={() => void handleRotatePat()}
               disabled={patAction !== 'idle'}
+              description="Mint a new token now and revoke the current one"
             >
               {patAction === 'rotating' ? 'Rotating…' : 'Rotate now'}
-            </button>
-            <button
-              className={classes.button}
+            </Button>
+            <Button
               onClick={() => void handleRevokeAll()}
               disabled={patAction !== 'idle'}
+              description="Revoke every token this extension has minted, on every machine"
             >
               {patAction === 'revoking' ? 'Revoking…' : 'Revoke all'}
-            </button>
-            <button
-              className={classes.button}
+            </Button>
+            <Button
               onClick={() => void handleClearPatData()}
               disabled={patAction !== 'idle'}
-              title="Wipe stored PAT and device ID so the extension starts fresh on next sign-in"
+              description="Wipe stored PAT and device ID so the extension starts fresh on next sign-in"
             >
               Clear PAT data
-            </button>
+            </Button>
           </div>
           {patActionMessage && (
             <span
@@ -539,13 +540,13 @@ export function SettingsPane({
           </SettingsHelp>
 
           <div className={classes.buttonRow}>
-            <button
-              className={classes.button}
+            <Button
               onClick={() => void handleRefreshIcons()}
               disabled={refreshingIcons}
+              description="Re-scrape the section icons from the Azure DevOps page in front"
             >
-              {refreshingIcons ? 'Refreshing…' : 'Refresh Tab Icons'}
-            </button>
+              {refreshingIcons ? 'Refreshing…' : 'Refresh tab icons'}
+            </Button>
             {iconRefreshStatus && (
               <span className={classes.helperText}>{iconRefreshStatus}</span>
             )}
@@ -554,17 +555,20 @@ export function SettingsPane({
           <ShortcutStatus />
 
           <div className={classes.buttonRow}>
-            <button
-              className={classes.button}
+            <Button
               onClick={() => {
                 window.location.reload();
               }}
+              description="Reload this panel only, keeping the extension as it is"
             >
               Reload panel
-            </button>
-            <button className={classes.button} onClick={onReloadExtension}>
+            </Button>
+            <Button
+              onClick={onReloadExtension}
+              description="Reload the whole extension, which service worker changes need"
+            >
               Reload extension
-            </button>
+            </Button>
           </div>
         </>
       )}

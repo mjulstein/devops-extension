@@ -1,7 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import classes from './ThemeEditor.module.css';
 import type { Settings } from '@/types';
 import type { AdoTheme } from '@/devops/theme';
+import { Button } from '../atoms/Button';
+import { readAdoThemeColors } from '../tabMessaging';
 import {
   pruneOverrides,
   readThemePalettes,
@@ -14,6 +16,8 @@ interface ThemeEditorProps {
   activeTheme: AdoTheme;
   onChange: (nextSettings: Settings) => void;
 }
+
+type SourceState = 'idle' | 'reading';
 
 /**
  * Edits the colour tokens for both themes.
@@ -29,6 +33,8 @@ export function ThemeEditor({
   onChange
 }: ThemeEditorProps) {
   const palettes = useMemo(() => readThemePalettes(), []);
+  const [sourceState, setSourceState] = useState<SourceState>('idle');
+  const [sourceMessage, setSourceMessage] = useState<string | null>(null);
 
   function setToken(theme: AdoTheme, token: string, value: string) {
     const next = pruneOverrides(
@@ -46,6 +52,50 @@ export function ThemeEditor({
       ...settings,
       themeOverrides: { ...settings.themeOverrides, [theme]: {} }
     });
+  }
+
+  /**
+   * Replaces this theme's overrides with what Azure DevOps is actually using.
+   *
+   * Read from the page rather than from a stored setting: a theme is a computed
+   * style, so the page in front is the only thing that knows. Off Azure DevOps
+   * there is nothing to read, and saying so beats overwriting the palette with
+   * whatever some other site happens to define.
+   */
+  async function sourceFromAdo(theme: AdoTheme) {
+    setSourceState('reading');
+    setSourceMessage(null);
+    try {
+      const response = await readAdoThemeColors();
+      if (!response.ok) {
+        setSourceMessage(response.error);
+        return;
+      }
+      const colors = response.result;
+      const count = Object.keys(colors).length;
+      if (count === 0) {
+        setSourceMessage(
+          'That page defined none of the colours — open an Azure DevOps page and try again.'
+        );
+        return;
+      }
+      onChange({
+        ...settings,
+        themeOverrides: {
+          ...settings.themeOverrides,
+          [theme]: pruneOverrides(colors, palettes[theme])
+        }
+      });
+      setSourceMessage(`Took ${count} colours from the Azure DevOps page.`);
+    } catch (error) {
+      setSourceMessage(
+        error instanceof Error
+          ? error.message
+          : 'Could not read the colours from that page.'
+      );
+    } finally {
+      setSourceState('idle');
+    }
   }
 
   const tokens = Object.keys(palettes[activeTheme]);
@@ -99,14 +149,27 @@ export function ThemeEditor({
               ))}
             </div>
 
-            <button
-              type="button"
-              className={classes.reset}
-              disabled={changedCount === 0}
-              onClick={() => resetTheme(theme)}
-            >
-              Reset {theme} to defaults
-            </button>
+            <div className={classes.actions}>
+              <Button
+                size="compact"
+                disabled={changedCount === 0}
+                description={`Drop every ${theme} colour you changed and follow the built-in palette again`}
+                onClick={() => resetTheme(theme)}
+              >
+                Reset to defaults
+              </Button>
+              <Button
+                size="compact"
+                disabled={sourceState === 'reading'}
+                description="Take the colours from the Azure DevOps page in front, so the panel matches it exactly"
+                onClick={() => void sourceFromAdo(theme)}
+              >
+                {sourceState === 'reading'
+                  ? 'Reading…'
+                  : 'Use Azure DevOps colours'}
+              </Button>
+            </div>
+            {sourceMessage && <p className={classes.note}>{sourceMessage}</p>}
           </details>
         );
       })}

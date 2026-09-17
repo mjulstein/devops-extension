@@ -1,3 +1,4 @@
+import { Button } from './Button';
 interface ReconnectBannerProps {
   organization: string;
   awaitingManualRetry: boolean;
@@ -33,11 +34,18 @@ export function ReconnectBanner({
         recovers automatically once you are signed in.
       </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button onClick={onReconnect}>
+        <Button variant="primary" onClick={onReconnect}>
           Open Azure DevOps{organization ? ` (${organization})` : ''} to
           reconnect
-        </button>
-        {awaitingManualRetry && <button onClick={onRetry}>Retry</button>}
+        </Button>
+        {awaitingManualRetry && (
+          <Button
+            onClick={onRetry}
+            description="Try the connection again without leaving the panel"
+          >
+            Retry
+          </Button>
+        )}
       </div>
     </div>
   );

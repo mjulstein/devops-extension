@@ -63,14 +63,14 @@
   opacity: 0.75;
 }
 
-.pin {
-  font: inherit;
+/* The shared button, squeezed to fit a dense row. */
+.rowAction {
   font-size: 10px;
-  line-height: 1;
-  background: none;
-  border: none;
   padding: 0;
-  cursor: pointer;
+  gap: 0;
+}
+
+.pin {
   /* Hidden until the row is hovered, so an action used once in a while does not
      compete with the titles for attention. */
   opacity: 0;
@@ -145,17 +145,7 @@
   background: var(--color-surface-muted);
 }
 
-.archive {
-  font: inherit;
-  font-size: 12px;
-  line-height: 1;
-  padding: 0;
-  border: none;
-  background: none;
-  cursor: pointer;
-  color: var(--color-text-subtle);
-}
-
-.archive:hover {
+.rowAction:hover:enabled {
   color: var(--color-accent);
+  border-color: transparent;
 }

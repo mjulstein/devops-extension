@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import clsx from 'clsx';
 import classes from './FavoritesEditor.module.css';
+import { Button } from '../atoms/Button';
 import type { StarredPage } from '../starredPages';
 import {
   commitDraft,
@@ -101,34 +102,32 @@ export function FavoritesEditor({ pages, onSave }: FavoritesEditorProps) {
                 />
               </div>
               <div className={classes.actions}>
-                <button
-                  type="button"
-                  className={classes.iconButton}
-                  title="Move up"
+                <Button
+                  variant="quiet"
+                  size="compact"
+                  icon="↑"
+                  description="Move this favorite up the list"
                   disabled={index === 0}
                   onClick={() => move(index, -1)}
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  className={classes.iconButton}
-                  title="Move down"
+                />
+                <Button
+                  variant="quiet"
+                  size="compact"
+                  icon="↓"
+                  description="Move this favorite down the list"
                   disabled={index === rows.length - 1}
                   onClick={() => move(index, 1)}
-                >
-                  ↓
-                </button>
-                <button
-                  type="button"
-                  className={clsx(classes.iconButton, classes.remove)}
-                  title="Remove"
+                />
+                <Button
+                  variant="quiet"
+                  size="compact"
+                  icon="✕"
+                  description="Remove this favorite"
+                  className={classes.remove}
                   onClick={() =>
                     setRows((current) => removeRow(current, row.key))
                   }
-                >
-                  ✕
-                </button>
+                />
               </div>
             </div>
           ))}
@@ -136,24 +135,18 @@ export function FavoritesEditor({ pages, onSave }: FavoritesEditorProps) {
       )}
 
       <div className={classes.buttonRow}>
-        <button
-          type="button"
-          className={classes.button}
+        <Button
+          variant="primary"
           disabled={!isDirty || isSaving}
           onClick={() => {
             void save();
           }}
         >
           {isSaving ? 'Saving…' : 'Save favorites'}
-        </button>
-        <button
-          type="button"
-          className={classes.button}
-          disabled={!isDirty || isSaving}
-          onClick={cancel}
-        >
+        </Button>
+        <Button disabled={!isDirty || isSaving} onClick={cancel}>
           Cancel
-        </button>
+        </Button>
       </div>
     </details>
   );

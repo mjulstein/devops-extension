@@ -6,6 +6,7 @@ export { fetchAuthoredWorkItems } from './fetchAuthoredWorkItems';
 export { fetchClosedParentRollup } from './fetchClosedParentRollup';
 export { getAdoTheme, setAdoTheme } from './adoTheme';
 export { openFavoritesSearch } from './openFavoritesSearch';
+export { readAdoThemeColors } from './readAdoThemeColors';
 export { fetchPullRequestActivity } from './fetchPullRequestActivity';
 export { fetchQuickTasks } from './fetchQuickTasks';
 export { archiveQuickTask } from './archiveQuickTask';

@@ -10,6 +10,7 @@ import {
 import { parseFavoritesQuery } from '../favoritesQuery';
 import { searchAllBookmarks } from '../bookmarkSync';
 import { getFavoriteIconUrl } from '../favoriteIcon';
+import { Button } from './Button';
 
 /**
  * The box the menu should fill: the panel itself, edge to edge.
@@ -119,6 +120,9 @@ export function StarredPagesMenu({
       return;
     }
     const panel = getPanelRect(wrap);
+    // Measuring is a DOM read whose only product is this state, and one caller
+    // is an effect — which is what the rule below objects to.
+    // eslint-disable-next-line @eslint-react/set-state-in-effect
     setBox({
       top: wrap.getBoundingClientRect().bottom + 4,
       left: panel.left,
@@ -225,23 +229,29 @@ export function StarredPagesMenu({
 
   // A press of the shortcut opens the menu, and a second press while it is
   // already open puts the cursor back in the search rather than doing nothing.
+  //
+  // Opened straight from the effect. This used to defer a frame, which meant a
+  // second state change in the same batch could cancel the frame through the
+  // cleanup and the menu never opened at all — the shortcut looked dead while
+  // the trigger beside it worked. Nothing here needs the DOM to have painted:
+  // placing the cursor is the focus effect's job, and it retries until it lands.
+  /* eslint-disable @eslint-react/set-state-in-effect -- opening the menu *is*
+     this effect's job: the shortcut arrives as a changed prop, so there is
+     nothing to respond to but the change itself. Deferring it to a frame is what
+     broke the shortcut in the first place. */
   useEffect(() => {
     if (focusRequest === 0) {
       return;
     }
-    // Inlined rather than calling open(), so this effect depends on nothing
-    // that changes every render.
-    const frame = requestAnimationFrame(() => {
-      measure();
-      setIsOpen(true);
-      setQuery('');
-      setHighlight(0);
-      setFocusToken((token) => token + 1);
-    });
-    return () => {
-      cancelAnimationFrame(frame);
-    };
+    measure();
+    setIsOpen(true);
+    setQuery('');
+    setHighlight(0);
+    setFocusToken((token) => token + 1);
+    // Inlined rather than calling open(), so this depends on nothing that
+    // changes every render.
   }, [focusRequest]);
+  /* eslint-enable @eslint-react/set-state-in-effect */
 
   useEffect(() => {
     if (!isOpen) {
@@ -331,11 +341,11 @@ export function StarredPagesMenu({
 
   return (
     <div className={classes.wrap} ref={wrapRef}>
-      <button
-        type="button"
+      <Button
         className={classes.trigger}
-        aria-expanded={isOpen}
-        aria-haspopup="menu"
+        isExpanded={isOpen}
+        hasPopup="menu"
+        description="Starred Azure DevOps pages"
         onClick={() => {
           if (isOpen) {
             close();
@@ -349,14 +359,15 @@ export function StarredPagesMenu({
             }
           });
         }}
-        title="Starred Azure DevOps pages"
       >
-        Starred
-        <span className={classes.count}>{pages.length || ''}</span>
+        <span className={classes.triggerLabel}>
+          Starred
+          <span className={classes.count}>{pages.length || ''}</span>
+        </span>
         <span aria-hidden="true" className={classes.caret}>
           ▾
         </span>
-      </button>
+      </Button>
 
       {isOpen && (
         <div

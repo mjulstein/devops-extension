@@ -1,6 +1,5 @@
-import clsx from 'clsx';
-import classes from './ThemeSwitch.module.css';
 import type { AdoTheme } from '@/devops/theme';
+import { Button } from './Button';
 
 interface ThemeSwitchProps {
   theme: AdoTheme;
@@ -24,19 +23,16 @@ export function ThemeSwitch({
   const next = theme === 'dark' ? 'light' : 'dark';
 
   return (
-    <button
-      type="button"
-      className={clsx(classes.button, isBusy && classes.busy)}
-      aria-pressed={theme === 'dark'}
-      aria-label={`Switch to ${next} mode`}
-      title={
+    <Button
+      icon={theme === 'dark' ? '🌙' : '☀️'}
+      description={
         isAdoReachable
           ? `In ${theme} mode, matching Azure DevOps. Switch to ${next}.`
           : `In ${theme} mode. Switch to ${next} — Azure DevOps's own setting could not be read, so this changes the panel only.`
       }
+      isPressed={theme === 'dark'}
+      disabled={isBusy}
       onClick={onToggle}
-    >
-      {theme === 'dark' ? '🌙' : '☀️'}
-    </button>
+    />
   );
 }

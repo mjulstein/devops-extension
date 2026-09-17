@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { PinIcon } from '../PinIcon';
 import classes from './PinToggleButton.module.css';
+import { Button } from '@/sidepanel/atoms/Button';
 
 interface PinToggleButtonProps {
   isPinned: boolean;
@@ -18,17 +19,14 @@ export function PinToggleButton({
   const label = isPinned ? unpinLabel : pinLabel;
 
   return (
-    <button
-      type="button"
-      className={clsx(
-        classes.button,
-        isPinned ? classes.pinned : classes.unpinned
-      )}
-      aria-label={label}
-      title={label}
+    <Button
+      variant="quiet"
+      size="compact"
+      description={label}
+      isPressed={isPinned}
+      className={clsx(isPinned ? classes.pinned : classes.unpinned)}
       onClick={onClick}
-    >
-      <PinIcon isPinned={isPinned} className={classes.icon} />
-    </button>
+      icon={<PinIcon isPinned={isPinned} className={classes.icon} />}
+    />
   );
 }

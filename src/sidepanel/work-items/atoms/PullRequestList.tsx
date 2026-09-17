@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import type { PullRequestActivityItem } from '@/types';
 import { Link } from '@/sidepanel/Link';
 import classes from './PullRequestList.module.css';
+import { Button } from '@/sidepanel/atoms/Button';
 
 const MARKS: Record<PullRequestActivityItem['approval'], string> = {
   approved: '✔',
@@ -52,15 +53,16 @@ export function PullRequestList({
         ))}
       </div>
       {isTruncated && (
-        <button
-          type="button"
+        <Button
+          size="compact"
           className={classes.showAll}
+          description="Show the pull requests beyond the first twenty"
           onClick={() => {
             setShowAll(true);
           }}
         >
           Show {hiddenCount} more
-        </button>
+        </Button>
       )}
     </>
   );

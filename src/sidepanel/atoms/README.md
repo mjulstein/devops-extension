@@ -6,6 +6,7 @@ This directory contains shared side-panel shell atoms that are reused across top
 
 ## Files in this directory
 
+- `Button.tsx` + `Button.module.css` — the one button in the panel, in three variants (default, primary, quiet) and two sizes. Every control was styled locally before and drifted: different paddings, radii and borders on the same-looking thing. The type requires either visible text or a `description`, so an icon-only button can never ship without something saying what it does — the description is both the tooltip and the accessible name. Tab strips keep their own styling, being tabs rather than buttons.
 - `ActiveWorkItemBanner.tsx` + `ActiveWorkItemBanner.module.css` — clickable active-work-item summary banner used by `App.tsx`.
 - `ReconnectBanner.tsx` — shown when the connection status is **Reconnect needed**: offers the "Open Azure DevOps to reconnect" link and, after a failed automatic recovery, a manual **Retry** button.
 - `SectionTabs.tsx` + `SectionTabs.module.css` — the one tab strip used by every tabbed region (work-item lists, settings sections), with optional per-tab counts and an `actions` slot for a control that belongs to the whole region rather than one tab. The strip wraps onto as many lines as it needs rather than scrolling: a scrolling strip hides the tabs that did not fit, and a tab you cannot see is a tab you cannot reach. The actions slot sits outside it so a region-wide control stays reachable at 320px.

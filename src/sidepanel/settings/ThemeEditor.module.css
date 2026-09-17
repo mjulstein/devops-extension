@@ -13,20 +13,37 @@
 
 .row {
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr) 11ch;
-  gap: 6px;
+  grid-template-columns: 34px minmax(0, 1fr) 11ch;
+  gap: 8px;
   align-items: center;
   font-size: 11px;
 }
 
+/* Big enough to read as a target and to hit: a colour input opens the
+   browser's picker, and at 24x20 it looked like a decoration. */
 .swatch {
-  inline-size: 24px;
-  block-size: 20px;
+  inline-size: 34px;
+  block-size: 26px;
   padding: 0;
   border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border-radius: 5px;
   background: none;
   cursor: pointer;
+}
+
+.swatch:hover {
+  border-color: var(--color-border-strong);
+}
+
+/* Chromium draws the well with its own padding, which shrinks the colour to a
+   dot inside the control. */
+.swatch::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+.swatch::-webkit-color-swatch {
+  border: none;
+  border-radius: 3px;
 }
 
 .name {
@@ -47,21 +64,10 @@
   color: var(--color-text);
 }
 
-.reset {
-  font: inherit;
-  font-size: 12px;
-  padding: 4px 8px;
+.actions {
+  display: flex;
+  gap: 6px;
   margin-block-end: 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-surface-raised);
-  color: var(--color-text);
-  cursor: pointer;
-}
-
-.reset:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
 }
 
 .note {
