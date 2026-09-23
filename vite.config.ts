@@ -1,6 +1,6 @@
-import { build as esbuildBuild } from 'esbuild';
 import { copyFileSync, existsSync, renameSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { build } from 'vite';
 import { defineConfig } from 'vitest/config';
 
 function copyManifestPlugin() {
@@ -22,28 +22,50 @@ function copyManifestPlugin() {
 
 // Bundles content-script and token-interceptor as self-contained IIFEs so they
 // need no ES module support from Chrome and no "type": "module" in the manifest.
-// All @/types imports are type-only and are silently dropped by esbuild.
+// A content script and a MAIN-world document_start script are both plain
+// scripts, so they cannot be part of the main module build.
+//
+// Built through Vite in lib mode rather than a bundler of their own, so the
+// project carries one bundler. `configFile: false` keeps this from re-entering
+// the config that schedules it.
+const IIFE_ENTRIES = ['content-script', 'token-interceptor'] as const;
+
+function toGlobalName(entry: string): string {
+  return entry.replace(/-./g, (match) => match[1].toUpperCase());
+}
+
 function buildContentScriptPlugin() {
   return {
     name: 'build-content-script-iife',
     apply: 'build' as const,
     async closeBundle() {
-      await esbuildBuild({
-        entryPoints: [resolve('src/content-script.ts')],
-        bundle: true,
-        format: 'iife',
-        outfile: resolve('dist/content-script.js'),
-        target: ['chrome92'],
-        tsconfig: resolve('tsconfig.json')
-      });
-      await esbuildBuild({
-        entryPoints: [resolve('src/token-interceptor.ts')],
-        bundle: true,
-        format: 'iife',
-        outfile: resolve('dist/token-interceptor.js'),
-        target: ['chrome92'],
-        tsconfig: resolve('tsconfig.json')
-      });
+      for (const entry of IIFE_ENTRIES) {
+        await build({
+          configFile: false,
+          logLevel: 'warn',
+          resolve: {
+            alias: {
+              '@/types': resolve(__dirname, 'types/index.ts'),
+              '@': resolve(__dirname, 'src')
+            }
+          },
+          build: {
+            outDir: 'dist',
+            // The main build has already written its output here.
+            emptyOutDir: false,
+            target: 'chrome92',
+            // Left readable: these run inside Azure DevOps's own page, where
+            // being able to read them in DevTools is worth more than the bytes.
+            minify: false,
+            lib: {
+              entry: resolve(__dirname, `src/${entry}.ts`),
+              formats: ['iife'],
+              name: toGlobalName(entry),
+              fileName: () => `${entry}.js`
+            }
+          }
+        });
+      }
     }
   };
 }

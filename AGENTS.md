@@ -89,7 +89,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - `src/sidepanel/tabMessaging/index.ts` + `src/sidepanel/tabMessaging/*.ts` — side panel tab messaging barrel + function modules
 - `src/devops/*.test.ts` + `src/sidepanel/tabMessaging/*.test.ts` / `*.test.tsx` — Vitest unit tests (globals enabled)
 - `types/*.ts` — shared extension types imported via the `@/types` alias, including the `WorkItemsQuery` request/range types
-- `vite.config.ts` — Vite multi-entry build config for extension output
+- `vite.config.ts` — Vite multi-entry build config for extension output. `content-script` and `token-interceptor` are built separately as self-contained IIFEs, since a content script and a MAIN-world `document_start` script are plain scripts and cannot be ES modules. They go through Vite in lib mode, so the project carries one bundler. They are left unminified on purpose — they run inside Azure DevOps's page, where reading them in DevTools is worth more than the bytes
 - `dist/` — generated unpacked extension files (build output)
 - `README.md` — user/developer documentation
 - `AGENTS.md` — agent instructions
