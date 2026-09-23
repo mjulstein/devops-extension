@@ -7,14 +7,268 @@ import {
   tryCreateLastVisitedDevOpsContext,
   tryCreateLastVisitedWorkItemRef
 } from './devops/lastVisitedContext';
+import {
+  SHORTCUT_RUN_KEY,
+  type ShortcutRun
+} from './sidepanel/shortcutDiagnostics';
+import { isAzureDevOpsUrl } from './sidepanel/tabMessaging/isAzureDevOpsUrl';
+import {
+  loadQuickTaskLinks,
+  loadStarredPages
+} from './sidepanel/chromeStorage';
+import { loadThemeTokens } from './sidepanel/theme';
+import { searchAllBookmarks } from './sidepanel/bookmarkSync';
+import {
+  blobToDataUrl,
+  loadFaviconsForUrls
+} from './favoritesPalette/faviconData';
 import { fetchChildTasksForActiveParent } from './devops/childTasks';
+import { fetchPullRequestActivity } from './devops/pullRequestActivity';
+import { fetchAdoTheme, setAdoTheme, type AdoTheme } from './devops/theme';
 import { resolveActiveWorkItemContext } from './devops/activeParentContext';
 import { createChildTaskFromActivePage } from './devops/taskCreation';
-import { fetchWorkItems } from './devops/workItems';
+import { archiveQuickTask, createQuickTask } from './devops/quickTask';
+import {
+  fetchAuthoredWorkItems,
+  fetchClosedParentRollup,
+  fetchQuickTaskItems,
+  fetchWorkItems
+} from './devops/workItems';
 import { setParentForActiveWorkItem } from './devops/parentAssignment';
 import { ensurePat } from './devops/auth/ensurePat';
 import { revokeAllExtensionPats } from './devops/auth/revokeAllExtensionPats';
 import { createDefaultConnectionService } from './devops/auth/connectionService';
+import { startBearerObserver } from './devops/auth/bearerObserver';
+
+// Observe Azure DevOps request headers so a Bearer is available for PAT
+// minting regardless of which realm issued the call.
+startBearerObserver();
+
+// Ctrl+Period (user-configurable in chrome://extensions/shortcuts): open the
+// side panel and put the cursor in the starred-pages search. Opening the panel
+// from a command handler is allowed because the command counts as a user
+// gesture.
+//
+// Picking the keys is most of the work here, because a combination that is
+// already taken is left unbound with no error anywhere: the command exists, has
+// no shortcut, and pressing it does nothing. Two rounds of that:
+//   - Ctrl+Shift+K is Duplicate Tab in Edge, and a browser shortcut always wins.
+//   - Alt+Shift+* can be swallowed by Windows itself, which uses Alt+Shift to
+//     switch keyboard layout, so Edge never sees the keypress to begin with.
+// Ctrl and punctuation avoids both: Edge binds nearly every Ctrl+letter and
+// Ctrl+digit, but not Ctrl+Period. Report what is actually bound so the next
+// collision is diagnosable instead of mysterious — the side panel shows the
+// same reading on Settings -> Tools.
+void chrome.commands?.getAll().then((commands) => {
+  for (const command of commands) {
+    if (!command.name) {
+      continue;
+    }
+    if (command.shortcut) {
+      console.info(`[commands] "${command.name}" bound to ${command.shortcut}`);
+    } else {
+      console.warn(
+        `[commands] "${command.name}" has NO shortcut — it probably clashes with a ` +
+          'browser shortcut. Assign one at chrome://extensions/shortcuts.'
+      );
+    }
+  }
+});
+
+// Icons the palette cannot fetch for itself, kept for the life of the worker so
+// a wide search does not re-read the same pictures on every keystroke.
+const faviconCache = new Map<string, string>();
+
+function loadFavicons(urls: string[]) {
+  return loadFaviconsForUrls(urls, faviconCache, {
+    fetchFn: (input: RequestInfo | URL, init?: RequestInit) =>
+      fetch(input, init),
+    toDataUrl: blobToDataUrl
+  });
+}
+
+chrome.commands?.onCommand.addListener((command) => {
+  if (command !== 'open-starred-search') {
+    return;
+  }
+
+  void openFavoritesSearch();
+});
+
+/**
+ * Opens the favorites search wherever it belongs: over an Azure DevOps page when
+ * one is in front, otherwise in the side panel. Shared by the keyboard command
+ * and the panel's own trigger so both land on the same surface.
+ */
+async function openFavoritesSearch(): Promise<'overlay' | 'panel'> {
+  return await (async () => {
+    let opened = false;
+    let delivered = false;
+    let error: string | null = null;
+
+    let paletteFailure: string | undefined;
+
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true
+    });
+
+    // On an Azure DevOps page the palette is drawn over the page itself, which
+    // is centred where the user is already looking and — because that document
+    // holds focus — can put the cursor in its search field without a fight.
+    // Anywhere else, and on a tab whose content script is not there to answer,
+    // the side panel's own menu is the fallback rather than nothing at all.
+    if (tab?.id != null && isAzureDevOpsUrl(tab.url)) {
+      const tabId = tab.id;
+      try {
+        const [favorites, quickTasks, tokens] = await Promise.all([
+          loadStarredPages(),
+          loadQuickTaskLinks(),
+          loadThemeTokens()
+        ]);
+        const icons = await loadFavicons([
+          ...favorites.map((page) => page.url),
+          ...quickTasks.map((page) => page.url)
+        ]);
+        const message = {
+          type: 'OPEN_FAVORITES_PALETTE',
+          payload: { favorites, quickTasks, tokens, icons }
+        };
+
+        try {
+          await chrome.tabs.sendMessage(tabId, message);
+        } catch {
+          // A tab loaded before the extension was last reloaded has no content
+          // script, and refreshing it by hand is not something to ask of anyone
+          // — so inject one and ask again. This is the difference between the
+          // palette working sometimes and working always.
+          await chrome.scripting.executeScript({
+            target: { tabId },
+            files: ['content-script.js']
+          });
+          await chrome.tabs.sendMessage(tabId, message);
+        }
+
+        await recordShortcutRun({
+          opened: true,
+          delivered: true,
+          error: null,
+          surface: 'overlay'
+        });
+        return 'overlay';
+      } catch (paletteError) {
+        // Falls through to the side panel, but records why.
+        paletteFailure = describeError(paletteError);
+      }
+    }
+
+    try {
+      if (tab?.windowId != null) {
+        await chrome.sidePanel.open({ windowId: tab.windowId });
+        opened = true;
+      }
+    } catch (openError) {
+      // Opening can be refused — a browser may not count a command as the user
+      // gesture the API requires. That must not stop the focus message: when
+      // the panel is already open, delivering it is the whole job.
+      error = describeError(openError);
+    }
+
+    // The panel may have only just started, so retry briefly rather than firing
+    // once into a listener that does not exist yet.
+    for (let attempt = 0; attempt < 10 && !delivered; attempt += 1) {
+      try {
+        await chrome.runtime.sendMessage({ type: 'FOCUS_STARRED_SEARCH' });
+        delivered = true;
+      } catch {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+    }
+
+    if (!delivered && error === null) {
+      console.warn('[commands] the panel never took the focus message');
+    }
+
+    await recordShortcutRun({
+      opened,
+      delivered,
+      error,
+      surface: 'panel',
+      paletteError: paletteFailure
+    });
+    return 'panel';
+  })();
+}
+
+/**
+ * Records what the last keypress achieved, so the panel can say. A shortcut that
+ * is bound and still does nothing is otherwise only diagnosable from the service
+ * worker console, which is several clicks into a page most people never open.
+ */
+async function recordShortcutRun(run: Omit<ShortcutRun, 'at'>): Promise<void> {
+  await chrome.storage.local.set({
+    [SHORTCUT_RUN_KEY]: { ...run, at: Date.now() }
+  });
+}
+
+/**
+ * Reloads the Azure DevOps page in front, if that is what is in front.
+ *
+ * Azure DevOps reads its theme when the page loads, so changing the setting
+ * leaves the open page looking exactly as it did — the switch appears to have
+ * done nothing until the next reload. Only the active tab is reloaded: other
+ * Azure DevOps tabs may hold half-written comments or work items, and losing
+ * those to a theme change would be a poor trade.
+ */
+async function reloadActiveAzureDevOpsTab(): Promise<void> {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab?.id != null && isAzureDevOpsUrl(tab.url)) {
+    await chrome.tabs.reload(tab.id);
+  }
+}
+
+/**
+ * Opens the browser's bookmark manager.
+ *
+ * Its address differs by browser and is not something to guess at from the user
+ * agent, so the known ones are tried in turn until one opens.
+ */
+async function openBookmarkManager(): Promise<void> {
+  const candidates = ['chrome://bookmarks/', 'edge://favorites/'];
+  for (const url of candidates) {
+    try {
+      await chrome.tabs.create({ url });
+      return;
+    } catch {
+      // Try the next address.
+    }
+  }
+  throw new Error("Could not open the browser's bookmark manager.");
+}
+
+/**
+ * Navigates to a favorite: in place by default, in a new tab when asked.
+ *
+ * Falls back to a new tab when there is no active tab to navigate, which is the
+ * only thing left to do rather than silently dropping the request.
+ */
+async function openStarredPage(url: string, newTab: boolean): Promise<void> {
+  if (!newTab) {
+    const [active] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true
+    });
+    if (active?.id != null) {
+      await chrome.tabs.update(active.id, { url });
+      return;
+    }
+  }
+  await chrome.tabs.create({ url });
+}
+
+function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 type RuntimeMessage =
   | {
@@ -22,8 +276,71 @@ type RuntimeMessage =
       payload?: undefined;
     }
   | {
+      type: 'OPEN_FAVORITES_SEARCH';
+      payload?: undefined;
+    }
+  | {
+      type: 'SEARCH_BOOKMARKS';
+      payload: {
+        term: string;
+      };
+    }
+  | {
+      type: 'OPEN_BOOKMARK_MANAGER';
+      payload?: undefined;
+    }
+  | {
+      type: 'OPEN_STARRED_PAGE';
+      payload: {
+        url: string;
+        newTab?: boolean;
+      };
+    }
+  | {
       type: 'FETCH_WORK_ITEMS';
       payload: FetchWorkItemsRequest;
+    }
+  | {
+      type: 'FETCH_AUTHORED_WORK_ITEMS';
+      payload: FetchWorkItemsRequest;
+    }
+  | {
+      type: 'FETCH_CLOSED_PARENT_ROLLUP';
+      payload: FetchWorkItemsRequest;
+    }
+  | {
+      type: 'FETCH_PULL_REQUEST_ACTIVITY';
+      payload: FetchWorkItemsRequest;
+    }
+  | {
+      type: 'GET_ADO_THEME';
+      payload: {
+        settings: Settings;
+      };
+    }
+  | {
+      type: 'SET_ADO_THEME';
+      payload: {
+        settings: Settings;
+        theme: AdoTheme;
+      };
+    }
+  | {
+      type: 'CREATE_QUICK_TASK';
+      payload: {
+        settings: Settings;
+        pageTitle: string;
+        pageUrl: string;
+        title?: string;
+      };
+    }
+  | {
+      type: 'FETCH_QUICK_TASKS';
+      payload: FetchWorkItemsRequest;
+    }
+  | {
+      type: 'ARCHIVE_QUICK_TASK';
+      payload: { settings: Settings; taskId: number };
     }
   | {
       type: 'GET_ACTIVE_WORK_ITEM_CONTEXT';
@@ -129,6 +446,55 @@ chrome.runtime.onMessage.addListener(
     if (message.type === 'PING_SERVICE_WORKER') {
       sendResponse({ ok: true, result: 'pong' });
       return;
+    }
+
+    if (message.type === 'OPEN_FAVORITES_SEARCH') {
+      // The panel's trigger goes through the worker too, so the button and the
+      // shortcut cannot disagree about where the search opens.
+      openFavoritesSearch()
+        .then((surface) => sendResponse({ ok: true, result: surface }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'SEARCH_BOOKMARKS') {
+      // The palette runs in a page, which has no bookmarks API of its own — and
+      // cannot load the favicon cache either, so the icons come with the rows.
+      searchAllBookmarks(message.payload.term)
+        .then(async (result) => ({
+          result,
+          icons: await loadFavicons(
+            result.bookmarks.map((entry) => entry.page.url)
+          )
+        }))
+        .then(({ result, icons }) =>
+          sendResponse({ ok: true, result: { ...result, icons } })
+        )
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'OPEN_BOOKMARK_MANAGER') {
+      openBookmarkManager()
+        .then(() => sendResponse({ ok: true, result: null }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'OPEN_STARRED_PAGE') {
+      // Sent by the in-page palette, which cannot manage tabs itself.
+      openStarredPage(message.payload.url, message.payload.newTab === true)
+        .then(() => sendResponse({ ok: true, result: null }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
     }
 
     if (message.type === 'GET_ACTIVE_WORK_ITEM_CONTEXT') {
@@ -290,6 +656,113 @@ chrome.runtime.onMessage.addListener(
     if (message.type === 'DEVOPS_BEARER_CAPTURED') {
       void connectionService.handleBearerCaptured();
       return;
+    }
+
+    if (message.type === 'ARCHIVE_QUICK_TASK') {
+      const { settings, taskId } = message.payload;
+      const archiveId = Number(settings.quickTaskArchiveId.trim());
+
+      resolveWorkItemsContext(settings)
+        .then((context) =>
+          archiveQuickTask({
+            organization: context.organization,
+            project: context.project,
+            taskId,
+            archiveId
+          })
+        )
+        .then(() => sendResponse({ ok: true, result: taskId }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'FETCH_QUICK_TASKS') {
+      resolveWorkItemsContext(message.payload.settings)
+        .then((context) => fetchQuickTaskItems(message.payload, context))
+        .then((result) => sendResponse({ ok: true, result }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'CREATE_QUICK_TASK') {
+      const { settings, pageTitle, pageUrl, title } = message.payload;
+      const parentId = Number(settings.quickTaskParentId.trim());
+
+      resolveWorkItemsContext(settings)
+        .then((context) =>
+          createQuickTask({
+            organization: context.organization,
+            project: context.project,
+            parentId,
+            title,
+            pageTitle,
+            pageUrl,
+            assignedTo: settings.assignedTo
+          })
+        )
+        .then((result) => sendResponse({ ok: true, result }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'GET_ADO_THEME') {
+      resolveWorkItemsContext(message.payload.settings)
+        .then((context) => fetchAdoTheme(context.organization))
+        .then((result) => sendResponse({ ok: true, result }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'SET_ADO_THEME') {
+      const { theme } = message.payload;
+      resolveWorkItemsContext(message.payload.settings)
+        .then((context) => setAdoTheme(context.organization, theme))
+        .then(() => reloadActiveAzureDevOpsTab())
+        .then(() => sendResponse({ ok: true, result: theme }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'FETCH_PULL_REQUEST_ACTIVITY') {
+      resolveWorkItemsContext(message.payload.settings)
+        .then((context) =>
+          fetchPullRequestActivity(context.organization, context.project)
+        )
+        .then((result) => sendResponse({ ok: true, result }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'FETCH_CLOSED_PARENT_ROLLUP') {
+      resolveWorkItemsContext(message.payload.settings)
+        .then((context) => fetchClosedParentRollup(message.payload, context))
+        .then((result) => sendResponse({ ok: true, result }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'FETCH_AUTHORED_WORK_ITEMS') {
+      resolveWorkItemsContext(message.payload.settings)
+        .then((context) => fetchAuthoredWorkItems(message.payload, context))
+        .then((result) => sendResponse({ ok: true, result }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
     }
 
     if (message.type !== 'FETCH_WORK_ITEMS') {

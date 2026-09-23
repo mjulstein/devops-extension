@@ -92,6 +92,16 @@ export default defineConfig([
       'prettier/prettier': 'warn'
     }
   },
+  {
+    // dev/ is the side-panel dev harness. Faking the chrome extension API means
+    // async methods with nothing to await and no-op event listeners, both of
+    // which are dictated by the shape of the API being mocked.
+    files: ['dev/**/*.ts', 'dev/**/*.tsx'],
+    rules: {
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/no-empty-function': 'off'
+    }
+  },
   prettierConfig,
   {
     files: ['**/*.{css,module.css}'],
@@ -99,7 +109,11 @@ export default defineConfig([
     ...cssRecommended,
     rules: {
       ...(cssRecommended.rules ?? {}),
-      'css/use-baseline': 'warn'
+      'css/use-baseline': 'warn',
+      // Colour tokens are declared once in `src/theme.css` and used from every
+      // CSS module. The rule lints each file alone, so it cannot see those
+      // declarations and would flag every token as unknown.
+      'css/no-invalid-properties': ['error', { allowUnknownVariables: true }]
     }
   }
 ]);

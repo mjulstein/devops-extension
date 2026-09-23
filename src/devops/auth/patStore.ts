@@ -5,7 +5,7 @@ import type { PatRecord } from '@/types';
 
 export const PAT_RECORD_KEY = 'devopsExtPat';
 export const DEVICE_ID_KEY = 'devopsExtDeviceId';
-// Additive key (constitution IV): throttles rotation so a failing rotation does
+// Additive key (principles IV): throttles rotation so a failing rotation does
 // not retry on every interaction. See spec FR-006.
 export const LAST_ROTATE_ATTEMPT_KEY = 'devopsExtLastRotateAttemptAt';
 
@@ -31,7 +31,8 @@ export function parsePatRecord(value: unknown): PatRecord | null {
     token: value.token,
     authorizationId: value.authorizationId,
     expiresAt: value.expiresAt,
-    displayName: value.displayName
+    displayName: value.displayName,
+    ...(typeof value.scope === 'string' ? { scope: value.scope } : {})
   };
 }
 

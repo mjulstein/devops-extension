@@ -7,7 +7,7 @@
 **Status**: Planned
 **Input**: Replace fragile browser-session (cookie/Bearer) authentication for Azure DevOps data calls with a runtime-minted, auto-rotating Personal Access Token, so the extension keeps working through the office tenant's frequent ENTRA access-token failures. Establishes the credential as an Azure-DevOps-specific concern inside a replaceable provider adapter.
 
-**Related docs**: [constitution](../../.specify/memory/constitution.md) (Principles I, VI, VII), [ADR-0001](../../docs/adr/0001-replaceable-provider-adapters.md), [CONTEXT.md](../../CONTEXT.md)
+**Related docs**: [principles](../../docs/principles.md) (Principles I, VI, VII), [ADR-0001](../../docs/adr/0001-replaceable-provider-adapters.md), [CONTEXT.md](../../CONTEXT.md)
 
 ## User Scenarios & Testing
 

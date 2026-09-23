@@ -16,6 +16,12 @@ import {
   loadActiveSidepanelTab,
   loadCachedWorkItems,
   loadHiddenChildTaskStates,
+  loadPinnedQuickTaskIds,
+  loadBookmarkBaseline,
+  loadStarredPages,
+  saveBookmarkBaseline,
+  saveStarredPages,
+  savePinnedQuickTaskIds,
   loadLastVisitedDevOpsContext,
   loadParentSuggestions,
   loadPinnedActiveWorkItemContext,
@@ -32,6 +38,7 @@ import {
   saveSettings,
   saveShowWorkItemParentDetails,
   saveWorkItemsClosedDateRange,
+  saveQuickTaskLinks,
   setParentSuggestionPinned,
   upsertParentSuggestion
 } from './chromeStorage';
@@ -46,19 +53,76 @@ import { navigateToWorkItem } from './navigateToWorkItem';
 import { deduplicateTabs } from './deduplicateTabs';
 import {
   createChildTask,
+  archiveQuickTask,
+  createQuickTask,
   ensureConnection,
+  fetchAuthoredWorkItems,
+  fetchClosedParentRollup,
+  fetchPullRequestActivity,
+  fetchQuickTasks,
   fetchChildTasksForCurrentParent,
   fetchWorkItems,
   getActiveTabId,
   getActiveWorkItemContext,
+  getAdoTheme,
   isActiveTabAzureDevOps,
+  openFavoritesSearch,
+  setAdoTheme,
   retryConnection,
   setActiveWorkItemParent,
   type ConnectionStatus
 } from './tabMessaging';
+import type { WorkItemListTab } from './work-items/atoms/WorkItemListTabs';
+import {
+  sortQuickTasks,
+  togglePinnedId
+} from './work-items/atoms/quickTaskSorting';
+import {
+  ALL_STALE_LISTS,
+  NO_STALE_LISTS,
+  markFresh,
+  needsReload,
+  type StaleLists
+} from './work-items/atoms/staleLists';
+import {
+  describeReconcile,
+  reconcileBookmarkFolder,
+  type BookmarkBaseline
+} from './bookmarkSync';
+import {
+  isPageStarred,
+  listOpenablePages,
+  toggleStarredPage,
+  type StarredPage
+} from './starredPages';
+import {
+  describeShortcutRun,
+  getShortcutRunLevel,
+  isShortcutRun,
+  SHORTCUT_RUN_KEY
+} from './shortcutDiagnostics';
+import {
+  buildQuickTaskLinks,
+  describeQuickTaskBookmarkSync,
+  syncQuickTaskBookmarks
+} from './quickTaskBookmarks';
+import {
+  applyTheme,
+  loadLastKnownTheme,
+  saveLastKnownTheme,
+  saveThemeTokens
+} from './theme';
+import {
+  applyThemeOverrides,
+  readThemePalettes,
+  resolvePalette
+} from './themeTokens';
+import type { AdoTheme } from '@/devops/theme';
+import type { PullRequestActivityItem } from '@/types';
 import type { DebugLogEntry } from './DebugConsolePane';
 import type { SidepanelTabId } from './Tabs';
 import { tryCreateLastVisitedDevOpsContext } from '../devops/lastVisitedContext';
+import { isAzureDevOpsUrl } from './tabMessaging/isAzureDevOpsUrl';
 
 interface StatusMessage {
   kind: 'info' | 'success' | 'error';
@@ -80,9 +144,19 @@ const MAX_DYNAMIC_SUGGESTIONS = 5;
 const MAX_IN_MEMORY_SUGGESTIONS = 40;
 const MAX_DEBUG_LOG_ENTRIES = 120;
 
+/**
+ * How long to wait for bookmark events to settle before reconciling. A synced
+ * change arrives as a burst of per-bookmark events; reconciling on each one
+ * would read half-applied state.
+ */
+const BOOKMARK_EVENT_DEBOUNCE_MS = 400;
+
 export function useSidepanelController() {
   const [activeTab, setActiveTab] = useState<SidepanelTabId>('work-items');
   const [settings, setSettings] = useState<Settings>(defaultSettings);
+  // What is actually persisted, so the Settings tab can tell a draft from a
+  // saved value and only offer Save when something differs.
+  const [savedSettings, setSavedSettings] = useState<Settings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [taskTitle, setTaskTitle] = useState('');
@@ -99,6 +173,68 @@ export function useSidepanelController() {
   const [createTaskStatusMessage, setCreateTaskStatusMessage] =
     useState<StatusMessage | null>(null);
   const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
+  // Which list the Work items tab is showing, plus the lazily-loaded Authored
+  // data. `null` means "not fetched yet", which is distinct from an empty list.
+  const [activeListTab, setActiveListTab] = useState<WorkItemListTab>('todo');
+  const [authoredItems, setAuthoredItems] = useState<WorkItem[] | null>(null);
+  const [isAuthoredLoading, setIsAuthoredLoading] = useState(false);
+  const [authoredError, setAuthoredError] = useState<string | null>(null);
+  // Closed list rolled up to finished parents. Loaded only while "show task
+  // parent details" is on, since it needs every parent's child states.
+  const [closedParentRollup, setClosedParentRollup] = useState<
+    WorkItem[] | null
+  >(null);
+  const [isClosedRollupLoading, setIsClosedRollupLoading] = useState(false);
+  const [closedRollupError, setClosedRollupError] = useState<string | null>(
+    null
+  );
+  // Pull requests I am involved in. Loaded on first opening the PRs tab, since
+  // it scans comment threads across every candidate PR.
+  const [pullRequests, setPullRequests] = useState<
+    PullRequestActivityItem[] | null
+  >(null);
+  const [isPullRequestsLoading, setIsPullRequestsLoading] = useState(false);
+  const [pullRequestsError, setPullRequestsError] = useState<string | null>(
+    null
+  );
+  // Quick tasks: the catch-all parent's children, in every state.
+  const [quickTasks, setQuickTasks] = useState<WorkItem[] | null>(null);
+  const [isQuickTasksLoading, setIsQuickTasksLoading] = useState(false);
+  const [quickTasksError, setQuickTasksError] = useState<string | null>(null);
+  const [pinnedQuickTaskIds, setPinnedQuickTaskIds] = useState<number[]>([]);
+  const [quickTaskTitle, setQuickTaskTitle] = useState('');
+  // Lists the last refetch invalidated. They keep their rows on screen and
+  // refresh in place, so a list never blanks out while loading.
+  const [staleLists, setStaleLists] = useState<StaleLists>(NO_STALE_LISTS);
+  // The task the last quick-task creation produced, kept as a one-click link.
+  const [createdQuickTask, setCreatedQuickTask] = useState<{
+    id: number;
+    url: string;
+  } | null>(null);
+  // Starred Azure DevOps pages, plus the active tab so the menu knows whether
+  // the current page can be starred.
+  const [starredPages, setStarredPages] = useState<StarredPage[]>([]);
+  const [activePage, setActivePage] = useState<{
+    url: string;
+    title: string;
+  } | null>(null);
+  // Bumped when the keyboard shortcut fires, so the menu opens and focuses its
+  // search. A counter, so pressing it twice works.
+  const [starredFocusRequest, setStarredFocusRequest] = useState(0);
+  const [quickTaskPages, setQuickTaskPages] = useState<StarredPage[]>([]);
+  // Azure DevOps's theme, mirrored rather than owned: the panel reads it, shows
+  // it, and writes changes straight back so the two cannot drift apart.
+  const [theme, setTheme] = useState<AdoTheme>('light');
+  const [isThemeKnown, setIsThemeKnown] = useState(false);
+  const [isThemeChanging, setIsThemeChanging] = useState(false);
+  // Last known state of the mirrored folder, which is what lets a reconcile
+  // tell a local addition from a deletion that arrived over bookmark sync.
+  const bookmarkBaselineRef = useRef<BookmarkBaseline>({});
+  // Guards against reacting to our own bookmark writes.
+  const isWritingBookmarksRef = useRef(false);
+  const [bookmarkSyncStatus, setBookmarkSyncStatus] = useState<string | null>(
+    null
+  );
   const [hiddenTaskStates, setHiddenTaskStates] = useState<string[]>([]);
   const [closedDateRange, setClosedDateRange] = useState<ClosedDateRange>(() =>
     createDefaultClosedDateRange()
@@ -171,7 +307,10 @@ export function useSidepanelController() {
         storedPinnedContext,
         storedClosedDateRange,
         storedShowWorkItemParentDetails,
-        storedRecentFeaturesCollapsed
+        storedRecentFeaturesCollapsed,
+        storedPinnedQuickTaskIds,
+        storedStarredPages,
+        storedBookmarkBaseline
       ] = await Promise.all([
         loadSettings(),
         loadLastVisitedDevOpsContext(),
@@ -182,7 +321,10 @@ export function useSidepanelController() {
         loadPinnedActiveWorkItemContext(),
         loadWorkItemsClosedDateRange(),
         loadShowWorkItemParentDetails(),
-        loadRecentFeaturesCollapsed()
+        loadRecentFeaturesCollapsed(),
+        loadPinnedQuickTaskIds(),
+        loadStarredPages(),
+        loadBookmarkBaseline()
       ]);
 
       const resolvedLastVisitedContext =
@@ -212,6 +354,7 @@ export function useSidepanelController() {
       };
 
       setSettings(hydratedSettings);
+      setSavedSettings(getTrimmedSettingsFromState(hydratedSettings));
 
       if (
         hydratedSettings.organization !== storedSettings.organization ||
@@ -220,16 +363,42 @@ export function useSidepanelController() {
         void saveSettings(hydratedSettings).catch(() => undefined);
       }
 
+      // The remembered theme paints immediately so the panel does not flash
+      // light before Azure DevOps answers.
+      const remembered = await loadLastKnownTheme();
+      setTheme(remembered);
+      paintTheme(remembered, hydratedSettings.themeOverrides);
+
       // Lazy ensure-valid PAT when the side panel opens (spec FR-005).
       const orgForConnection = hydratedSettings.organization.trim();
       if (orgForConnection) {
         void ensureConnection(orgForConnection)
-          .then((status) => setConnectionStatus(status))
+          .then((status) => {
+            setConnectionStatus(status);
+            // Only now is there anything to authenticate a read with. Asking
+            // first raced the connection and always failed with "Reconnect
+            // needed", which read as "the theme cannot be read at all".
+            if (status === 'connected') {
+              void refreshAdoTheme(
+                getTrimmedSettingsFromState(hydratedSettings)
+              );
+            }
+          })
           .catch(() => undefined);
       }
 
       setActiveTab(storedActiveTab);
       setHiddenTaskStates(storedHiddenStates);
+      setPinnedQuickTaskIds(storedPinnedQuickTaskIds);
+      setStarredPages(storedStarredPages);
+      bookmarkBaselineRef.current = storedBookmarkBaseline;
+      // Reconcile on open: the folder may have picked up additions, renames or
+      // deletions from another machine over the browser's bookmark sync while
+      // this panel was closed.
+      void reconcileBookmarks(
+        storedStarredPages,
+        storedSettings.bookmarkFolderName
+      );
       setClosedDateRange(storedClosedDateRange);
       setIsClosedEndTodayShortcut(
         isTodayDateInputValue(storedClosedDateRange.end)
@@ -268,6 +437,90 @@ export function useSidepanelController() {
     })();
   }, []);
 
+  // Kept current every render so the bookmark listener, which is registered
+  // once, always reconciles against the latest favorites and folder name.
+  const reconcileBookmarksRef = useRef<() => void>(() => undefined);
+  useEffect(() => {
+    reconcileBookmarksRef.current = () => {
+      void reconcileBookmarks(starredPages, settings.bookmarkFolderName);
+    };
+  });
+
+  // Every shortcut press is recorded by the service worker, which has no console
+  // of its own that anyone would think to open. Mirroring each run into the
+  // panel's console puts the outcome — palette, fallback, or failure — where the
+  // rest of the panel's story already is.
+  useEffect(() => {
+    function onStorageChanged(
+      changes: Record<string, chrome.storage.StorageChange>
+    ) {
+      const change = changes[SHORTCUT_RUN_KEY];
+      if (!change || !isShortcutRun(change.newValue)) {
+        return;
+      }
+      pushDebugLogRef.current(
+        getShortcutRunLevel(change.newValue),
+        `Favorites shortcut: ${describeShortcutRun(change.newValue)}`
+      );
+    }
+
+    chrome.storage?.onChanged?.addListener(onStorageChanged);
+    return () => {
+      chrome.storage?.onChanged?.removeListener(onStorageChanged);
+    };
+  }, []);
+
+  // Same reason: the runtime-message listener is registered once, but needs the
+  // current settings when a recovered connection makes the theme readable.
+  const pushDebugLogRef = useRef(pushDebugLog);
+  pushDebugLogRef.current = pushDebugLog;
+
+  const refreshAdoThemeRef = useRef<() => void>(() => undefined);
+  useEffect(() => {
+    refreshAdoThemeRef.current = () => {
+      void refreshAdoTheme();
+    };
+  });
+
+  useEffect(() => {
+    // Bookmark sync is how favorites travel between machines, so a change the
+    // browser pulls down from the cloud has to reach the panel. Edge applies a
+    // sync in a burst of individual events, hence the debounce.
+    if (!chrome.bookmarks?.onCreated) {
+      return;
+    }
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = () => {
+      if (isWritingBookmarksRef.current) {
+        return;
+      }
+      if (timer !== undefined) {
+        clearTimeout(timer);
+      }
+      timer = setTimeout(() => {
+        reconcileBookmarksRef.current();
+      }, BOOKMARK_EVENT_DEBOUNCE_MS);
+    };
+
+    chrome.bookmarks.onCreated.addListener(schedule);
+    chrome.bookmarks.onChanged.addListener(schedule);
+    chrome.bookmarks.onRemoved.addListener(schedule);
+    chrome.bookmarks.onMoved.addListener(schedule);
+    chrome.bookmarks.onChildrenReordered?.addListener(schedule);
+
+    return () => {
+      if (timer !== undefined) {
+        clearTimeout(timer);
+      }
+      chrome.bookmarks.onCreated.removeListener(schedule);
+      chrome.bookmarks.onChanged.removeListener(schedule);
+      chrome.bookmarks.onRemoved.removeListener(schedule);
+      chrome.bookmarks.onMoved.removeListener(schedule);
+      chrome.bookmarks.onChildrenReordered?.removeListener(schedule);
+    };
+  }, []);
+
   useEffect(() => {
     // The service worker broadcasts connection-status changes (auto-recovery
     // outcomes, etc.) so the panel reflects them without a manual reload (FR-009).
@@ -290,6 +543,11 @@ export function useSidepanelController() {
       }
       if (message.payload.status) {
         setConnectionStatus(message.payload.status);
+        // A connection recovered in the background is the other moment Azure
+        // DevOps's theme becomes readable.
+        if (message.payload.status === 'connected') {
+          refreshAdoThemeRef.current();
+        }
       }
       setAwaitingManualRetry(Boolean(message.payload.awaitingManualRetry));
     };
@@ -327,6 +585,9 @@ export function useSidepanelController() {
       }
 
       void refreshActiveWorkItemContext();
+      // The Starred menu offers to star the *current* page, so it has to track
+      // tab changes even while an item is pinned.
+      void refreshActivePage();
     };
 
     const onTabUpdated = (
@@ -335,6 +596,10 @@ export function useSidepanelController() {
       tab: chrome.tabs.Tab
     ) => {
       void refreshActiveTabLinkMode();
+
+      if (tab.active && (changeInfo.status === 'complete' || changeInfo.url)) {
+        void refreshActivePage();
+      }
 
       if (isActiveItemPinned || !tab.active) {
         return;
@@ -345,12 +610,25 @@ export function useSidepanelController() {
       }
     };
 
+    const onRuntimeMessage = (message: unknown) => {
+      if (
+        message &&
+        typeof message === 'object' &&
+        (message as { type?: unknown }).type === 'FOCUS_STARRED_SEARCH'
+      ) {
+        setStarredFocusRequest((count) => count + 1);
+      }
+    };
+    chrome.runtime.onMessage.addListener(onRuntimeMessage);
+
+    void refreshActivePage();
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onVisibilityChange);
     chrome.tabs.onActivated.addListener(onTabActivated);
     chrome.tabs.onUpdated.addListener(onTabUpdated);
 
     return () => {
+      chrome.runtime.onMessage.removeListener(onRuntimeMessage);
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       chrome.tabs.onActivated.removeListener(onTabActivated);
@@ -377,13 +655,31 @@ export function useSidepanelController() {
     }
   }
 
+  /**
+   * Colour edits repaint as they are typed rather than on save: a palette is
+   * judged by looking at it, and a preview that waits for Save cannot be judged
+   * at all. Saving is still what makes them persist.
+   */
+  function onChangeSettings(next: Settings) {
+    setSettings(next);
+    if (next.themeOverrides !== settings.themeOverrides) {
+      paintTheme(theme, next.themeOverrides);
+    }
+  }
+
   async function onSaveSettings() {
-    await saveSettings(getTrimmedSettingsFromState(settings));
+    const trimmed = getTrimmedSettingsFromState(settings);
+    await saveSettings(trimmed);
+    setSavedSettings(trimmed);
     pushDebugLog(
       'success',
       `Saved settings for ${settings.organization.trim() || '(auto org)'}/${settings.project.trim() || '(auto project)'}.`
     );
     setStatusMessage({ kind: 'success', text: 'Settings saved.' });
+
+    // Naming the folder is exactly when the sync should appear; waiting for the
+    // next star would make it look broken.
+    await reconcileBookmarks(starredPages, settings.bookmarkFolderName);
   }
 
   function onReloadExtension() {
@@ -453,6 +749,12 @@ export function useSidepanelController() {
 
     const startedAt = Date.now();
     const fetchSequence = ++workItemsFetchSequenceRef.current;
+
+    // The lazily-loaded lists are derived from the same query parameters, so a
+    // refetch invalidates them rather than leaving a stale Authored count or a
+    // rollup computed for a different date range. They are marked stale, not
+    // cleared: rows the user can already see stay put until the refresh lands.
+    setStaleLists(ALL_STALE_LISTS);
     const effectiveClosedDateRange =
       options?.closedDateRange ?? closedDateRange;
     const fetchSource = options?.source ?? 'manual';
@@ -534,6 +836,13 @@ export function useSidepanelController() {
               : `Updated closed work items for ${effectiveClosedDateRange.start} through ${effectiveClosedDateRange.end}.`
       });
       void saveCachedWorkItems(nextResult).catch(() => undefined);
+
+      // What is on screen refreshes itself, so a fetch updates the visible
+      // lists instead of waiting for a tab to be reselected.
+      void refreshActiveListTab();
+      if (showWorkItemParentDetails) {
+        void loadClosedParentRollup();
+      }
     } catch (error) {
       if (fetchSequence !== workItemsFetchSequenceRef.current) {
         return;
@@ -556,6 +865,38 @@ export function useSidepanelController() {
         setIsLoading(false);
       }
     }
+  }
+
+  /** Opens the just-created quick task in a new tab and drops the notice. */
+  async function onOpenCreatedQuickTask() {
+    const created = createdQuickTask;
+    if (!created) {
+      return;
+    }
+
+    setCreatedQuickTask(null);
+    await chrome.tabs.create({ url: created.url });
+  }
+
+  function onDismissStatusMessage() {
+    setStatusMessage(null);
+  }
+
+  function onDismissCreatedQuickTask() {
+    setCreatedQuickTask(null);
+  }
+
+  /**
+   * Reloads whichever lazy list the active tab shows, if it went stale. TODO is
+   * skipped: its rows come from the fetch that triggers this, so reloading it
+   * here would fetch twice.
+   */
+  async function refreshActiveListTab() {
+    if (activeListTab === 'todo') {
+      return;
+    }
+
+    await loadListTab(activeListTab);
   }
 
   async function onClosedDateRangeChange(
@@ -623,6 +964,500 @@ export function useSidepanelController() {
     const nextValue = !showWorkItemParentDetails;
     setShowWorkItemParentDetails(nextValue);
     await saveShowWorkItemParentDetails(nextValue);
+
+    if (nextValue) {
+      await loadClosedParentRollup();
+    }
+  }
+
+  async function onCreateQuickTask() {
+    await runQuickTaskCreate({});
+  }
+
+  async function runQuickTaskCreate(options: { title?: string }) {
+    const parentId = Number(settings.quickTaskParentId.trim());
+    if (!Number.isInteger(parentId) || parentId <= 0) {
+      setStatusMessage({
+        kind: 'error',
+        text: 'Set a quick-task parent work item id in Settings first.'
+      });
+      return;
+    }
+
+    // A typed title needs no page; only the page button reads the active tab.
+    let pageTitle = '';
+    let pageUrl = '';
+
+    if (!options.title) {
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true
+      });
+      pageTitle = tab?.title ?? '';
+      pageUrl = tab?.url ?? '';
+
+      if (!pageUrl) {
+        setStatusMessage({
+          kind: 'error',
+          text: 'Could not read the active tab, so there is no page to capture.'
+        });
+        return;
+      }
+    }
+
+    setIsLoading(true);
+    setLoadingMessage('Creating quick task...');
+    try {
+      const response = await createQuickTask(
+        getTrimmedSettingsFromState(settings),
+        pageTitle,
+        pageUrl,
+        options.title
+      );
+      if (response.ok) {
+        // The notice is deliberately terse and clickable: the point is to reach
+        // the new task in one click, not to read its details in the panel.
+        setCreatedQuickTask({
+          id: response.result.id,
+          url: response.result.url
+        });
+        setStatusMessage(null);
+        pushDebugLog(
+          'success',
+          `Quick task #${response.result.id} created under #${response.result.parentId}.`
+        );
+        setQuickTaskTitle('');
+        // The new task belongs in the Quick list, so refresh it rather than
+        // leaving a stale view behind.
+        await loadQuickTasks(true);
+      } else {
+        setCreatedQuickTask(null);
+        setStatusMessage({ kind: 'error', text: response.error });
+        pushDebugLog('error', `Quick task failed: ${response.error}`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setStatusMessage({ kind: 'error', text: message });
+      pushDebugLog('error', `Quick task threw: ${message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function loadQuickTasks(force = false) {
+    if (
+      !needsReload({
+        data: quickTasks,
+        isLoading: isQuickTasksLoading,
+        isStale: staleLists.quick,
+        force
+      })
+    ) {
+      return;
+    }
+
+    setIsQuickTasksLoading(true);
+    setQuickTasksError(null);
+    try {
+      const response = await fetchQuickTasks({
+        settings,
+        closedDateRange,
+        scope: 'all'
+      });
+      if (response.ok) {
+        setQuickTasks(response.result);
+        setStaleLists((current) => markFresh(current, 'quick'));
+        pushDebugLog(
+          'success',
+          `Quick tasks returned ${response.result.length} task(s).`
+        );
+        // Only once the list is known: the folder mirrors what was fetched, so
+        // syncing against a stale or partial list would delete bookmarks for
+        // tasks that are still in progress.
+        await mirrorQuickTasksToBookmarks(response.result);
+      } else {
+        setQuickTasksError(response.error);
+        pushDebugLog('error', `Quick task fetch failed: ${response.error}`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setQuickTasksError(message);
+      pushDebugLog('error', `Quick task fetch threw: ${message}`);
+    } finally {
+      setIsQuickTasksLoading(false);
+    }
+  }
+
+  /**
+   * Mirrors the in-progress quick tasks into a sub-folder of the favorites
+   * folder, and leaves the same list where the palette can find it.
+   *
+   * The bookmarks are how a task in progress reaches the other machine — the
+   * browser's own sync carries the folder — and the stored copy is how the
+   * palette lists them, since it is opened by the service worker with no panel
+   * to ask.
+   */
+  async function mirrorQuickTasksToBookmarks(tasks: WorkItem[]) {
+    const links = buildQuickTaskLinks(tasks);
+    setQuickTaskPages(links);
+    await saveQuickTaskLinks(links).catch(() => undefined);
+
+    const folderName = settings.bookmarkFolderName.trim();
+    if (!folderName) {
+      return;
+    }
+
+    const result = await syncQuickTaskBookmarks(folderName, tasks);
+    if (!result.ok) {
+      pushDebugLog('error', `Quick task bookmarks: ${result.error}`);
+      return;
+    }
+    const summary = describeQuickTaskBookmarkSync(result.plan);
+    if (summary) {
+      pushDebugLog('success', summary);
+    }
+  }
+
+  async function onCreateQuickTaskFromTitle() {
+    const title = quickTaskTitle.trim();
+    if (!title) {
+      return;
+    }
+    await runQuickTaskCreate({ title });
+  }
+
+  /**
+   * Persists favorites and reconciles them with the bookmarks folder.
+   * Everything that changes favorites locally goes through here.
+   *
+   * `previous` is needed because a favorite the user just unstarred still has a
+   * bookmark; without knowing it was removed here, the reconcile would read that
+   * bookmark as one from another machine and adopt it back.
+   */
+  async function commitStarredPages(
+    next: StarredPage[],
+    previous: StarredPage[] = starredPages
+  ) {
+    setStarredPages(next);
+    await saveStarredPages(next);
+
+    const nextUrls = new Set(next.map((page) => page.url));
+    const removedLocally = previous
+      .map((page) => page.url)
+      .filter((url) => !nextUrls.has(url));
+
+    await reconcileBookmarks(next, settings.bookmarkFolderName, removedLocally);
+  }
+
+  /**
+   * Merges the bookmarks folder with local favorites in both directions and
+   * records the outcome, so Settings can say what the sync actually did. Without
+   * that the feature is invisible until you happen to look in the bookmark
+   * manager.
+   */
+  async function reconcileBookmarks(
+    favorites: StarredPage[],
+    folderName: string,
+    removedLocally: string[] = []
+  ) {
+    const name = folderName.trim();
+    if (!name) {
+      setBookmarkSyncStatus(null);
+      return;
+    }
+
+    // Our own writes raise bookmark events; without this the listener would
+    // re-enter on every change we make.
+    isWritingBookmarksRef.current = true;
+    try {
+      const result = await reconcileBookmarkFolder({
+        folderName: name,
+        favorites,
+        baseline: bookmarkBaselineRef.current,
+        removedLocally
+      });
+
+      if (!result.ok) {
+        setBookmarkSyncStatus(result.error);
+        pushDebugLog('error', `Bookmark sync failed: ${result.error}`);
+        return;
+      }
+
+      bookmarkBaselineRef.current = result.baseline;
+      await saveBookmarkBaseline(result.baseline);
+
+      // The folder may have contributed additions, renames or deletions, so the
+      // merged list — not the one we passed in — is what the panel shows.
+      const changedLocally =
+        result.adopted.length > 0 ||
+        result.renamedRemotely.length > 0 ||
+        result.droppedRemotely.length > 0;
+      if (changedLocally) {
+        setStarredPages(result.favorites);
+        await saveStarredPages(result.favorites);
+      }
+
+      const summary = describeReconcile(name, result);
+      setBookmarkSyncStatus(summary);
+      pushDebugLog('info', `Bookmark sync ${summary}`);
+    } finally {
+      isWritingBookmarksRef.current = false;
+    }
+  }
+
+  async function refreshActivePage() {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true
+    });
+    setActivePage(tab?.url ? { url: tab.url, title: tab.title ?? '' } : null);
+  }
+
+  async function onToggleStarActivePage() {
+    // Read the tab at click time rather than trusting cached state.
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true
+    });
+    if (!tab?.url || !isAzureDevOpsUrl(tab.url)) {
+      setStatusMessage({
+        kind: 'error',
+        text: 'Only Azure DevOps pages can be starred.'
+      });
+      return;
+    }
+    const next = toggleStarredPage(starredPages, tab.url, tab.title ?? '');
+    setActivePage({ url: tab.url, title: tab.title ?? '' });
+    await commitStarredPages(next);
+  }
+
+  /**
+   * Navigates to a favorite in the current tab, or in a new one when Ctrl/Cmd
+   * was held. In place is the default because a favorite is somewhere you are
+   * going, not something you are collecting.
+   */
+  /**
+   * Reads Azure DevOps's theme and adopts it, which is what makes Azure DevOps
+   * authoritative: whatever the panel was last set to, an answer here wins on
+   * open, so a theme changed in Azure DevOps is picked up rather than fought.
+   */
+  /**
+   * Paints a theme: the stylesheet's tokens with the user's overrides on top,
+   * then a copy of the result left in storage for the favorites palette, which
+   * is opened from the service worker and has no document to read them from.
+   */
+  function paintTheme(next: AdoTheme, overrides = settings.themeOverrides) {
+    applyTheme(next);
+    const palettes = readThemePalettes();
+    applyThemeOverrides(next, overrides, palettes);
+    void saveThemeTokens(resolvePalette(palettes[next], overrides[next])).catch(
+      () => undefined
+    );
+  }
+
+  async function refreshAdoTheme(
+    currentSettings = getTrimmedSettingsFromState(settings)
+  ) {
+    const response = await getAdoTheme(currentSettings);
+    if (!response.ok || response.result === null) {
+      // The panel keeps whatever theme it last had. Only the promise that the
+      // two are in step is lost, which is what the switch's tooltip says.
+      setIsThemeKnown(false);
+      pushDebugLog(
+        'info',
+        `Could not read the Azure DevOps theme; the panel is using its own. ${response.ok ? '' : response.error}`.trim()
+      );
+      return;
+    }
+    setTheme(response.result);
+    setIsThemeKnown(true);
+    paintTheme(response.result, currentSettings.themeOverrides);
+    await saveLastKnownTheme(response.result);
+  }
+
+  /**
+   * Flips the theme. The panel always follows; Azure DevOps is told as well and
+   * is authoritative when it answers, but a failure there does not veto the
+   * change — how this panel looks is this panel's business, and a switch that
+   * refuses because a REST call failed is a broken switch.
+   */
+  async function onToggleTheme() {
+    const next: AdoTheme = theme === 'dark' ? 'light' : 'dark';
+    setIsThemeChanging(true);
+    setTheme(next);
+    paintTheme(next);
+    await saveLastKnownTheme(next);
+
+    try {
+      const response = await setAdoTheme(
+        getTrimmedSettingsFromState(settings),
+        next
+      );
+      if (response.ok) {
+        setIsThemeKnown(true);
+        pushDebugLog('success', `Azure DevOps theme set to ${next}.`);
+      } else {
+        setIsThemeKnown(false);
+        pushDebugLog(
+          'error',
+          `Panel switched to ${next}, but Azure DevOps kept its own theme: ${response.error}`
+        );
+      }
+    } finally {
+      setIsThemeChanging(false);
+    }
+  }
+
+  /**
+   * True when the favorites search opened somewhere else — the palette over an
+   * Azure DevOps page — so the in-panel menu should stay shut. A failure here
+   * means the panel is the surface, which is also the safe answer.
+   */
+  async function onRequestFavoritesSearch(): Promise<boolean> {
+    try {
+      const response = await openFavoritesSearch();
+      return response.ok && response.result === 'overlay';
+    } catch {
+      return false;
+    }
+  }
+
+  async function onOpenStarredPage(url: string, newTab = false) {
+    if (!newTab) {
+      const [active] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true
+      });
+      if (active?.id != null) {
+        await chrome.tabs.update(active.id, { url });
+        return;
+      }
+    }
+    await chrome.tabs.create({ url });
+  }
+
+  async function onSaveStarredPages(next: StarredPage[]) {
+    await commitStarredPages(next);
+    setStatusMessage({ kind: 'success', text: 'Favorites saved.' });
+  }
+
+  async function onArchiveQuickTask(id: number) {
+    const archiveId = Number(settings.quickTaskArchiveId.trim());
+    if (!Number.isInteger(archiveId) || archiveId <= 0) {
+      setStatusMessage({
+        kind: 'error',
+        text: 'Set a quick-task archive work item id in Settings first.'
+      });
+      return;
+    }
+
+    try {
+      const response = await archiveQuickTask(
+        getTrimmedSettingsFromState(settings),
+        id
+      );
+      if (response.ok) {
+        pushDebugLog(
+          'success',
+          `Archived quick task #${id} under #${archiveId}.`
+        );
+        // It is no longer a child of the quick-task parent, so refetch.
+        await loadQuickTasks(true);
+      } else {
+        setStatusMessage({ kind: 'error', text: response.error });
+        pushDebugLog('error', `Archiving #${id} failed: ${response.error}`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setStatusMessage({ kind: 'error', text: message });
+      pushDebugLog('error', `Archiving #${id} threw: ${message}`);
+    }
+  }
+
+  async function onTogglePinQuickTask(id: number) {
+    const next = togglePinnedId(pinnedQuickTaskIds, id);
+    setPinnedQuickTaskIds(next);
+    await savePinnedQuickTaskIds(next);
+  }
+
+  async function loadPullRequests(force = false) {
+    if (
+      !needsReload({
+        data: pullRequests,
+        isLoading: isPullRequestsLoading,
+        isStale: staleLists.prs,
+        force
+      })
+    ) {
+      return;
+    }
+
+    setIsPullRequestsLoading(true);
+    setPullRequestsError(null);
+    try {
+      const response = await fetchPullRequestActivity({
+        settings,
+        closedDateRange,
+        scope: 'all'
+      });
+      if (response.ok) {
+        setPullRequests(response.result);
+        setStaleLists((current) => markFresh(current, 'prs'));
+        pushDebugLog(
+          'success',
+          `Pull-request activity returned ${response.result.length} PR(s).`
+        );
+      } else {
+        setPullRequestsError(response.error);
+        pushDebugLog('error', `Pull-request fetch failed: ${response.error}`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setPullRequestsError(message);
+      pushDebugLog('error', `Pull-request fetch threw: ${message}`);
+    } finally {
+      setIsPullRequestsLoading(false);
+    }
+  }
+
+  async function loadClosedParentRollup(force = false) {
+    if (
+      !needsReload({
+        data: closedParentRollup,
+        isLoading: isClosedRollupLoading,
+        isStale: staleLists.closedRollup,
+        force
+      })
+    ) {
+      return;
+    }
+
+    setIsClosedRollupLoading(true);
+    setClosedRollupError(null);
+    try {
+      const response = await fetchClosedParentRollup({
+        settings,
+        closedDateRange,
+        scope: 'all'
+      });
+      if (response.ok) {
+        setClosedParentRollup(response.result);
+        setStaleLists((current) => markFresh(current, 'closedRollup'));
+        pushDebugLog(
+          'success',
+          `Closed rollup returned ${response.result.length} finished item(s).`
+        );
+      } else {
+        setClosedRollupError(response.error);
+        pushDebugLog('error', `Closed rollup failed: ${response.error}`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setClosedRollupError(message);
+      pushDebugLog('error', `Closed rollup threw: ${message}`);
+    } finally {
+      setIsClosedRollupLoading(false);
+    }
   }
 
   async function refreshActiveWorkItemContext(
@@ -1042,7 +1877,123 @@ export function useSidepanelController() {
       ? `${activeItemHeading} (task #${activeWorkItemContext.viewedTaskId})`
       : activeItemHeading;
 
+  // Selecting a tab is the refresh gesture now that the toolbar has no fetch
+  // button, so every tab refetches its own data on click — including TODO,
+  // whose rows come from the main work-items query.
+  async function onSelectListTab(tab: WorkItemListTab) {
+    setActiveListTab(tab);
+    await loadListTab(tab, true);
+  }
+
+  async function loadListTab(tab: WorkItemListTab, force = false) {
+    if (tab === 'todo') {
+      await onFetchWorkItems({ source: 'todo tab' });
+      return;
+    }
+
+    if (tab === 'prs') {
+      await loadPullRequests(force);
+      return;
+    }
+
+    if (tab === 'quick') {
+      await loadQuickTasks(force);
+      return;
+    }
+
+    if (tab === 'authored') {
+      await loadAuthoredItems(force);
+    }
+  }
+
+  // Loaded lazily: the Authored list is a second query and should not slow the
+  // TODO view that the panel exists to show.
+  async function loadAuthoredItems(force = false) {
+    if (
+      !needsReload({
+        data: authoredItems,
+        isLoading: isAuthoredLoading,
+        isStale: staleLists.authored,
+        force
+      })
+    ) {
+      return;
+    }
+
+    setIsAuthoredLoading(true);
+    setAuthoredError(null);
+    try {
+      const response = await fetchAuthoredWorkItems({
+        settings,
+        closedDateRange,
+        scope: 'all'
+      });
+      if (response.ok) {
+        setAuthoredItems(response.result);
+        setStaleLists((current) => markFresh(current, 'authored'));
+        pushDebugLog(
+          'success',
+          `Authored fetch returned ${response.result.length} item(s).`
+        );
+      } else {
+        setAuthoredError(response.error);
+        pushDebugLog('error', `Authored fetch failed: ${response.error}`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAuthoredError(message);
+      pushDebugLog('error', `Authored fetch threw: ${message}`);
+    } finally {
+      setIsAuthoredLoading(false);
+    }
+  }
+
   return {
+    starredPages,
+    bookmarkSyncStatus,
+    openableStarredPages: listOpenablePages(starredPages, activePage?.url),
+    quickTaskPages: listOpenablePages(quickTaskPages, activePage?.url),
+    starredFocusRequest,
+    canStarActivePage: isAzureDevOpsUrl(activePage?.url),
+    isActivePageStarred: isPageStarred(starredPages, activePage?.url),
+    onToggleStarActivePage,
+    onOpenStarredPage,
+    onRequestFavoritesSearch,
+    onSaveStarredPages,
+    refreshActivePage,
+    quickTasks:
+      quickTasks === null
+        ? null
+        : sortQuickTasks(quickTasks, pinnedQuickTaskIds),
+    isQuickTasksLoading,
+    quickTasksError,
+    pinnedQuickTaskIds,
+    quickTaskTitle,
+    onQuickTaskTitleChange: setQuickTaskTitle,
+    onCreateQuickTaskFromTitle,
+    onTogglePinQuickTask,
+    onArchiveQuickTask,
+    quickTaskArchiveId:
+      Number(settings.quickTaskArchiveId.trim()) > 0
+        ? Number(settings.quickTaskArchiveId.trim())
+        : null,
+    onCreateQuickTask,
+    createdQuickTask,
+    onOpenCreatedQuickTask,
+    onDismissCreatedQuickTask,
+    onDismissStatusMessage,
+    canCreateQuickTask: Number(settings.quickTaskParentId.trim()) > 0,
+    pullRequests,
+    isPullRequestsLoading,
+    pullRequestsError,
+    closedParentRollup,
+    isClosedRollupLoading,
+    closedRollupError,
+    activeListTab,
+    onSelectListTab,
+    authoredItems,
+    isAuthoredLoading,
+    authoredError,
     activeItemHeading,
     activeItemTabLabel,
     activeTab,
@@ -1055,6 +2006,10 @@ export function useSidepanelController() {
     isActionDisabled: isLoading || isCreatingTask || isReconnectNeeded,
     isActiveItemPinned,
     connectionStatus,
+    theme,
+    isThemeKnown: isThemeKnown && !isReconnectNeeded,
+    isThemeChanging,
+    onToggleTheme,
     isReconnectNeeded,
     awaitingManualRetry,
     reconnectOrganization: settings.organization.trim(),
@@ -1076,7 +2031,8 @@ export function useSidepanelController() {
     onActiveItemBannerClick,
     onDeduplicateTabs,
     onChangeDebugLogs: setDebugLogs,
-    onChangeSettings: setSettings,
+    onChangeSettings: onChangeSettings,
+    savedSettings,
     onClosedDateRangeChange,
     onCreateTaskFromCurrentWorkItem,
     onEnableCustomClosedEndDate,
@@ -1105,7 +2061,13 @@ function getTrimmedSettingsFromState(settings: Settings): Settings {
     organization: settings.organization.trim(),
     project: settings.project.trim(),
     assignedTo: settings.assignedTo.trim(),
-    todoStates: normalizeTodoStates(settings.todoStates)
+    todoStates: normalizeTodoStates(settings.todoStates),
+    quickTaskParentId: settings.quickTaskParentId.trim(),
+    quickTaskArchiveId: settings.quickTaskArchiveId.trim(),
+    bookmarkFolderName: settings.bookmarkFolderName.trim(),
+    // Not text, so there is nothing to trim — carried through as it is, or
+    // saving would wipe every colour the user set.
+    themeOverrides: settings.themeOverrides
   };
 }
 

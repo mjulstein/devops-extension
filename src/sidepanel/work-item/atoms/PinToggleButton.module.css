@@ -9,11 +9,11 @@
 }
 
 .pinned {
-  color: #0a5bd3;
+  color: var(--color-accent);
 }
 
 .unpinned {
-  color: #6a6a6a;
+  color: var(--color-text-muted);
 }
 
 .icon {

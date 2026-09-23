@@ -36,29 +36,30 @@ A raw JSON response is also available in a collapsible section for debugging.
 ## Documentation Map
 
 - [`AGENTS.md`](./AGENTS.md) — agent/contributor workflow and documentation rules
-- [`.specify`](./.specify/README.md) — local Spec Kit memory, planning templates, and optional command/skill helpers
+- [`docs/principles.md`](./docs/principles.md) — non-negotiable project principles
+- [`docs/adr`](./docs/adr/0001-replaceable-provider-adapters.md) — architecture decision records
 - [`specs`](./specs/README.md) — promoted feature specs and the idea-to-spec workflow
 - [`specs/ideas`](./specs/ideas/README.md) — incubator for rough feature ideas before they become numbered specs
+- [`dev`](./dev/README.md) — side-panel dev harness for UI work without an extension build
 - [`src`](./src/README.md) — extension entry points plus links to the source subdirectory docs
 - [`src/devops`](./src/devops/README.md) — Azure DevOps-specific selectors, parsing, context, and REST logic
 - [`src/sidepanel`](./src/sidepanel/README.md) — side panel shell, storage helpers, and UI module docs
 - [`types`](./types/README.md) — shared type definitions used through the `@/types` alias
 
-## Spec Kit Workspace
+## Planning Workflow
 
-This repository now includes a lightweight Spec Kit scaffold for planning future work before implementation.
+Features are planned in Markdown before implementation.
 
 - Use [`specs/ideas`](./specs/ideas/README.md) as the incubator for rough feature notes, open questions, and candidate workflows.
 - Promote an idea into a numbered directory such as `specs/001-feature-name/` when scope, acceptance scenarios, and sequencing are clear enough to plan.
-- Use the templates under [`.specify/templates`](./.specify/templates/README.md) for new ideas, promoted specs, implementation plans, and task breakdowns.
-- Optional repo-local helper prompts live under [`.specify/commands`](./.specify/commands/README.md), and reusable planning guidance lives under [`.specify/skills`](./.specify/skills/README.md).
-- Project-level planning constraints live in [`.specify/memory/constitution.md`](./.specify/memory/constitution.md).
+- Project-level principles live in [`docs/principles.md`](./docs/principles.md); architecture decisions in [`docs/adr`](./docs/adr/0001-replaceable-provider-adapters.md).
+- Agent skills for this repo live in `.claude/skills/` — `repo-planning` for spec/plan work, `sidepanel-dev-harness` for UI iteration.
 
 ## Project Structure
 
 Use the linked directory `README.md` files for structure details instead of expanding the full tree in this document.
 
-- [`.specify`](./.specify/README.md) — Spec Kit project memory, markdown templates, and optional planning helpers
+- [`docs`](./docs/principles.md) — principles and architecture decision records
 - [`specs`](./specs/README.md) — promoted specs plus the ideas incubator
 - [`src`](./src/README.md) — runtime entry points and links to `src/devops/` and `src/sidepanel/`
 - [`types`](./types/README.md) — shared type shapes
@@ -86,6 +87,21 @@ Use the linked directory `README.md` files for structure details instead of expa
 - emitted CSS assets generated from the side panel's colocated CSS module imports
 
 Load `dist/` as the unpacked extension directory in Edge. After rebuilding, reload the extension in `edge://extensions`, then refresh any open Azure DevOps tab so the latest `token-interceptor.js` is re-injected.
+
+## Theme
+
+The panel follows Azure DevOps's own light/dark setting rather than keeping a
+second preference. Reading and setting it needs the `vso.settings_write` scope,
+which is why the runtime PAT carries it alongside the work-item and code scopes;
+changing that list rotates the existing token automatically. The switch beside the duplicate-tab
+button shows which theme is in force and changes Azure DevOps's setting when
+clicked. It always changes the panel, even when Azure DevOps cannot be reached;
+Azure DevOps wins on open, so a theme changed there is adopted next time the
+panel loads. Colours are defined once in
+[`src/theme.css`](./src/theme.css) as semantic tokens for both themes, and
+Settings → **Theme** lists every token for both palettes so any of them can be
+overridden. Overrides apply to the panel and to the favorites palette, and only
+what you change is stored — anything left alone keeps following the defaults.
 
 ## Configuration
 
@@ -154,11 +170,48 @@ npm test
    `Assigned to` empty to use `@me`.
 4. Use the new **TODO states** field to extend the TODO section beyond the
    default To Do/In Progress filter (enter each state name separated by commas).
-5. Click **Fetch work items**.
-6. Adjust the closed-date range inputs to refresh closed items for a specific window, or use **Reset to default** to restore the default today-to-7-days-ago range.
-7. Optionally enable **Show task parent details** to display each task's parent summary inline.
-8. Use the per-day refetch button beside any closed-date heading to reload only that day.
-9. Open the **Active item** tab to create child tasks. The tab resolves context from the last visited Azure DevOps work-item view (or the pinned item if set), so it can continue working even when a non-DevOps tab is active.
+5. Click a list tab — **TODO**, **Quick**, **Authored**, or **PRs** — to load it.
+   Selecting a tab is also how you refresh it; rows you can already see stay on
+   screen and pulse yellow while the refresh runs.
+6. On the **Quick** tab, the button beside the input creates a task: leave the
+   input empty to capture the page you are on, or type a title to use that
+   instead. A **Created #id** link appears under the tabs and opens the new task
+   in a new tab.
+7. In **TODO** and **Authored**, a parent is hidden once one of its tasks is in
+   progress — the started task is what needs focus, and the parent row adds
+   nothing next to it. A parent with nothing started keeps its row, because then
+   it is what carries the context. **Authored** also collapses everything not yet
+   started behind a **Not started** accordion, and never lists quick tasks.
+8. Adjust the closed-date range inputs to refresh closed items for a specific window, or use **Reset to default** to restore the default today-to-7-days-ago range.
+9. Optionally enable **Show task parent details** to see the full hierarchy grouped instead, with each task under its parent.
+10. Use the per-day refetch button beside any closed-date heading to reload only that day.
+11. Star an Azure DevOps page with the toggle beside the favorites menu. The
+    menu opens at the full width of the side panel, and each entry shows the
+    page's icon taken from the browser's own favicon cache — the same icon the
+    bookmarks menu draws, so favorites synced in from another machine are
+    recognisable too.
+    A favorite opens in the current tab; hold **Ctrl** to open it in a new one.
+    Quick tasks that are in progress are listed under the favorites behind a
+    divider, and mirrored into a **Quick tasks** sub-folder of the bookmarks
+    folder — so they reach a machine with no extension installed, and their
+    bookmarks disappear as the tasks are finished. Start the search with `.` to
+    reach the browser's own bookmarks: on its own it lists your bookmark folders,
+    and picking one — or typing its name — shows what is inside it. Rows carry
+    each site's icon. The palette also has a button to open the browser's own
+    bookmark manager.
+    **Ctrl+Period** opens a centred favorites palette over the Azure DevOps page
+    you are on, with its search already focused; on any other page it opens the
+    panel straight into the same search instead; Settings →
+    **Tools** shows which keys the browser actually bound to it, and browsers
+    silently leave the suggested combination unbound when it clashes with one of
+    their own — assign your own at `edge://extensions/shortcuts` if it is blank. Name a
+    bookmarks folder on Settings → **Favorites** and the list is kept in step
+    with that folder in both directions, so favorites also appear in
+    address-bar autocomplete and travel between machines over the browser's own
+    bookmark sync. A favorite added, renamed or deleted on another machine is
+    adopted here once the browser syncs it; the panel only overrides the folder
+    for a favorite you just added.
+12. Open the **Active item** tab to create child tasks. The tab resolves context from the last visited Azure DevOps work-item view (or the pinned item if set), so it can continue working even when a non-DevOps tab is active.
 
 The extension queries Azure DevOps with its runtime-minted PAT (over HTTP Basic auth) and displays matching work items in the side panel.
 

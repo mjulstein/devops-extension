@@ -5,6 +5,11 @@ import type {
   WorkItemResult
 } from '@/types';
 import { authFetch } from './authFetch';
+import {
+  extractPullRequestIds,
+  fetchActivePullRequests,
+  selectActivePullRequests
+} from './pullRequests';
 
 export interface WorkItemsContext {
   organization: string;
@@ -23,6 +28,9 @@ export async function fetchWorkItems(
   const closedDateRange = normalizeClosedDateRange(request.closedDateRange);
   const scope = request.scope;
   const todoStates = getEffectiveTodoStates(request.settings.todoStates);
+  const quickTaskParentId = parseQuickTaskParentId(
+    request.settings.quickTaskParentId
+  );
 
   if (!organization || !project) {
     throw new Error(
@@ -33,7 +41,13 @@ export async function fetchWorkItems(
   const assignedToClause = buildAssignedToClause(assignedTo);
   const openItemsPromise =
     scope === 'all'
-      ? fetchOpenItems(organization, project, assignedToClause, todoStates)
+      ? fetchOpenItems(
+          organization,
+          project,
+          assignedToClause,
+          todoStates,
+          quickTaskParentId
+        )
       : Promise.resolve([]);
   const closedItemsPromise = fetchClosedItems(
     organization,
@@ -70,9 +84,12 @@ async function fetchOpenItems(
   organization: string,
   project: string,
   assignedToClause: string,
-  todoStates: string[]
+  todoStates: string[],
+  quickTaskParentId: number | null
 ): Promise<WorkItem[]> {
-  const openIds = await queryWorkItemIds(
+  const excludeQuickTasks = buildQuickTaskExclusion(quickTaskParentId);
+
+  return fetchOpenItemsForWiql(
     organization,
     project,
     `
@@ -83,14 +100,365 @@ async function fetchOpenItems(
         [System.TeamProject] = @project
         AND [System.AssignedTo] = ${assignedToClause}
         AND ${buildTodoStateClause(todoStates)}
+        ${excludeQuickTasks}
+      ORDER BY [System.ChangedDate] DESC
+    `
+  );
+}
+
+/**
+ * Every task under the quick-task parent that is assigned to the user,
+ * whatever its state — unlike TODO, this list shows finished ones too so the
+ * day's small jobs stay visible until they are cleared away.
+ */
+export async function fetchQuickTaskItems(
+  request: FetchWorkItemsRequest,
+  context: WorkItemsContext
+): Promise<WorkItem[]> {
+  const organization = context.organization.trim();
+  const project = context.project.trim();
+  const parentId = Number(request.settings.quickTaskParentId.trim());
+
+  if (!organization || !project) {
+    throw new Error('Missing organization/project context for quick tasks.');
+  }
+  if (!Number.isInteger(parentId) || parentId <= 0) {
+    throw new Error('Set a quick-task parent work item id in Settings first.');
+  }
+
+  const assignedToClause = buildAssignedToClause(
+    request.settings.assignedTo.trim()
+  );
+
+  const ids = await queryWorkItemIds(
+    organization,
+    project,
+    `
+      SELECT
+        [System.Id]
+      FROM WorkItems
+      WHERE
+        [System.TeamProject] = @project
+        AND [System.Parent] = ${parentId}
+        AND [System.AssignedTo] = ${assignedToClause}
       ORDER BY [System.ChangedDate] DESC
     `
   );
 
-  const openItems = await fetchWorkItemDetails(openIds, organization, project);
+  return fetchWorkItemDetails(ids, organization, project);
+}
 
-  return enrichParents(openItems, organization, project).then((items) =>
-    items.filter((item) => item.closedDate === null).sort(compareOpenItems)
+/**
+ * Work items the user authored that are still open, excluding anything assigned
+ * to them — those already appear in the TODO list, and the point of this view is
+ * work you started but someone else now owns.
+ *
+ * Unassigned items are deliberately kept: in WIQL a `<>` comparison excludes
+ * empty values, so they need an explicit escape hatch or authored-but-unassigned
+ * work would silently vanish.
+ */
+/**
+ * WIQL fragment dropping quick tasks from a list.
+ *
+ * Quick tasks are personal odds and ends under a catch-all parent, and they have
+ * their own tab, so they must not pad out any other list. `<>` alone would drop
+ * parentless items too, hence the explicit empty case.
+ */
+function buildQuickTaskExclusion(quickTaskParentId: number | null): string {
+  return quickTaskParentId === null
+    ? ''
+    : `AND ([System.Parent] <> ${quickTaskParentId} OR [System.Parent] = '')`;
+}
+
+/** The quick-task parent id from settings, or null when it is unset or invalid. */
+function parseQuickTaskParentId(rawId: string): number | null {
+  const parsed = Number(rawId.trim());
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+export async function fetchAuthoredWorkItems(
+  request: FetchWorkItemsRequest,
+  context: WorkItemsContext
+): Promise<WorkItem[]> {
+  const organization = context.organization.trim();
+  const project = context.project.trim();
+
+  if (!organization || !project) {
+    throw new Error(
+      'Missing organization/project context for authored work-item fetch.'
+    );
+  }
+
+  const assignedToClause = buildAssignedToClause(
+    request.settings.assignedTo.trim()
+  );
+  const excludeQuickTasks = buildQuickTaskExclusion(
+    parseQuickTaskParentId(request.settings.quickTaskParentId)
+  );
+
+  return fetchOpenItemsForWiql(
+    organization,
+    project,
+    `
+      SELECT
+        [System.Id]
+      FROM WorkItems
+      WHERE
+        [System.TeamProject] = @project
+        AND [System.CreatedBy] = @Me
+        AND [System.State] NOT IN ('Done', 'Closed', 'Removed')
+        AND (
+          [System.AssignedTo] <> ${assignedToClause}
+          OR [System.AssignedTo] = ''
+        )
+        ${excludeQuickTasks}
+      ORDER BY [System.ChangedDate] DESC
+    `
+  );
+}
+
+/**
+ * Work-item types that count as a deliverable in the Closed list.
+ *
+ * Features are deliberately excluded: they are long-lived umbrellas spanning
+ * many releases, so rolling a closed task all the way up to its Feature reports
+ * "Frontend - Portal" as finished on the day one task closed under it.
+ * Improvement / Bug / PBI are the level at which work is actually delivered.
+ */
+const TOP_LEVEL_CLOSED_TYPES = new Set([
+  'improvement',
+  'bug',
+  'product backlog item',
+  'pbi'
+]);
+
+export function isTopLevelClosedType(workItemType: string): boolean {
+  return TOP_LEVEL_CLOSED_TYPES.has(workItemType.trim().toLowerCase());
+}
+
+export interface ClosedRollupCandidates {
+  /** Ids to inspect: deliverables themselves, plus the parents of closed tasks. */
+  candidateIds: number[];
+  /** Latest closed date seen among an id's closed children, for dating a parent. */
+  latestChildClosedById: Map<number, string>;
+}
+
+/**
+ * Chooses which items the Closed rollup should consider.
+ *
+ * A closed deliverable is its own top-level row — it does not climb to its
+ * Feature. A closed task contributes its parent instead, since the task itself
+ * is the detail this view exists to hide. Whether a candidate actually survives
+ * depends on its type and its remaining children, decided by the caller.
+ */
+export function collectClosedRollupCandidates(
+  closedItems: WorkItem[]
+): ClosedRollupCandidates {
+  const candidateIds: number[] = [];
+  const latestChildClosedById = new Map<number, string>();
+
+  const addCandidate = (id: number) => {
+    if (!candidateIds.includes(id)) {
+      candidateIds.push(id);
+    }
+  };
+
+  for (const item of closedItems) {
+    if (isTopLevelClosedType(item.workItemType)) {
+      addCandidate(item.id);
+      continue;
+    }
+
+    // Anything else (a Task, typically) is represented by its parent.
+    if (item.parentId === null) {
+      continue;
+    }
+
+    addCandidate(item.parentId);
+    const current = latestChildClosedById.get(item.parentId);
+    if (item.closedDate && (!current || item.closedDate > current)) {
+      latestChildClosedById.set(item.parentId, item.closedDate);
+    }
+  }
+
+  return { candidateIds, latestChildClosedById };
+}
+
+/**
+ * The Closed list, rolled up to finished deliverables.
+ *
+ * Individual closed tasks are noise when reviewing what shipped: what matters is
+ * whether the Improvement, Bug or PBI they belong to is *done*. So this returns
+ * deliverables with **no remaining open children** — a parent that still has
+ * open work is absent, however many of its tasks closed in the range.
+ *
+ * Each item carries an *effective* closedDate — its own, or failing that the
+ * latest closed date among its children in range — so the existing date grouping
+ * keeps working and a deliverable lands on the day its work actually finished.
+ */
+export async function fetchClosedParentRollup(
+  request: FetchWorkItemsRequest,
+  context: WorkItemsContext
+): Promise<WorkItem[]> {
+  const organization = context.organization.trim();
+  const project = context.project.trim();
+
+  if (!organization || !project) {
+    throw new Error(
+      'Missing organization/project context for closed rollup fetch.'
+    );
+  }
+
+  const closedDateRange = normalizeClosedDateRange(request.closedDateRange);
+  const assignedToClause = buildAssignedToClause(
+    request.settings.assignedTo.trim()
+  );
+
+  const closedItems = await fetchClosedItems(
+    organization,
+    project,
+    assignedToClause,
+    closedDateRange.start,
+    closedDateRange.end
+  );
+
+  const { candidateIds, latestChildClosedById } =
+    collectClosedRollupCandidates(closedItems);
+
+  if (!candidateIds.length) {
+    return [];
+  }
+
+  // Relations come back with the candidates themselves, so this costs two
+  // requests rather than one per candidate.
+  const childIdsById = new Map<number, number[]>();
+  const candidates = await fetchWorkItemDetails(
+    candidateIds,
+    organization,
+    project,
+    WORK_ITEM_FIELDS,
+    { withRelations: true, collectChildIds: childIdsById }
+  );
+
+  const allChildIds = Array.from(
+    new Set(Array.from(childIdsById.values()).flat())
+  );
+  const openChildIds = new Set<number>();
+
+  if (allChildIds.length) {
+    const children = await fetchWorkItemDetails(
+      allChildIds,
+      organization,
+      project,
+      ['System.Id', 'System.State', 'System.WorkItemType']
+    );
+    for (const child of children) {
+      if (!isCompletedState(child.state)) {
+        openChildIds.add(child.id);
+      }
+    }
+  }
+
+  const finished: WorkItem[] = [];
+
+  for (const candidate of candidates) {
+    // A closed task's parent can be a Feature; drop those here rather than when
+    // collecting, so the type rule lives in exactly one place.
+    if (!isTopLevelClosedType(candidate.workItemType)) {
+      continue;
+    }
+
+    // Every child type counts, not only Tasks: a deliverable with open child
+    // Improvements is not finished either.
+    const children = childIdsById.get(candidate.id) ?? [];
+    if (children.some((childId) => openChildIds.has(childId))) {
+      continue;
+    }
+
+    finished.push({
+      ...candidate,
+      closedDate:
+        candidate.closedDate ?? latestChildClosedById.get(candidate.id) ?? null
+    });
+  }
+
+  return finished.sort(compareClosedItemsByDateDesc);
+}
+
+function compareClosedItemsByDateDesc(a: WorkItem, b: WorkItem): number {
+  const left = a.closedDate ?? '';
+  const right = b.closedDate ?? '';
+  if (left === right) {
+    return b.id - a.id;
+  }
+  return left < right ? 1 : -1;
+}
+
+/** Child work-item ids from a payload's hierarchy relations. */
+function extractHierarchyChildIds(relations: unknown): number[] {
+  if (!Array.isArray(relations)) {
+    return [];
+  }
+
+  const ids: number[] = [];
+  for (const relation of relations) {
+    if (
+      !isRecord(relation) ||
+      relation.rel !== 'System.LinkTypes.Hierarchy-Forward' ||
+      typeof relation.url !== 'string'
+    ) {
+      continue;
+    }
+    const match = /\/workItems\/(\d+)$/i.exec(relation.url);
+    if (!match) {
+      continue;
+    }
+    const id = Number(match[1]);
+    if (Number.isInteger(id) && !ids.includes(id)) {
+      ids.push(id);
+    }
+  }
+  return ids;
+}
+
+function isCompletedState(state: string): boolean {
+  const normalized = state.trim().toLowerCase();
+  return normalized === 'done' || normalized === 'closed';
+}
+
+/**
+ * Shared pipeline for every "still open" list: resolve ids, fetch details with
+ * relations (which carry the pull-request links), attach the open PRs, then
+ * enrich parents.
+ */
+async function fetchOpenItemsForWiql(
+  organization: string,
+  project: string,
+  wiql: string
+): Promise<WorkItem[]> {
+  const ids = await queryWorkItemIds(organization, project, wiql);
+
+  // Relations are requested only for open items: they carry the pull-request
+  // links, and the closed list has no use for them (or for the extra payload).
+  const pullRequestIdsByItem = new Map<number, number[]>();
+  const items = await fetchWorkItemDetails(
+    ids,
+    organization,
+    project,
+    WORK_ITEM_FIELDS,
+    { withRelations: true, collectPullRequestIds: pullRequestIdsByItem }
+  );
+
+  const withPullRequests = await attachPullRequests(
+    items,
+    pullRequestIdsByItem,
+    organization,
+    project
+  );
+
+  return enrichParents(withPullRequests, organization, project).then(
+    (enriched) =>
+      enriched.filter((item) => item.closedDate === null).sort(compareOpenItems)
   );
 }
 
@@ -286,7 +654,14 @@ async function fetchWorkItemDetails(
   ids: number[],
   organization: string,
   project: string,
-  fields = WORK_ITEM_FIELDS
+  fields = WORK_ITEM_FIELDS,
+  options: {
+    withRelations?: boolean;
+    /** Filled with itemId -> linked pull-request ids when `withRelations`. */
+    collectPullRequestIds?: Map<number, number[]>;
+    /** Filled with itemId -> child work-item ids when `withRelations`. */
+    collectChildIds?: Map<number, number[]>;
+  } = {}
 ): Promise<WorkItem[]> {
   if (!ids.length) {
     return [];
@@ -294,12 +669,20 @@ async function fetchWorkItemDetails(
 
   const idChunks = chunkArray(ids, 50);
   const allItems: WorkItem[] = [];
+  const linkedPullRequestIds = options.collectPullRequestIds;
+  const linkedChildIds = options.collectChildIds;
 
   for (const chunk of idChunks) {
+    // Azure DevOps rejects `fields` together with `$expand`, so asking for
+    // relations means taking the full field set for those items.
+    const projection = options.withRelations
+      ? '&$expand=relations'
+      : `&fields=${encodeURIComponent(fields.join(','))}`;
+
     const workItemsUrl =
       `https://dev.azure.com/${encodeURIComponent(organization)}/${encodeURIComponent(project)}` +
       `/_apis/wit/workitems?ids=${chunk.join(',')}` +
-      `&fields=${encodeURIComponent(fields.join(','))}` +
+      projection +
       '&api-version=7.0';
 
     const workItemsResponse = await authFetch(workItemsUrl, {
@@ -320,12 +703,54 @@ async function fetchWorkItemDetails(
     for (const payload of payloads) {
       const parsed = toWorkItem(payload, organization, project);
       if (parsed) {
+        if (linkedPullRequestIds) {
+          const relationIds = extractPullRequestIds(payload.relations);
+          if (relationIds.length) {
+            linkedPullRequestIds.set(parsed.id, relationIds);
+          }
+        }
+        if (linkedChildIds) {
+          const childIds = extractHierarchyChildIds(payload.relations);
+          if (childIds.length) {
+            linkedChildIds.set(parsed.id, childIds);
+          }
+        }
         allItems.push(parsed);
       }
     }
   }
 
   return allItems;
+}
+
+/**
+ * Attaches each item's still-open pull requests. Best-effort by design: when PR
+ * data cannot be read (for example a PAT that predates the `vso.code` scope and
+ * returns 401), items come back untouched and the row shows state instead.
+ */
+async function attachPullRequests(
+  items: WorkItem[],
+  linked: Map<number, number[]>,
+  organization: string,
+  project: string
+): Promise<WorkItem[]> {
+  if (!linked.size) {
+    return items;
+  }
+
+  const activeById = await fetchActivePullRequests(organization, project);
+  if (!activeById.size) {
+    return items;
+  }
+
+  return items.map((item) => {
+    const ids = linked.get(item.id);
+    if (!ids?.length) {
+      return item;
+    }
+    const pullRequests = selectActivePullRequests(ids, activeById);
+    return pullRequests.length ? { ...item, pullRequests } : item;
+  });
 }
 
 async function enrichParents(
@@ -599,8 +1024,18 @@ function toWorkItem(
     return null;
   }
 
-  const id = fieldsUnknown['System.Id'];
-  if (typeof id !== 'number' || !Number.isFinite(id)) {
+  // With an explicit `fields=` projection Azure DevOps echoes System.Id inside
+  // `fields`, but with `$expand=relations` it does not — the id is then only on
+  // the payload itself. Accept either, or every expanded item fails to parse.
+  const idField = fieldsUnknown['System.Id'];
+  const id =
+    typeof idField === 'number' && Number.isFinite(idField)
+      ? idField
+      : typeof item.id === 'number' && Number.isFinite(item.id)
+        ? item.id
+        : null;
+
+  if (id === null) {
     return null;
   }
 

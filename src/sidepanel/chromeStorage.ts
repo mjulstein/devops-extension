@@ -1,4 +1,6 @@
 import { defaultSettings } from './defaultSettings';
+import type { StarredPage } from './starredPages';
+import type { BookmarkBaseline } from './bookmarkSync';
 import {
   applyClosedDateRangeOverrides,
   createClosedDateRangeOverrides
@@ -25,6 +27,14 @@ import {
 const CACHED_WORK_ITEMS_KEY = 'cachedWorkItems';
 const ACTIVE_SIDEPANEL_TAB_KEY = 'activeSidepanelTab';
 const HIDDEN_CHILD_TASK_STATES_KEY = 'hiddenChildTaskStates';
+// Additive, browser-local: quick tasks the user pinned to the top of that tab.
+const PINNED_QUICK_TASK_IDS_KEY = 'pinnedQuickTaskIds';
+// Additive, browser-local: Azure DevOps pages the user starred as shortcuts.
+const STARRED_PAGES_KEY = 'starredPages';
+const BOOKMARK_BASELINE_KEY = 'bookmarkSyncBaseline';
+// The in-progress quick tasks, left where the service worker can read them: it
+// opens the favorites palette and has no panel to ask for the current list.
+const QUICK_TASK_LINKS_KEY = 'quickTaskLinks';
 const PARENT_SUGGESTIONS_KEY = 'parentSuggestions';
 const PINNED_ACTIVE_WORK_ITEM_CONTEXT_KEY = 'pinnedActiveWorkItemContext';
 const WORK_ITEMS_CLOSED_DATE_RANGE_KEY = 'workItemsClosedDateRange';
@@ -163,6 +173,75 @@ export async function saveHiddenChildTaskStates(
   states: string[]
 ): Promise<void> {
   await chrome.storage.local.set({ [HIDDEN_CHILD_TASK_STATES_KEY]: states });
+}
+
+export async function loadPinnedQuickTaskIds(): Promise<number[]> {
+  const stored = await chrome.storage.local.get(PINNED_QUICK_TASK_IDS_KEY);
+  const value = stored[PINNED_QUICK_TASK_IDS_KEY];
+  return Array.isArray(value)
+    ? value.filter((id): id is number => typeof id === 'number')
+    : [];
+}
+
+export async function savePinnedQuickTaskIds(ids: number[]): Promise<void> {
+  await chrome.storage.local.set({ [PINNED_QUICK_TASK_IDS_KEY]: ids });
+}
+
+export async function loadStarredPages(): Promise<StarredPage[]> {
+  const stored = await chrome.storage.local.get(STARRED_PAGES_KEY);
+  const value = stored[STARRED_PAGES_KEY];
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  // Tolerate partial entries rather than dropping the whole list.
+  return value.flatMap((entry): StarredPage[] => {
+    if (!entry || typeof entry !== 'object') {
+      return [];
+    }
+    const { url, label, starredAt } = entry as Record<string, unknown>;
+    if (typeof url !== 'string' || !url) {
+      return [];
+    }
+    return [
+      {
+        url,
+        label: typeof label === 'string' && label ? label : url,
+        starredAt: typeof starredAt === 'number' ? starredAt : 0
+      }
+    ];
+  });
+}
+
+export async function saveStarredPages(pages: StarredPage[]): Promise<void> {
+  await chrome.storage.local.set({ [STARRED_PAGES_KEY]: pages });
+}
+
+/**
+ * What the mirrored bookmarks folder looked like at the last reconcile.
+ *
+ * Browser-local on purpose: it describes this machine's last view of the shared
+ * folder, so it must not itself be synced.
+ */
+export async function loadBookmarkBaseline(): Promise<BookmarkBaseline> {
+  const stored = await chrome.storage.local.get(BOOKMARK_BASELINE_KEY);
+  const value = stored[BOOKMARK_BASELINE_KEY];
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+
+  const baseline: BookmarkBaseline = {};
+  for (const [url, title] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof title === 'string') {
+      baseline[url] = title;
+    }
+  }
+  return baseline;
+}
+
+export async function saveBookmarkBaseline(
+  baseline: BookmarkBaseline
+): Promise<void> {
+  await chrome.storage.local.set({ [BOOKMARK_BASELINE_KEY]: baseline });
 }
 
 export async function loadParentSuggestions(): Promise<ParentSuggestionStore> {
@@ -447,4 +526,14 @@ function isActiveWorkItemContext(
     typeof value.current.workItemType === 'string' &&
     typeof value.current.url === 'string'
   );
+}
+
+export async function saveQuickTaskLinks(links: StarredPage[]): Promise<void> {
+  await chrome.storage.local.set({ [QUICK_TASK_LINKS_KEY]: links });
+}
+
+export async function loadQuickTaskLinks(): Promise<StarredPage[]> {
+  const stored = await chrome.storage.local.get(QUICK_TASK_LINKS_KEY);
+  const value: unknown = stored[QUICK_TASK_LINKS_KEY];
+  return Array.isArray(value) ? (value as StarredPage[]) : [];
 }

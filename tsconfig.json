@@ -19,23 +19,23 @@
       "node",
       "vitest/globals"
     ],
-    "baseUrl": ".",
     "paths": {
       "@/types": [
-        "types/index.ts"
+        "./types/index.ts"
       ],
       "@/types/*": [
-        "types/*"
+        "./types/*"
       ],
       "@": [
-        "src"
+        "./src"
       ],
       "@/*": [
-        "src/*"
+        "./src/*"
       ]
     }
   },
   "include": [
+    "dev",
     "src",
     "types",
     "vite.config.ts",

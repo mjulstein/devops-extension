@@ -4,6 +4,10 @@ import { fetchChildTasksForActiveParent } from './devops/childTasks';
 import { createChildTaskFromActivePage } from './devops/taskCreation';
 import { setParentForActiveWorkItem } from './devops/parentAssignment';
 import { detectActiveWorkItemId } from './devops/activeWorkItemDom';
+import { readAdoThemeColorsFromPage } from './devops/pageTheme';
+import { openFavoritesPalette } from './favoritesPalette/favoritesPalette';
+import type { StarredPage } from './sidepanel/starredPages';
+import type { WidenedSearchData } from './sidepanel/favoritesListing';
 type RuntimeMessage =
   | {
       type: 'REFRESH_TAB_ICONS';
@@ -32,6 +36,19 @@ type RuntimeMessage =
       type: 'SET_ACTIVE_WORK_ITEM_PARENT';
       payload: {
         parentId: number;
+      };
+    }
+  | {
+      type: 'READ_ADO_THEME_COLORS';
+      payload?: undefined;
+    }
+  | {
+      type: 'OPEN_FAVORITES_PALETTE';
+      payload: {
+        favorites: StarredPage[];
+        quickTasks?: StarredPage[];
+        tokens?: Record<string, string>;
+        icons?: Record<string, string>;
       };
     };
 
@@ -72,6 +89,46 @@ window.addEventListener('message', (event) => {
 
 chrome.runtime.onMessage.addListener(
   (message: RuntimeMessage, _sender, sendResponse) => {
+    if (message.type === 'OPEN_FAVORITES_PALETTE') {
+      // The palette is drawn here rather than in the side panel because this
+      // document has focus, so its search field can simply take it.
+      openFavoritesPalette({
+        favorites: message.payload.favorites,
+        quickTasks: message.payload.quickTasks,
+        tokens: message.payload.tokens,
+        icons: message.payload.icons,
+        searchAllBookmarks: async (term: string) => {
+          const response: {
+            ok: boolean;
+            result?: WidenedSearchData & { icons: Record<string, string> };
+          } = await chrome.runtime.sendMessage({
+            type: 'SEARCH_BOOKMARKS',
+            payload: { term }
+          });
+          return response.ok && response.result
+            ? response.result
+            : { bookmarks: [], folders: [], icons: {} };
+        },
+        onOpenBookmarkManager: () => {
+          void chrome.runtime.sendMessage({ type: 'OPEN_BOOKMARK_MANAGER' });
+        },
+        onOpenPage: (url, newTab) => {
+          void chrome.runtime.sendMessage({
+            type: 'OPEN_STARRED_PAGE',
+            payload: { url, newTab }
+          });
+        }
+      });
+      sendResponse({ ok: true, result: null });
+      return false;
+    }
+
+    if (message.type === 'READ_ADO_THEME_COLORS') {
+      // Only the page knows what Azure DevOps's current theme actually is.
+      sendResponse({ ok: true, result: readAdoThemeColorsFromPage() });
+      return false;
+    }
+
     if (message.type === 'REFRESH_TAB_ICONS') {
       rescrapeTabIcons()
         .then(() => sendResponse({ ok: true, result: null }))

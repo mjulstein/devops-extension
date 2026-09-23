@@ -17,6 +17,7 @@ Keep this document shallow: describe the files that live directly in `src/` and 
 ## Subdirectories
 
 - [`devops`](./devops/README.md) — Azure DevOps-specific DOM detection, URL/context parsing, REST calls, and work-item operations.
+- [`favoritesPalette`](./favoritesPalette/README.md) — the centred favorites dialog the content script draws over an Azure DevOps page, inheriting that page's theme variables.
 - [`sidepanel`](./sidepanel/README.md) — side panel state, storage helpers, navigation chrome, and runtime messaging helpers.
 
 

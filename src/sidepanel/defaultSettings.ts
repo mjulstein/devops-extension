@@ -4,5 +4,9 @@ export const defaultSettings: Settings = {
   organization: '',
   project: '',
   assignedTo: '',
-  todoStates: []
+  todoStates: [],
+  quickTaskParentId: '',
+  quickTaskArchiveId: '',
+  bookmarkFolderName: '',
+  themeOverrides: { light: {}, dark: {} }
 };

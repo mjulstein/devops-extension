@@ -7,6 +7,7 @@ import { TaskList } from './atoms/TaskList';
 import { TaskStateFilters } from './atoms/TaskStateFilters';
 import { TaskTitleForm } from './atoms/TaskTitleForm';
 import { RecentFeaturesCard } from './RecentFeaturesCard';
+import card from '@/sidepanel/atoms/Card.module.css';
 
 interface ParentSuggestionView extends ParentSuggestionItem {
   isPinned: boolean;
@@ -85,7 +86,7 @@ export function WorkItemPane({
         linkExternal={linkExternal}
       />
 
-      <section className={clsx(classes.card, classes.taskCard)}>
+      <section className={clsx(card.card, classes.taskCard)}>
         <div className={classes.cardHeader}>
           <div className={classes.title}>Task children</div>
         </div>

@@ -43,7 +43,7 @@
 
 .parentDetail {
   font-size: 12px;
-  color: #555;
+  color: var(--color-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -54,9 +54,50 @@
 }
 
 .parentLink {
-  color: #0a5bd3;
+  color: var(--color-accent);
 }
 
 .titleEmphasis {
   font-weight: 700;
+}
+
+/* Pull-request chip occupying the status slot. Sized to fit "mark + 5-digit id"
+   in the same 64px the state text had, so the title keeps its width. */
+.pr {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+  color: var(--color-accent);
+}
+
+.pr:hover {
+  text-decoration: underline;
+}
+
+.prMark {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.prApproved {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+.prRejected {
+  color: var(--color-danger);
+}
+
+.prWaiting {
+  color: var(--color-warning);
+}
+
+.prDraft {
+  color: var(--color-text-muted);
 }

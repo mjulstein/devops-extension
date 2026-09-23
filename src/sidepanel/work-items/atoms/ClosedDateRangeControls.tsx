@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import type { ClosedDateRange } from '@/types';
 import classes from './ClosedDateRangeControls.module.css';
+import { Button } from '@/sidepanel/atoms/Button';
 
 interface ClosedDateRangeControlsProps {
   closedDateRange: ClosedDateRange;
@@ -25,16 +26,16 @@ export function ClosedDateRangeControls({
   return (
     <div className={clsx(classes.controls, classes.compact)}>
       <div className={classes.dateRange}>
-        <button
-          type="button"
-          className={clsx(classes.button, classes.resetButton)}
+        <Button
+          size="compact"
+          description="Back to the default range: today through seven days ago"
           onClick={() => {
             void onResetClosedDateRange();
           }}
           disabled={isActionDisabled}
         >
           Reset
-        </button>
+        </Button>
 
         <div className={classes.dateField}>
           <input
@@ -56,15 +57,14 @@ export function ClosedDateRangeControls({
 
         <div className={classes.dateField}>
           {isClosedEndTodayShortcut ? (
-            <button
-              type="button"
-              className={clsx(classes.button, classes.todayButton)}
+            <Button
+              size="compact"
               title="Using today. Click to choose a custom date."
               disabled={isActionDisabled}
               onClick={onEnableCustomClosedEndDate}
             >
               today
-            </button>
+            </Button>
           ) : (
             <input
               className={classes.dateInput}

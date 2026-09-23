@@ -1,0 +1,161 @@
+/*
+ * The one place colour is defined.
+ *
+ * Every colour in the side panel and the favorites palette resolves through a
+ * token here, so switching theme is a matter of swapping one set of values
+ * rather than hunting hex literals through thirty stylesheets. The light values
+ * are Azure DevOps's own light palette and the dark values its dark one, so the
+ * panel matches the product it reports on rather than approximating it.
+ *
+ * Both palettes are checked against WCAG 2 AA: every text step clears 4.5:1 on
+ * the surfaces it appears on, and borders clear the 3:1 asked of a boundary you
+ * are meant to see. `temp/cdp-audit-contrast.py` measures the rendered panel
+ * rather than the palette in isolation, which is what catches a colour landing
+ * on a surface nobody planned for.
+ *
+ * A theme is applied by setting `data-theme` on the document element; absent
+ * that, light is what you get. Settings may override individual tokens at
+ * runtime by setting them on the same element, which wins because an inline
+ * custom property beats a stylesheet one.
+ */
+
+:root {
+  /* Surfaces, from the page's own background outward to raised controls. */
+  --color-surface: #fff;
+  --color-surface-sunken: #f7f7f7;
+  --color-surface-raised: #f6f8fa;
+  --color-surface-hover: #f3f4f6;
+  --color-surface-muted: #eceff3;
+
+  /* Lines. Borders clear 3:1 against the surfaces they separate, which is what
+     the guidelines ask of a boundary you are meant to see. */
+  --color-border: #858f9a;
+  --color-border-strong: #6b747d;
+  --color-border-subtle: #d8dee4;
+
+  /* Text, from primary down to the faintest metadata. Every step clears 4.5:1
+     on both the plain and the raised surface — "muted" may look quieter, but it
+     still has to be readable. */
+  --color-text: #24292f;
+  --color-text-secondary: #4a525b;
+  --color-text-muted: #59616a;
+  --color-text-subtle: #646d76;
+
+  /* Accent: links, selection, and the keyboard highlight. */
+  --color-accent: #0a5bd3;
+  --color-accent-strong: #0a3977;
+  --color-accent-bright: #4d88ff;
+  --color-accent-surface: #e8f1ff;
+  --color-accent-surface-strong: #ddeaff;
+  --color-accent-border: #ccd9f5;
+
+  /* Status tones, each a foreground on its own tinted ground. */
+  --color-success: #1a7f37;
+  --color-success-surface: #e8f8ee;
+  --color-warning: #7a5200;
+  --color-warning-surface: #fff4cc;
+  --color-danger: #b42318;
+  --color-danger-surface: #fdeaea;
+
+  --color-shadow: rgb(31 35 40 / 15%);
+
+  /* Tells the browser which way its own widgets should go: scrollbars, form
+     controls, focus rings, the caret. Without it they stay light on a dark
+     panel, and no stylesheet of ours can reach them. */
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  /* Surfaces are kept a visible step apart: in dark mode a card that is only a
+     few percent lighter than the page reads as a rendering artefact rather than
+     as a card. */
+  --color-surface: #1e1e1e;
+  --color-surface-sunken: #121212;
+  --color-surface-raised: #2d2d2d;
+  --color-surface-hover: #383838;
+  --color-surface-muted: #2a2a2a;
+
+  /* Borders carry the layout when shadows cannot, so they are held above the
+     3:1 the guidelines ask of a non-text boundary rather than left as the
+     hairlines that work on white. */
+  --color-border: #767676;
+  --color-border-strong: #909090;
+  --color-border-subtle: #3d3d3d;
+
+  --color-text: #f5f5f5;
+  --color-text-secondary: #d6d6d6;
+  --color-text-muted: #b0b0b0;
+  --color-text-subtle: #949494;
+
+  --color-accent: #7cb8ff;
+  --color-accent-strong: #d6e6ff;
+  --color-accent-bright: #5b96ff;
+  --color-accent-surface: #16324f;
+  --color-accent-surface-strong: #21507e;
+  --color-accent-border: #3a6d9e;
+
+  --color-success: #7ee095;
+  --color-success-surface: #14351f;
+  --color-warning: #eec05a;
+  --color-warning-surface: #40320c;
+  --color-danger: #ff9494;
+  --color-danger-surface: #441919;
+
+  --color-shadow: rgb(0 0 0 / 45%);
+
+  color-scheme: dark;
+}
+
+/* The panel's own ground. Without this the document stays white behind themed
+   cards, which is the one surface no CSS module owns. */
+body {
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+}
+
+/* Form controls do not inherit colour: an unstyled button paints itself with the
+   browser's own ButtonText and ButtonFace, which is black on light grey whatever
+   the panel is doing around it — the reason button labels vanished into their
+   backgrounds in dark mode. Every control that a CSS module does not style is
+   given the panel's colours here, and the modules that do style them keep
+   winning on specificity. */
+button,
+input,
+select,
+textarea {
+  color: var(--color-text);
+  background-color: var(--color-surface-raised);
+  border-color: var(--color-border);
+}
+
+/* A text field is a surface you write on, not a raised control. */
+input[type='text'],
+input[type='search'],
+input[type='number'],
+input[type='date'],
+input[type='url'],
+textarea {
+  background-color: var(--color-surface);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-subtle);
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  color: var(--color-text-subtle);
+}
+
+/* Links that no CSS module styles otherwise keep the browser's default blue,
+   which on a dark ground is barely legible. */
+a {
+  color: var(--color-accent);
+}
+
+a:visited {
+  color: var(--color-accent);
+}

@@ -1,0 +1,109 @@
+/* The PR tab is the longest list in the panel, so it scrolls inside its own
+   box rather than pushing the closed-items card off the bottom. */
+.list {
+  display: grid;
+  gap: 4px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1.4ch 7ch minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+  font-size: 13px;
+}
+
+.mark {
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.id {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent);
+}
+
+.main {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.titleClosed {
+  color: var(--color-text-muted);
+}
+
+.meta {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.tag {
+  display: inline-block;
+  margin-inline-end: 4px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--color-border-subtle);
+  color: var(--color-text-secondary);
+}
+
+.tagAssigned {
+  background: var(--color-accent);
+  color: var(--color-surface);
+  font-weight: 600;
+}
+
+.tagMine {
+  background: var(--color-success-surface);
+  color: var(--color-success);
+}
+
+.tagMention {
+  background: var(--color-warning-surface);
+  color: var(--color-warning);
+}
+
+.approved {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+.rejected {
+  color: var(--color-danger);
+}
+
+.waiting {
+  color: var(--color-warning);
+}
+
+.draft {
+  color: var(--color-text-muted);
+}
+
+.showAll {
+  margin-top: 8px;
+  border: 0;
+  background: var(--color-surface-muted);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+}
+
+.showAll:hover {
+  background: var(--color-border);
+}
