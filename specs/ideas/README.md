@@ -6,11 +6,11 @@ This directory is the incubator for new features before they become promoted spe
 
 ## Files in this directory
 
-Keep ideas in Markdown only. Prefer one file per concept and use [`.specify/templates/idea-template.md`](../../.specify/templates/idea-template.md) as the starting point.
-
-If your tooling supports repo-local planning commands, [`.specify/commands/idea.md`](../../.specify/commands/idea.md) can be used as a shortcut prompt for the same workflow.
+Keep ideas in Markdown only. Prefer one file per concept.
 
 - [`separate-open-closed-work-item-results.md`](./separate-open-closed-work-item-results.md) — explores stronger open/closed result typing and future independent refresh behavior for the Work items tab.
+- [`centered-favorites-palette.md`](./centered-favorites-palette.md) — opening favorites as a centred dialog with its own focused search: an overlay injected into Azure DevOps pages, falling back to the side-panel menu everywhere else.
+- [`shared-theme-with-azure-devops.md`](./shared-theme-with-azure-devops.md) — a switch in the panel that toggles Azure DevOps's own dark/light setting, with the panel following it instead of keeping a second preference.
 - [`provider-port-and-reconnect-generalization.md`](./provider-port-and-reconnect-generalization.md) — deferred follow-ups from the PAT redesign: a generic `RECONNECT` capability and provider-contributed settings UI toward the ADR-0001 provider port.
 
 ## Rules

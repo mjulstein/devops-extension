@@ -1,0 +1,15 @@
+/* The one card rule, composed by every section that used to carry its own copy.
+   Five files had identical declarations, which is how they drifted apart from
+   the rows above them in the first place.
+
+   No horizontal padding: the card's background is the panel's own, so it draws
+   nothing — the inset it added was invisible space on top of the panel's, which
+   is what made every section's content sit further in than the controls above
+   it. The panel owns the side margin; a card only owns its vertical rhythm. */
+.card {
+  background: var(--color-surface-sunken);
+  border-radius: 10px;
+  padding-block: 14px;
+  padding-inline: 0;
+  margin-bottom: 16px;
+}

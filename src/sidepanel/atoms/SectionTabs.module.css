@@ -1,0 +1,70 @@
+/* Strip plus a pinned action area. The strip wraps; the actions do not, so a
+   region-wide control stays reachable at any panel width. */
+.row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-block-end: 8px;
+  border-block-end: 1px solid var(--color-border);
+}
+
+.stripWrap {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.row .tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-block-end: 0;
+  border-block-end: none;
+}
+
+.actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  padding-block-end: 4px;
+}
+
+/* The panel can be as narrow as 320px. Tabs wrap onto as many lines as they
+   need: a strip that scrolls hides the tabs that did not fit, and a tab you
+   cannot see is a tab you cannot reach. */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  align-items: stretch;
+  margin-block-end: 8px;
+  border-block-end: 1px solid var(--color-border);
+}
+
+.tab {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  border-block-end: 2px solid transparent;
+  padding: 6px 7px;
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--color-text);
+}
+
+.tabActive {
+  color: var(--color-accent);
+  border-block-end-color: var(--color-accent);
+}
+
+.count {
+  font-weight: 400;
+  color: var(--color-text-muted);
+  margin-inline-start: 4px;
+}

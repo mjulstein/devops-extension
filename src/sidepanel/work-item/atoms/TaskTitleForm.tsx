@@ -1,6 +1,7 @@
 import { useRef, type FormEvent } from 'react';
 import clsx from 'clsx';
 import classes from './TaskTitleForm.module.css';
+import { Button } from '@/sidepanel/atoms/Button';
 
 interface TaskTitleFormProps {
   taskTitle: string;
@@ -48,14 +49,14 @@ export function TaskTitleForm({
             placeholder="Type task name and press Enter"
             disabled={isActionDisabled}
           />
-          <button
+          <Button
             type="submit"
+            variant="primary"
             disabled={isActionDisabled}
-            className={classes.submitButton}
-            title="Create task"
+            description="Create task"
           >
             +
-          </button>
+          </Button>
         </div>
       </label>
       <div className={clsx(classes.currentParent, classes.parentHint)}>

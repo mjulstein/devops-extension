@@ -12,4 +12,3 @@ This directory contains small interactive Active item tab atoms that keep `WorkI
 - `TaskList.tsx` + `TaskList.module.css` — child-task button list and empty state.
 - `TaskStateFilters.tsx` + `TaskStateFilters.module.css` — task-state filter checkbox row.
 - `TaskTitleForm.tsx` + `TaskTitleForm.module.css` — task creation input and parent hint.
-- `taskStateDisplay.ts` — task-state abbreviation and tone helpers shared by task atoms.

@@ -5,20 +5,20 @@
   flex-shrink: 0;
   width: 32px;
   padding: 0;
-  background: #eef3ff;
-  border: 1px solid #ccd9f5;
+  background: var(--color-accent-surface);
+  border: 1px solid var(--color-accent-border);
   border-radius: 8px;
-  color: #5a6d96;
+  color: var(--color-text-secondary);
   cursor: pointer;
 }
 
 .button:hover {
-  background: #e5edff;
-  color: #1f2c4a;
+  background: var(--color-accent-surface);
+  color: var(--color-text);
 }
 
 .button:focus-visible {
-  outline: 2px solid #4d88ff;
+  outline: 2px solid var(--color-accent-bright);
   outline-offset: 1px;
 }
 

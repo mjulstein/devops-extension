@@ -19,6 +19,5 @@ Promoted features live in numbered subdirectories such as `specs/001-feature-nam
 1. Capture rough feature concepts in `specs/ideas/`.
 2. Promote an idea into `specs/###-feature-name/` when goals, acceptance scenarios, and sequencing are clear enough to plan.
 3. Add `spec.md` first, then `plan.md` and `tasks.md` when the work is ready to be broken down.
-4. Use the optional helper prompts in [`.specify/commands`](../.specify/commands/README.md) when your tooling supports repo-local planning commands.
 
 

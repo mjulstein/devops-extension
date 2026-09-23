@@ -7,7 +7,7 @@
 
 .link {
   font-size: 12px;
-  color: #0a5bd3;
+  color: var(--color-accent);
   text-decoration: none;
   overflow: hidden;
   text-overflow: ellipsis;

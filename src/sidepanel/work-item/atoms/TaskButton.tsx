@@ -1,7 +1,10 @@
 import clsx from 'clsx';
 import type { ChildTaskItem } from '@/types';
 import classes from './TaskButton.module.css';
-import { getTaskStateTone, type TaskStateTone } from './taskStateDisplay';
+import {
+  getTaskStateTone,
+  type TaskStateTone
+} from '@/sidepanel/taskStateDisplay';
 
 interface TaskButtonProps {
   task: ChildTaskItem;

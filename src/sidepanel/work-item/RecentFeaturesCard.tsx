@@ -3,6 +3,8 @@ import { useId } from 'react';
 import type { ParentSuggestionItem } from '@/types';
 import { ParentSuggestionRow } from './atoms/ParentSuggestionRow';
 import classes from './RecentFeaturesCard.module.css';
+import { Button } from '@/sidepanel/atoms/Button';
+import card from '@/sidepanel/atoms/Card.module.css';
 
 interface RecentFeatureSuggestionView extends ParentSuggestionItem {
   isPinned: boolean;
@@ -32,24 +34,20 @@ export function RecentFeaturesCard({
   const sectionId = useId();
 
   return (
-    <section className={clsx(classes.card, classes.recentFeaturesCard)}>
+    <section className={clsx(card.card, classes.recentFeaturesCard)}>
       <div className={classes.cardHeader}>
         <div className={classes.title}>Recent features</div>
-        <button
-          type="button"
-          className={classes.sectionToggle}
-          aria-label={
+        <Button
+          variant="quiet"
+          size="compact"
+          icon={isCollapsed ? '▸' : '▾'}
+          description={
             isCollapsed ? 'Expand recent features' : 'Collapse recent features'
           }
-          aria-expanded={!isCollapsed}
-          aria-controls={sectionId}
-          title={
-            isCollapsed ? 'Expand recent features' : 'Collapse recent features'
-          }
+          isExpanded={!isCollapsed}
+          controls={sectionId}
           onClick={onToggleCollapsed}
-        >
-          <span aria-hidden="true">{isCollapsed ? '▸' : '▾'}</span>
-        </button>
+        />
       </div>
 
       {!isCollapsed ? (

@@ -7,7 +7,7 @@ export async function sendMessageToActiveTab<T>(message: unknown): Promise<T> {
   const tabId = await getActiveTabId();
 
   try {
-    return (await chrome.tabs.sendMessage(tabId, message)) as T;
+    return await chrome.tabs.sendMessage(tabId, message);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 

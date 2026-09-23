@@ -1,0 +1,75 @@
+/* The one button in the panel. Every control that was styled locally drifted —
+   different paddings, radii and borders on the same-looking thing — so the
+   variants here are the only ones there are. */
+.button {
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.2;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.button:hover:enabled {
+  border-color: var(--color-border-strong);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  /* Dimmed through colour rather than opacity: opacity takes the label's
+     contrast down with it, and a disabled control still has to be readable. */
+  color: var(--color-text-subtle);
+  background: var(--color-surface-muted);
+}
+
+/* The action a region is for, when there is exactly one. */
+.primary {
+  border-color: var(--color-accent);
+  background: var(--color-accent-surface);
+  color: var(--color-accent-strong);
+}
+
+.primary:disabled {
+  border-color: var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text-subtle);
+}
+
+/* For rows of small actions, where a border on each would be noise. */
+.quiet {
+  border-color: transparent;
+  background: none;
+  color: var(--color-text-secondary);
+}
+
+.quiet:hover:enabled {
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.compact {
+  font-size: 11px;
+  padding: 3px 7px;
+}
+
+.iconOnly {
+  padding-inline: 7px;
+}
+
+.icon {
+  display: inline-flex;
+  line-height: 1;
+}
+
+.label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -8,7 +8,10 @@
     "activeTab",
     "tabs",
     "storage",
-    "scripting"
+    "scripting",
+    "webRequest",
+    "bookmarks",
+    "favicon"
   ],
   "host_permissions": [
     "https://dev.azure.com/*",
@@ -25,18 +28,34 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://dev.azure.com/*"],
-      "js": ["token-interceptor.js"],
+      "matches": [
+        "https://dev.azure.com/*"
+      ],
+      "js": [
+        "token-interceptor.js"
+      ],
       "run_at": "document_start",
       "world": "MAIN"
     },
     {
-      "matches": ["https://dev.azure.com/*"],
-      "js": ["content-script.js"],
+      "matches": [
+        "https://dev.azure.com/*"
+      ],
+      "js": [
+        "content-script.js"
+      ],
       "run_at": "document_idle"
     }
   ],
   "action": {
     "default_title": "DevOps Daily Export"
+  },
+  "commands": {
+    "open-starred-search": {
+      "suggested_key": {
+        "default": "Ctrl+Period"
+      },
+      "description": "Open the side panel and search starred Azure DevOps pages"
+    }
   }
 }

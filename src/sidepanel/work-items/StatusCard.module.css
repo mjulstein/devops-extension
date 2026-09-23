@@ -1,14 +1,7 @@
-.card {
-  background: #f7f7f7;
-  border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 16px;
-}
-
 .loading {
   margin-top: 12px;
   padding: 10px 12px;
-  background: #fff4cc;
+  background: var(--color-warning-surface);
   border-radius: 8px;
   font-size: 13px;
 }
@@ -21,17 +14,131 @@
 }
 
 .statusInfo {
-  background: #e8f1ff;
+  background: var(--color-accent-surface);
 }
 
 .statusWarning {
-  background: #fff4cc;
+  background: var(--color-warning-surface);
 }
 
 .statusSuccess {
-  background: #e8f8ee;
+  background: var(--color-success-surface);
 }
 
 .statusError {
-  background: #fdeaea;
+  background: var(--color-danger-surface);
+}
+
+/* A list that already has rows keeps them while it refreshes; the yellow pulse
+   is the only signal that a fetch is in flight, so the rows never disappear. */
+.refreshing {
+  border-radius: 8px;
+  animation: refreshPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes refreshPulse {
+  0%,
+  100% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: var(--color-warning-surface);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .refreshing {
+    animation: none;
+    background-color: var(--color-warning-surface);
+  }
+}
+
+/* Terse, one-click notice for a freshly created quick task. */
+.createdNotice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.createdLink {
+  border: 0;
+  background: var(--color-success-surface);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--color-success);
+}
+
+.createdLink:hover {
+  background: var(--color-success-surface);
+}
+
+.createdDismiss {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  padding: 4px;
+  line-height: 1;
+}
+
+/* A message that lives under the tabs, with its dismiss cross in the corner. */
+.dismissible {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dismiss {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 2px;
+  color: var(--color-text-secondary);
+  flex: 0 0 auto;
+}
+
+.dismiss:hover {
+  color: var(--color-text);
+}
+
+/* Dormant authored items: present, but not competing with what is moving. */
+.idleGroup {
+  margin-block-start: 10px;
+  border-block-start: 1px solid var(--color-border);
+  padding-block-start: 8px;
+}
+
+.idleSummary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  list-style: none;
+}
+
+.idleSummary::-webkit-details-marker {
+  display: none;
+}
+
+.idleSummary::before {
+  content: '▸';
+  display: inline-block;
+  margin-inline-end: 6px;
+  color: var(--color-text-subtle);
+}
+
+.idleGroup[open] > .idleSummary::before {
+  content: '▾';
+}
+
+.idleSummary:hover {
+  color: var(--color-text);
 }

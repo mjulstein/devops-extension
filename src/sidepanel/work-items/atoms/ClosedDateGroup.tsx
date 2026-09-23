@@ -1,5 +1,6 @@
 import type { WorkItem } from '@/types';
 import classes from './ClosedDateGroup.module.css';
+import { Button } from '@/sidepanel/atoms/Button';
 import { WorkItemRow } from './WorkItemRow';
 
 interface ClosedDateGroupProps {
@@ -26,16 +27,15 @@ export function ClosedDateGroup({
       <div className={classes.heading}>
         <span>{group.label}</span>
         {onRefetchClosedDay ? (
-          <button
-            type="button"
-            className={classes.refetchButton}
-            title={`Refetch closed items for ${group.label}`}
+          <Button
+            variant="quiet"
+            size="compact"
+            icon="↻"
+            description={`Refetch closed items for ${group.label}`}
             onClick={() => {
               void onRefetchClosedDay(group.key);
             }}
-          >
-            ↻
-          </button>
+          />
         ) : null}
       </div>
 

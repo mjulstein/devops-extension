@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { Link } from '../../Link';
 import classes from './ParentSuggestionRow.module.css';
+import { Button } from '@/sidepanel/atoms/Button';
 import { PinToggleButton } from './PinToggleButton';
 
 interface ParentSuggestionRowProps {
@@ -45,14 +46,14 @@ export function ParentSuggestionRow({
         #{id} [{workItemType}] - {title}
       </Link>
 
-      <button
-        type="button"
+      <Button
+        size="compact"
         className={classes.action}
         disabled={isActionDisabled}
         onClick={onAction}
       >
         {actionLabel}
-      </button>
+      </Button>
 
       <PinToggleButton
         isPinned={isPinned}
