@@ -271,6 +271,61 @@ export function filterFolderGroups(
     .filter((group) => group.folders.length > 0);
 }
 
+export interface FlattenPlan {
+  /** Each child, with where it lands in the grandparent. */
+  moves: { id: string; parentId: string; index: number }[];
+  /** The folder itself, empty by then and removed last. */
+  removeId: string;
+}
+
+/**
+ * Takes everything inside a folder up one level and drops the folder.
+ *
+ * `path/to/flatten/that/has/nest` flattened at `flatten` becomes
+ * `path/to/that/has/nest`: only the one level named disappears, and whatever
+ * nesting the children carry comes along untouched, because moving a folder
+ * moves its whole subtree.
+ *
+ * The children land at the folder's own position rather than at the end of the
+ * grandparent, so flattening does not also reorder the list. Returns null where
+ * there is nothing to do or nowhere to do it: an empty folder (flattening it
+ * would just be a delete, which is a different button) or a root, whose parent
+ * is the hidden node that cannot hold bookmarks.
+ */
+export function planFlatten(
+  tree: BookmarkNode[],
+  folderId: string
+): FlattenPlan | null {
+  const folder = findNode(tree, folderId);
+  if (!folder || folder.url !== undefined) {
+    return null;
+  }
+
+  const children = folder.children ?? [];
+  if (children.length === 0) {
+    return null;
+  }
+
+  const parentId = folder.parentId;
+  // A root sits directly under the hidden node, which is not in this tree.
+  if (!parentId || findNode(tree, parentId) === null) {
+    return null;
+  }
+
+  const parent = findNode(tree, parentId);
+  const at = (parent?.children ?? []).findIndex((node) => node.id === folderId);
+  const start = at < 0 ? (parent?.children ?? []).length : at;
+
+  return {
+    moves: children.map((child, offset) => ({
+      id: child.id,
+      parentId,
+      index: start + offset
+    })),
+    removeId: folderId
+  };
+}
+
 export function findNode(
   tree: BookmarkNode[],
   id: string

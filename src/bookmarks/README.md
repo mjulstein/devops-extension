@@ -38,6 +38,14 @@ Rename and delete sit on the row rather than in a menu, so a folder is fixed
 where it is seen — the same bargain the bookmark rows make. They appear on hover
 or keyboard focus: shown always, a tree of folders becomes a wall of icons.
 
+Flattening lifts a folder's contents into its grandparent and removes the empty
+shell, so only the one level named disappears and the nesting underneath comes
+along untouched. The children land at the folder's own position rather than at
+the end of the list, so flattening does not quietly reorder the list as well.
+`planFlatten` returns null — and the button is hidden — for an empty folder,
+where flattening would just be a delete, and for a root, whose parent is the
+hidden node that cannot hold bookmarks.
+
 Deleting a folder takes everything under it and, unlike a bookmark, that is not
 something the address bar can give back, so a non-empty folder asks first. An
 empty one goes without the interruption. The selection is cleared when its own

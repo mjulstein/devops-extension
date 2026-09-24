@@ -15,6 +15,9 @@ interface FolderTreeProps {
   onDrop: (dragId: string, targetId: string) => void;
   onRename: (id: string, title: string) => void;
   onDelete: (id: string) => void;
+  /** Called only where flattening is possible; the row hides the button otherwise. */
+  onFlatten: (id: string) => void;
+  canFlatten: (id: string) => boolean;
 }
 
 function subfolders(node: BookmarkNode): BookmarkNode[] {
@@ -36,7 +39,9 @@ export function FolderTree({
   canDrop,
   onDrop,
   onRename,
-  onDelete
+  onDelete,
+  onFlatten,
+  canFlatten
 }: FolderTreeProps) {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   // Collapsed rather than expanded state, so a folder created or synced in
@@ -181,6 +186,17 @@ export function FolderTree({
                       setEditingId(node.id);
                     }}
                   />
+                  {canFlatten(node.id) ? (
+                    <Button
+                      size="compact"
+                      variant="quiet"
+                      icon="⇤"
+                      description={`Flatten ${node.title}: move what is inside it up one level and remove it`}
+                      onClick={() => {
+                        onFlatten(node.id);
+                      }}
+                    />
+                  ) : null}
                   <Button
                     size="compact"
                     variant="quiet"

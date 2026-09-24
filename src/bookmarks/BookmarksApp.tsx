@@ -7,6 +7,7 @@ import { BOOKMARK_DRAG_TYPE, FolderTree } from './FolderTree';
 import { IssuesPanel } from './IssuesPanel';
 import {
   canDropInto,
+  planFlatten,
   collectFolders,
   filterEntries,
   findNode,
@@ -15,6 +16,7 @@ import {
   type BookmarkNode
 } from './bookmarksModel';
 import {
+  applyFlatten,
   createFolder,
   moveInto,
   readTree,
@@ -155,6 +157,17 @@ export function BookmarksApp() {
                 canDropInto(tree, dragId, targetId)
               }
               onDrop={handleMove}
+              canFlatten={(id) => planFlatten(tree, id) !== null}
+              onFlatten={(id) => {
+                const plan = planFlatten(tree, id);
+                if (!plan) {
+                  return;
+                }
+                if (id === selectedId) {
+                  setSelectedId(null);
+                }
+                act(() => applyFlatten(plan));
+              }}
               onRename={(id, title) => {
                 act(() => updateNode(id, { title }));
               }}

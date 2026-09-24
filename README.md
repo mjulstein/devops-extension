@@ -228,8 +228,11 @@ dragging a bookmark or a folder onto a folder files it there. A folder cannot be
 dropped into itself or into one of its own descendants. Each folder row carries
 the same pencil and trash can as a bookmark — rename in place, or delete, with a
 confirmation first when the folder is not empty, since deleting takes everything
-inside it. The **−** button collapses a folder's subfolders, **+** brings them
-back. The search box at the top
+inside it. The **⇤** button flattens a folder: everything inside it moves up one level and
+the folder itself goes, so `path/to/flatten/that/has/nest` flattened at
+`flatten` becomes `path/to/that/has/nest`. Whatever nesting the contents carry
+comes along untouched. The **−** button collapses a folder's subfolders, **+**
+brings them back. The search box at the top
 spans every folder, which is what you want when you cannot remember where
 something was filed.
 

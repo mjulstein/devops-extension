@@ -8,6 +8,7 @@ import {
   filterEntries,
   filterGroups,
   flattenBookmarks,
+  planFlatten,
   urlWithoutSearch,
   type BookmarkNode
 } from './bookmarksModel';
@@ -182,6 +183,87 @@ describe('filters', () => {
     const groups = duplicateNameGroups(flattenBookmarks(tree()));
     expect(filterGroups(groups, 'archive')[0].entries).toHaveLength(1);
     expect(filterGroups(groups, 'nothing')).toEqual([]);
+  });
+});
+
+describe('planFlatten', () => {
+  function nested(): BookmarkNode[] {
+    return [
+      {
+        id: 'root',
+        title: 'path',
+        children: [
+          {
+            id: 'to',
+            parentId: 'root',
+            title: 'to',
+            children: [
+              {
+                id: 'first',
+                parentId: 'to',
+                title: 'First',
+                url: 'https://x.test/1'
+              },
+              {
+                id: 'flatten',
+                parentId: 'to',
+                title: 'flatten',
+                children: [
+                  {
+                    id: 'that',
+                    parentId: 'flatten',
+                    title: 'that',
+                    children: [
+                      {
+                        id: 'has',
+                        parentId: 'that',
+                        title: 'has',
+                        children: []
+                      }
+                    ]
+                  },
+                  {
+                    id: 'loose',
+                    parentId: 'flatten',
+                    title: 'Loose',
+                    url: 'https://x.test/2'
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ];
+  }
+
+  it('lifts the children into the grandparent, in the folder place', () => {
+    const plan = planFlatten(nested(), 'flatten');
+    expect(plan).toEqual({
+      moves: [
+        { id: 'that', parentId: 'to', index: 1 },
+        { id: 'loose', parentId: 'to', index: 2 }
+      ],
+      removeId: 'flatten'
+    });
+  });
+
+  it('leaves the nesting under a moved child alone', () => {
+    // 'that' moves as one node, so 'has' travels with it untouched.
+    const plan = planFlatten(nested(), 'flatten');
+    expect(plan?.moves.some((move) => move.id === 'has')).toBe(false);
+  });
+
+  it('refuses an empty folder, which would just be a delete', () => {
+    expect(planFlatten(nested(), 'has')).toBeNull();
+  });
+
+  it('refuses a root, whose parent cannot hold bookmarks', () => {
+    expect(planFlatten(nested(), 'root')).toBeNull();
+  });
+
+  it('refuses a bookmark', () => {
+    expect(planFlatten(nested(), 'first')).toBeNull();
   });
 });
 

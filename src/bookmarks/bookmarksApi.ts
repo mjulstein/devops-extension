@@ -4,7 +4,7 @@
 // tree shape from `bookmarksModel` and nothing else, and the page can be reasoned
 // about without the browser API in the way.
 
-import type { BookmarkNode } from './bookmarksModel';
+import type { BookmarkNode, FlattenPlan } from './bookmarksModel';
 
 type ChangeListener = () => void;
 
@@ -17,6 +17,22 @@ export async function readTree(): Promise<BookmarkNode[]> {
 
 export async function moveInto(id: string, parentId: string): Promise<void> {
   await chrome.bookmarks.move(id, { parentId });
+}
+
+/**
+ * Applies a flatten plan: the children up one level, then the empty shell.
+ *
+ * The moves run in order rather than in parallel, because each one's index is
+ * computed against the list the one before it left behind.
+ */
+export async function applyFlatten(plan: FlattenPlan): Promise<void> {
+  for (const move of plan.moves) {
+    await chrome.bookmarks.move(move.id, {
+      parentId: move.parentId,
+      index: move.index
+    });
+  }
+  await chrome.bookmarks.remove(plan.removeId);
 }
 
 export async function removeNode(id: string, isFolder: boolean): Promise<void> {
