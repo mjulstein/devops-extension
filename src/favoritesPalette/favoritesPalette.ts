@@ -52,8 +52,8 @@ export interface PaletteOptions {
     term: string
   ) => Promise<WidenedSearchData & { icons: FaviconMap }>;
   /**
-   * Opens the browser's own bookmark manager. A page cannot navigate to a
-   * browser page, so this too is the caller's job.
+   * Opens the extension's bookmark manager page. A page cannot open an
+   * extension page itself, so this too is the caller's job.
    */
   onOpenBookmarkManager?: () => void;
   /**
@@ -273,7 +273,7 @@ export function openFavoritesPalette({
     manage.type = 'button';
     manage.className = 'manage';
     manage.textContent = 'Bookmarks';
-    manage.title = "Open the browser's bookmark manager";
+    manage.title = 'Open the bookmark manager';
     manage.addEventListener('click', () => {
       close();
       onOpenBookmarkManager();

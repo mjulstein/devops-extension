@@ -63,6 +63,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - `src/token-interceptor.ts` — main-world `document_start` script that captures the page's Bearer token and signals fresh captures for auto-recovery
 - `src/devops/{activeParentContext,lastVisitedContext}.ts` — active work-item context resolution plus persisted last-visited org/project and work-item references used by the service worker fallback flow
 - `src/devops/workItems.ts` — separate open/closed work-item query and transformation logic, including closed-date range filtering and parent-summary enrichment
+- `src/bookmarks.html` + `src/bookmarks.tsx` + `src/bookmarks/*` — the extension's own bookmark manager page, which the palette's **Bookmarks** button opens in place of the browser's. The browser's manager cannot show what is saved twice or what is now empty, which is most of the reason it gets opened; this page puts a drag-and-drop organiser over **Duplicate name** / **Duplicate path** / **Empty folders** lists and gives every row edit, delete and move-to-folder in place. Duplicate *path* compares urls without their search params and only reports copies in different folders, since two in one folder are already visible side by side. See [`src/bookmarks/README.md`](./src/bookmarks/README.md)
 - `src/sidepanel.html` — side panel HTML entry
 - `src/sidepanel.tsx` — React side panel entry
 - `src/sidepanel/{App,Tabs,Link,DebugConsolePane}.tsx` + matching `*.module.css` files — side panel shell, tab chrome, link navigation helper, and in-panel debug log viewer

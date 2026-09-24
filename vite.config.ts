@@ -9,13 +9,15 @@ function copyManifestPlugin() {
     closeBundle() {
       copyFileSync(resolve('src/manifest.json'), resolve('dist/manifest.json'));
 
-      const nestedSidepanel = resolve('dist/src/sidepanel.html');
-      const rootSidepanel = resolve('dist/sidepanel.html');
-
-      if (existsSync(nestedSidepanel)) {
-        renameSync(nestedSidepanel, rootSidepanel);
-        rmSync(resolve('dist/src'), { recursive: true, force: true });
+      // Vite keeps the source folder in the output path for an HTML entry; the
+      // manifest refers to these pages at the root, so they are lifted back.
+      for (const page of ['sidepanel.html', 'bookmarks.html']) {
+        const nested = resolve(`dist/src/${page}`);
+        if (existsSync(nested)) {
+          renameSync(nested, resolve(`dist/${page}`));
+        }
       }
+      rmSync(resolve('dist/src'), { recursive: true, force: true });
     }
   };
 }
@@ -92,6 +94,7 @@ export default defineConfig({
       // buildContentScriptPlugin so it doesn't need ES module support in Chrome.
       input: {
         sidepanel: resolve('src/sidepanel.html'),
+        bookmarks: resolve('src/bookmarks.html'),
         'service-worker': resolve('src/service-worker.ts')
       },
       output: {

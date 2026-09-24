@@ -1,0 +1,79 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 5px;
+}
+
+.row:hover {
+  background: var(--color-surface-hover);
+}
+
+.editing {
+  align-items: start;
+  background: var(--color-surface-raised);
+}
+
+.icon {
+  flex: 0 0 auto;
+  inline-size: 16px;
+  block-size: 16px;
+  border-radius: 3px;
+}
+
+.link {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  gap: 1px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.title {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.url {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.editFields {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+.input,
+.moveSelect {
+  font: inherit;
+  font-size: 12px;
+  inline-size: 100%;
+  box-sizing: border-box;
+  padding: 3px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+}
+
+.moveSelect {
+  inline-size: auto;
+  max-inline-size: 160px;
+}

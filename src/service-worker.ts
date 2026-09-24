@@ -228,22 +228,24 @@ async function reloadActiveAzureDevOpsTab(): Promise<void> {
 }
 
 /**
- * Opens the browser's bookmark manager.
+ * Opens this extension's bookmark manager, reusing its tab if one is open.
  *
- * Its address differs by browser and is not something to guess at from the user
- * agent, so the known ones are tried in turn until one opens.
+ * It replaces the browser's own manager here because the browser's cannot show
+ * what is duplicated or empty, which is most of what the page is opened to fix.
+ * A second tab of it would be two views of the same tree that can disagree on
+ * screen, so an open one is raised instead.
  */
 async function openBookmarkManager(): Promise<void> {
-  const candidates = ['chrome://bookmarks/', 'edge://favorites/'];
-  for (const url of candidates) {
-    try {
-      await chrome.tabs.create({ url });
-      return;
-    } catch {
-      // Try the next address.
+  const url = chrome.runtime.getURL('bookmarks.html');
+  const [open] = await chrome.tabs.query({ url });
+  if (open?.id != null) {
+    await chrome.tabs.update(open.id, { active: true });
+    if (open.windowId != null) {
+      await chrome.windows.update(open.windowId, { focused: true });
     }
+    return;
   }
-  throw new Error("Could not open the browser's bookmark manager.");
+  await chrome.tabs.create({ url });
 }
 
 /**

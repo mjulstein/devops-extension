@@ -1,0 +1,55 @@
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.folder {
+  display: flex;
+  align-items: center;
+  border-radius: 5px;
+  border: 1px solid transparent;
+}
+
+.folder:hover {
+  background: var(--color-surface-hover);
+}
+
+.folderButton {
+  font: inherit;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  text-align: start;
+  padding: 5px 6px;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.folderTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.count {
+  margin-inline-start: auto;
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.selected {
+  background: var(--color-accent-surface-strong);
+  color: var(--color-accent-strong);
+}
+
+/* The border, not a fill, says where the drop lands: a fill reads the same as
+   selection and the two mean different things. */
+.dropTarget {
+  border-color: var(--color-accent-strong);
+}

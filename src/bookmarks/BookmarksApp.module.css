@@ -1,0 +1,87 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+  max-inline-size: 1100px;
+  margin: 0 auto;
+  padding: 16px;
+  font-size: 13px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.heading {
+  font-size: 16px;
+  margin: 0;
+}
+
+.search {
+  font: inherit;
+  font-size: 13px;
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  box-sizing: border-box;
+  padding: 5px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+}
+
+.organiser {
+  display: grid;
+  grid-template-columns: minmax(180px, 280px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+/* One column on a narrow window: the tree and the contents are each unusable at
+   half of a small screen, and this page is as likely to be opened in a split
+   window as full width. */
+@media (width <= 720px) {
+  .organiser {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.tree,
+.contents {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 8px;
+  min-block-size: 200px;
+}
+
+.contentsHeading {
+  font-size: 12px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  color: var(--color-text-secondary);
+}
+
+/* A search spans folders, so dropping into "the folder on screen" would be a
+   guess. The area says so by stepping back rather than by silently ignoring it. */
+.searching {
+  border-style: dashed;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.empty {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: 6px 0 0;
+}
+
+.error {
+  font-size: 12px;
+  margin: 0;
+  color: var(--color-danger);
+}

@@ -197,8 +197,8 @@ npm test
     bookmarks disappear as the tasks are finished. Start the search with `.` to
     reach the browser's own bookmarks: on its own it lists your bookmark folders,
     and picking one — or typing its name — shows what is inside it. Rows carry
-    each site's icon. The palette also has a button to open the browser's own
-    bookmark manager.
+    each site's icon. The **Bookmarks** button opens the extension's own
+    bookmark manager page (see below).
     **Ctrl+Period** opens a centred favorites palette over the Azure DevOps page
     you are on, with its search already focused; on any other page it opens the
     panel straight into the same search instead; Settings →
@@ -214,6 +214,33 @@ npm test
 12. Open the **Active item** tab to create child tasks. The tab resolves context from the last visited Azure DevOps work-item view (or the pinned item if set), so it can continue working even when a non-DevOps tab is active.
 
 The extension queries Azure DevOps with its runtime-minted PAT (over HTTP Basic auth) and displays matching work items in the side panel.
+
+## Bookmark manager
+
+The **Bookmarks** button in the favorites palette opens the extension's own
+bookmark manager instead of the browser's. The browser's manager cannot tell you
+what is saved twice or what is now empty, which is most of the reason it gets
+opened in the first place.
+
+The top half is for reorganising: the folder tree on the left, the selected
+folder's contents on the right, and dragging a bookmark or a folder onto a folder
+files it there. A folder cannot be dropped into itself or into one of its own
+descendants. The search box at the top spans every folder, which is what you want
+when you cannot remember where something was filed.
+
+Below it, three lists, one tab at a time and each with its own filter:
+
+- **Duplicate name** — bookmarks sharing a title, wherever they live.
+- **Duplicate path** — the same address, ignoring search parameters and the
+  hash, filed in two different folders. Two copies inside one folder are left
+  out: they are already side by side in the organiser above.
+- **Empty folders** — folders holding nothing at all.
+
+Every row in both halves carries the same actions: a pencil to edit the title and
+address in place, a trash can to delete it, and a **Move to…** list to send it to
+another folder without leaving the list you found it in. The page follows
+whatever change happens elsewhere — another window, the browser's own manager, or
+a sync from another machine — so it never shows a tree that no longer exists.
 
 ## License
 
