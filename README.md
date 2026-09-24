@@ -222,19 +222,27 @@ bookmark manager instead of the browser's. The browser's manager cannot tell you
 what is saved twice or what is now empty, which is most of the reason it gets
 opened in the first place.
 
-The top half is for reorganising: the folder tree on the left, the selected
-folder's contents on the right, and dragging a bookmark or a folder onto a folder
-files it there. A folder cannot be dropped into itself or into one of its own
-descendants. The search box at the top spans every folder, which is what you want
-when you cannot remember where something was filed.
+The page is split two thirds to one third. The left two thirds are for
+reorganising: the folder tree, the selected folder's contents beside it, and
+dragging a bookmark or a folder onto a folder files it there. A folder cannot be
+dropped into itself or into one of its own descendants. The search box at the top
+spans every folder, which is what you want when you cannot remember where
+something was filed.
 
-Below it, three lists, one tab at a time and each with its own filter:
+The right third holds four lists, one tab at a time and each with its own filter:
 
 - **Duplicate name** — bookmarks sharing a title, wherever they live.
 - **Duplicate path** — the same address, ignoring search parameters and the
   hash, filed in two different folders. Two copies inside one folder are left
   out: they are already side by side in the organiser above.
+- **Duplicate folder** — folders sharing a name, which is how a bookmark ends up
+  in the wrong one. These rows rename and move but do not delete: a duplicated
+  folder may be full, and the fix is almost always the name.
 - **Empty folders** — folders holding nothing at all.
+
+Selecting a folder in the tree narrows all four lists to that subtree, so a
+duplicate you just created is visible where you are working instead of buried in
+a whole-tree list. **All** above the tree clears the selection.
 
 Every row in both halves carries the same actions: a pencil to edit the title and
 address in place, a trash can to delete it, and a **Move to…** list to send it to

@@ -1,5 +1,7 @@
 import {
   canDropInto,
+  duplicateFolderNameGroups,
+  filterFolderGroups,
   duplicateNameGroups,
   duplicatePathGroups,
   emptyFolders,
@@ -105,6 +107,59 @@ describe('duplicatePathGroups', () => {
       }
     ]);
     expect(duplicatePathGroups(entries)).toEqual([]);
+  });
+});
+
+describe('duplicateFolderNameGroups', () => {
+  it('groups folders sharing a name, ignoring case', () => {
+    const groups = duplicateFolderNameGroups([
+      {
+        id: '1',
+        title: 'Bar',
+        children: [
+          { id: '10', parentId: '1', title: 'Work', children: [] },
+          {
+            id: '11',
+            parentId: '1',
+            title: 'Old',
+            children: [
+              { id: '110', parentId: '11', title: 'work', children: [] }
+            ]
+          }
+        ]
+      }
+    ]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].key).toBe('work');
+    expect(groups[0].folders.map((folder) => folder.id)).toEqual(['10', '110']);
+  });
+
+  it('leaves a name used once alone', () => {
+    expect(duplicateFolderNameGroups(tree())).toEqual([]);
+  });
+
+  it('filters a group down to its matching folders', () => {
+    const groups = duplicateFolderNameGroups([
+      {
+        id: '1',
+        title: 'Bar',
+        children: [
+          { id: '10', parentId: '1', title: 'Work', children: [] },
+          {
+            id: '11',
+            parentId: '1',
+            title: 'Old',
+            children: [
+              { id: '110', parentId: '11', title: 'Work', children: [] }
+            ]
+          }
+        ]
+      }
+    ]);
+    expect(
+      filterFolderGroups(groups, 'old')[0].folders.map((f) => f.id)
+    ).toEqual(['110']);
+    expect(filterFolderGroups(groups, 'zzz')).toEqual([]);
   });
 });
 

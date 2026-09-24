@@ -81,3 +81,11 @@
   border-radius: 5px;
   max-inline-size: 160px;
 }
+
+/* Says which folder the counts above belong to, since a scoped list is short
+   for a reason rather than because there is nothing to fix. */
+.scope {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin: 0;
+}

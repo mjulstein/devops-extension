@@ -3,9 +3,11 @@ import { Button } from '../sidepanel/atoms/Button';
 import { SectionTabs } from '../sidepanel/atoms/SectionTabs';
 import { BookmarkRow } from './BookmarkRow';
 import {
+  duplicateFolderNameGroups,
   duplicateNameGroups,
   duplicatePathGroups,
   emptyFolders,
+  filterFolderGroups,
   filterFolders,
   filterGroups,
   flattenBookmarks,
@@ -14,11 +16,19 @@ import {
 } from './bookmarksModel';
 import classes from './IssuesPanel.module.css';
 
-type IssueTab = 'duplicate-name' | 'duplicate-path' | 'empty-folders';
+type IssueTab =
+  | 'duplicate-name'
+  | 'duplicate-path'
+  | 'duplicate-folder'
+  | 'empty-folders';
 
 interface IssuesPanelProps {
+  /** The tree the lists describe: the whole thing, or the selected subtree. */
   tree: BookmarkNode[];
+  /** Every folder, for the move controls, regardless of what is scoped. */
   folders: FolderEntry[];
+  /** Names the scope in the heading, so a short list is never a mystery. */
+  scopeLabel: string | null;
   onEdit: (id: string, changes: { title: string; url: string }) => void;
   onDelete: (id: string) => void;
   onDeleteFolder: (id: string) => void;
@@ -37,6 +47,7 @@ interface IssuesPanelProps {
 export function IssuesPanel({
   tree,
   folders,
+  scopeLabel,
   onEdit,
   onDelete,
   onDeleteFolder,
@@ -47,12 +58,14 @@ export function IssuesPanel({
   const [filters, setFilters] = useState<Record<IssueTab, string>>({
     'duplicate-name': '',
     'duplicate-path': '',
+    'duplicate-folder': '',
     'empty-folders': ''
   });
 
   const entries = flattenBookmarks(tree);
   const nameGroups = duplicateNameGroups(entries);
   const pathGroups = duplicatePathGroups(entries);
+  const folderGroups = duplicateFolderNameGroups(tree);
   const empties = emptyFolders(tree);
 
   const filter = filters[tab];
@@ -68,6 +81,8 @@ export function IssuesPanel({
         : [];
   const shownFolders =
     tab === 'empty-folders' ? filterFolders(empties, filter) : [];
+  const shownFolderGroups =
+    tab === 'duplicate-folder' ? filterFolderGroups(folderGroups, filter) : [];
 
   return (
     <section className={classes.panel}>
@@ -86,6 +101,12 @@ export function IssuesPanel({
             title: 'Same address, ignoring search params, filed in two folders'
           },
           {
+            id: 'duplicate-folder',
+            label: 'Duplicate folder',
+            count: folderGroups.length,
+            title: 'Folders sharing a name'
+          },
+          {
             id: 'empty-folders',
             label: 'Empty folders',
             count: empties.length,
@@ -97,6 +118,12 @@ export function IssuesPanel({
         label="Bookmark issues"
       />
 
+      {scopeLabel ? (
+        <p className={classes.scope}>
+          Showing what is inside <strong>{scopeLabel}</strong>.
+        </p>
+      ) : null}
+
       <input
         className={classes.filter}
         value={filter}
@@ -107,13 +134,34 @@ export function IssuesPanel({
         }}
       />
 
-      {tab === 'empty-folders' ? (
+      {tab === 'duplicate-folder' ? (
+        shownFolderGroups.length === 0 ? (
+          <p className={classes.empty}>No folder name is used twice.</p>
+        ) : (
+          shownFolderGroups.map((group) => (
+            <div key={group.key} className={classes.group}>
+              <h3 className={classes.groupHeading}>{group.key}</h3>
+              <ul className={classes.list}>
+                {group.folders.map((folder) => (
+                  <FolderIssueRow
+                    key={folder.id}
+                    folder={folder}
+                    folders={folders}
+                    onRename={onRenameFolder}
+                    onMove={onMove}
+                  />
+                ))}
+              </ul>
+            </div>
+          ))
+        )
+      ) : tab === 'empty-folders' ? (
         shownFolders.length === 0 ? (
           <p className={classes.empty}>No empty folders.</p>
         ) : (
           <ul className={classes.list}>
             {shownFolders.map((folder) => (
-              <EmptyFolderRow
+              <FolderIssueRow
                 key={folder.id}
                 folder={folder}
                 folders={folders}
@@ -150,21 +198,26 @@ export function IssuesPanel({
   );
 }
 
-interface EmptyFolderRowProps {
+interface FolderIssueRowProps {
   folder: FolderEntry;
   folders: FolderEntry[];
-  onDelete: (id: string) => void;
+  /**
+   * Omitted where deleting is the wrong offer. A folder listed for a duplicated
+   * name may be full, and a trash can beside it invites taking its contents with
+   * it when the fix is a rename.
+   */
+  onDelete?: (id: string) => void;
   onRename: (id: string, title: string) => void;
   onMove: (id: string, parentId: string) => void;
 }
 
-function EmptyFolderRow({
+function FolderIssueRow({
   folder,
   folders,
   onDelete,
   onRename,
   onMove
-}: EmptyFolderRowProps) {
+}: FolderIssueRowProps) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(folder.title);
 
@@ -242,15 +295,17 @@ function EmptyFolderRow({
                 setEditing(true);
               }}
             />
-            <Button
-              size="compact"
-              variant="quiet"
-              icon="🗑"
-              description={`Delete ${folder.title}`}
-              onClick={() => {
-                onDelete(folder.id);
-              }}
-            />
+            {onDelete ? (
+              <Button
+                size="compact"
+                variant="quiet"
+                icon="🗑"
+                description={`Delete ${folder.title}`}
+                onClick={() => {
+                  onDelete(folder.id);
+                }}
+              />
+            ) : null}
           </>
         )}
       </div>

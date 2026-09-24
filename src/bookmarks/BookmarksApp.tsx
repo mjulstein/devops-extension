@@ -98,6 +98,11 @@ export function BookmarksApp() {
 
   const selected = selectedId ? findNode(tree, selectedId) : null;
 
+  // Selecting a folder narrows the lists below to that subtree. A duplicate is
+  // only worth reading about where you are working: the whole-tree list is long
+  // enough that the two copies you just made go unnoticed in it.
+  const scopedTree = selected ? [selected] : tree;
+
   return (
     <div className={classes.page}>
       <header className={classes.header}>
@@ -125,86 +130,112 @@ export function BookmarksApp() {
 
       {error ? <p className={classes.error}>{error}</p> : null}
 
-      <div className={classes.organiser}>
-        <aside className={classes.tree}>
-          <FolderTree
-            nodes={tree}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            canDrop={(dragId, targetId) => canDropInto(tree, dragId, targetId)}
-            onDrop={handleMove}
-          />
-        </aside>
+      <div className={classes.split}>
+        <div className={classes.organiser}>
+          <aside className={classes.tree}>
+            <div className={classes.treeHeader}>
+              <span>Folders</span>
+              <Button
+                size="compact"
+                variant="quiet"
+                disabled={!selectedId}
+                description="Clear the selection and describe the whole tree again"
+                onClick={() => {
+                  setSelectedId(null);
+                }}
+              >
+                All
+              </Button>
+            </div>
+            <FolderTree
+              nodes={tree}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              canDrop={(dragId, targetId) =>
+                canDropInto(tree, dragId, targetId)
+              }
+              onDrop={handleMove}
+            />
+          </aside>
 
-        <section
-          className={clsx(classes.contents, search.trim() && classes.searching)}
-          aria-label="Folder contents"
-          onDragOver={(event) => {
-            if (
-              selectedId &&
-              event.dataTransfer.types.includes(BOOKMARK_DRAG_TYPE)
-            ) {
+          <section
+            className={clsx(
+              classes.contents,
+              search.trim() && classes.searching
+            )}
+            aria-label="Folder contents"
+            onDragOver={(event) => {
+              if (
+                selectedId &&
+                event.dataTransfer.types.includes(BOOKMARK_DRAG_TYPE)
+              ) {
+                event.preventDefault();
+              }
+            }}
+            onDrop={(event) => {
               event.preventDefault();
-            }
-          }}
-          onDrop={(event) => {
-            event.preventDefault();
-            const dragId = event.dataTransfer.getData(BOOKMARK_DRAG_TYPE);
-            if (selectedId && dragId && canDropInto(tree, dragId, selectedId)) {
-              handleMove(dragId, selectedId);
-            }
-          }}
-        >
-          <h2 className={classes.contentsHeading}>
-            {search.trim()
-              ? `Matches for “${search.trim()}”`
-              : (selected?.title ?? 'Pick a folder')}
-          </h2>
-          <ul className={classes.list}>
-            {listed.map((entry) => (
-              <BookmarkRow
-                key={entry.id}
-                entry={entry}
-                folders={folders}
-                showFolder={Boolean(search.trim())}
-                draggable
-                onEdit={(id, changes) => {
-                  act(() => updateNode(id, changes));
-                }}
-                onDelete={(id) => {
-                  act(() => removeNode(id, false));
-                }}
-                onMove={handleMove}
-              />
-            ))}
-          </ul>
-          {listed.length === 0 ? (
-            <p className={classes.empty}>
+              const dragId = event.dataTransfer.getData(BOOKMARK_DRAG_TYPE);
+              if (
+                selectedId &&
+                dragId &&
+                canDropInto(tree, dragId, selectedId)
+              ) {
+                handleMove(dragId, selectedId);
+              }
+            }}
+          >
+            <h2 className={classes.contentsHeading}>
               {search.trim()
-                ? 'Nothing matches.'
-                : 'Drag bookmarks and folders onto a folder to file them.'}
-            </p>
-          ) : null}
-        </section>
-      </div>
+                ? `Matches for “${search.trim()}”`
+                : (selected?.title ?? 'Pick a folder')}
+            </h2>
+            <ul className={classes.list}>
+              {listed.map((entry) => (
+                <BookmarkRow
+                  key={entry.id}
+                  entry={entry}
+                  folders={folders}
+                  showFolder={Boolean(search.trim())}
+                  draggable
+                  onEdit={(id, changes) => {
+                    act(() => updateNode(id, changes));
+                  }}
+                  onDelete={(id) => {
+                    act(() => removeNode(id, false));
+                  }}
+                  onMove={handleMove}
+                />
+              ))}
+            </ul>
+            {listed.length === 0 ? (
+              <p className={classes.empty}>
+                {search.trim()
+                  ? 'Nothing matches.'
+                  : 'Drag bookmarks and folders onto a folder to file them.'}
+              </p>
+            ) : null}
+          </section>
+        </div>
 
-      <IssuesPanel
-        tree={tree}
-        folders={folders}
-        onEdit={(id, changes) => {
-          act(() => updateNode(id, changes));
-        }}
-        onDelete={(id) => {
-          act(() => removeNode(id, false));
-        }}
-        onDeleteFolder={(id) => {
-          act(() => removeNode(id, true));
-        }}
-        onRenameFolder={(id, title) => {
-          act(() => updateNode(id, { title }));
-        }}
-        onMove={handleMove}
-      />
+        <IssuesPanel
+          tree={scopedTree}
+          folders={folders}
+          scopeLabel={selected ? selected.title || '(untitled)' : null}
+          onEdit={(id, changes) => {
+            act(() => updateNode(id, changes));
+          }}
+          onDelete={(id) => {
+            act(() => removeNode(id, false));
+          }}
+          onDeleteFolder={(id) => {
+            act(() => removeNode(id, true));
+          }}
+          onRenameFolder={(id, title) => {
+            act(() => updateNode(id, { title }));
+          }}
+          onMove={handleMove}
+        />
+      </div>
     </div>
   );
 }

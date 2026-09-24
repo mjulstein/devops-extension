@@ -3,7 +3,7 @@
   flex-direction: column;
   gap: 12px;
   box-sizing: border-box;
-  max-inline-size: 1100px;
+  max-inline-size: 1400px;
   margin: 0 auto;
   padding: 16px;
   font-size: 13px;
@@ -31,16 +31,33 @@
   border-radius: 5px;
 }
 
-.organiser {
+/* Two thirds for reorganising, one third for what wants fixing. The lists are
+   scanned while the organiser is being worked in, so they sit beside it rather
+   than under it where they would be scrolled away. */
+.split {
   display: grid;
-  grid-template-columns: minmax(180px, 280px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
   gap: 12px;
   align-items: start;
+}
+
+.organiser {
+  display: grid;
+  grid-template-columns: minmax(160px, 240px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  min-inline-size: 0;
 }
 
 /* One column on a narrow window: the tree and the contents are each unusable at
    half of a small screen, and this page is as likely to be opened in a split
    window as full width. */
+@media (width <= 1000px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (width <= 720px) {
   .organiser {
     grid-template-columns: minmax(0, 1fr);

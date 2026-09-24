@@ -18,7 +18,7 @@ those three lists under the organiser and gives every row the same three actions
 | [`BookmarksApp.tsx`](./BookmarksApp.tsx) | The page: header search, the folder tree beside the selected folder's contents, and the issue lists below. |
 | [`FolderTree.tsx`](./FolderTree.tsx) | Every folder, nested, each one a drop target. |
 | [`BookmarkRow.tsx`](./BookmarkRow.tsx) | One bookmark row, the same in the organiser and in every issue list. |
-| [`IssuesPanel.tsx`](./IssuesPanel.tsx) | The **Duplicate name** / **Duplicate path** / **Empty folders** tabs, each with its own filter. |
+| [`IssuesPanel.tsx`](./IssuesPanel.tsx) | The **Duplicate name** / **Duplicate path** / **Duplicate folder** / **Empty folders** tabs, each with its own filter. |
 
 ## Two kinds of duplicate
 
@@ -31,6 +31,18 @@ and only reports a group whose members sit in *different* folders. Two copies
 inside one folder are already side by side in the organiser; the case worth
 surfacing is the same page filed twice where neither copy is visible from the
 other.
+
+## Scope
+
+The lists describe whichever tree `BookmarksApp` hands them, which is the whole
+thing until a folder is selected and that subtree afterwards. A duplicate matters
+where you are working; in a whole-tree list the two copies just made go
+unnoticed. `scopeLabel` names the folder above the lists so a short list is never
+read as nothing left to fix.
+
+The folder rows in **Duplicate folder** offer rename and move but no delete. Such
+a folder may be full, and a trash can beside it invites taking its contents along
+when the fix is the name.
 
 ## Drag and drop
 

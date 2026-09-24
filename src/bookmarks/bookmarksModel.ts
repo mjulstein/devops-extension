@@ -176,6 +176,40 @@ export function emptyFolders(tree: BookmarkNode[]): FolderEntry[] {
   return collectFolders(tree).filter((folder) => folder.childCount === 0);
 }
 
+export interface FolderGroup {
+  /** The shared name. */
+  key: string;
+  folders: FolderEntry[];
+}
+
+/**
+ * Folders sharing a name, wherever they sit.
+ *
+ * Two folders called the same thing are the reason a bookmark ends up in the
+ * wrong one, and unlike a duplicated bookmark the fix is usually a rename rather
+ * than a delete — so this list offers renaming and nothing else.
+ */
+export function duplicateFolderNameGroups(tree: BookmarkNode[]): FolderGroup[] {
+  const groups = new Map<string, FolderEntry[]>();
+  for (const folder of collectFolders(tree)) {
+    const key = normalizeTitle(folder.title);
+    if (!key) {
+      continue;
+    }
+    const bucket = groups.get(key);
+    if (bucket) {
+      bucket.push(folder);
+    } else {
+      groups.set(key, [folder]);
+    }
+  }
+
+  return [...groups]
+    .filter(([, members]) => members.length > 1)
+    .map(([key, folders]) => ({ key, folders }))
+    .sort((a, b) => a.key.localeCompare(b.key));
+}
+
 /** Case-insensitive match on title, url, and the folder path around it. */
 export function filterEntries(
   entries: BookmarkEntry[],
@@ -219,6 +253,22 @@ export function filterGroups(
       entries: filterEntries(entry.entries, needle)
     }))
     .filter((entry) => entry.entries.length > 0);
+}
+
+export function filterFolderGroups(
+  groups: FolderGroup[],
+  term: string
+): FolderGroup[] {
+  const needle = term.trim().toLowerCase();
+  if (!needle) {
+    return groups;
+  }
+  return groups
+    .map((group) => ({
+      key: group.key,
+      folders: filterFolders(group.folders, needle)
+    }))
+    .filter((group) => group.folders.length > 0);
 }
 
 export function findNode(
