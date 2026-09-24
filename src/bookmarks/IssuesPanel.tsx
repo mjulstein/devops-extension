@@ -29,6 +29,11 @@ interface IssuesPanelProps {
   folders: FolderEntry[];
   /** Names the scope in the heading, so a short list is never a mystery. */
   scopeLabel: string | null;
+  /** Shows a row's folder in the tree, so a duplicate can be placed at a glance. */
+  onReveal: (folderId: string) => void;
+  /** The bulk selection, so a duplicate can be checked where it is found. */
+  checkedIds: Set<string>;
+  onToggleChecked: (id: string) => void;
   onEdit: (id: string, changes: { title: string; url: string }) => void;
   onDelete: (id: string) => void;
   onDeleteFolder: (id: string) => void;
@@ -48,6 +53,9 @@ export function IssuesPanel({
   tree,
   folders,
   scopeLabel,
+  onReveal,
+  checkedIds,
+  onToggleChecked,
   onEdit,
   onDelete,
   onDeleteFolder,
@@ -147,6 +155,7 @@ export function IssuesPanel({
                     key={folder.id}
                     folder={folder}
                     folders={folders}
+                    onReveal={onReveal}
                     onRename={onRenameFolder}
                     onMove={onMove}
                   />
@@ -165,6 +174,7 @@ export function IssuesPanel({
                 key={folder.id}
                 folder={folder}
                 folders={folders}
+                onReveal={onReveal}
                 onDelete={onDeleteFolder}
                 onRename={onRenameFolder}
                 onMove={onMove}
@@ -185,6 +195,9 @@ export function IssuesPanel({
                   entry={entry}
                   folders={folders}
                   showFolder
+                  onReveal={onReveal}
+                  checked={checkedIds.has(entry.id)}
+                  onToggleChecked={onToggleChecked}
                   onEdit={onEdit}
                   onDelete={onDelete}
                   onMove={onMove}
@@ -201,6 +214,7 @@ export function IssuesPanel({
 interface FolderIssueRowProps {
   folder: FolderEntry;
   folders: FolderEntry[];
+  onReveal: (folderId: string) => void;
   /**
    * Omitted where deleting is the wrong offer. A folder listed for a duplicated
    * name may be full, and a trash can beside it invites taking its contents with
@@ -214,6 +228,7 @@ interface FolderIssueRowProps {
 function FolderIssueRow({
   folder,
   folders,
+  onReveal,
   onDelete,
   onRename,
   onMove
@@ -234,10 +249,17 @@ function FolderIssueRow({
           }}
         />
       ) : (
-        <span className={classes.folderText}>
+        <button
+          type="button"
+          className={classes.folderText}
+          title="Show this folder in the tree"
+          onClick={() => {
+            onReveal(folder.id);
+          }}
+        >
           <span>{folder.title || '(untitled)'}</span>
           <span className={classes.folderPath}>{folder.path}</span>
-        </span>
+        </button>
       )}
       <div className={classes.folderActions}>
         {editing ? (

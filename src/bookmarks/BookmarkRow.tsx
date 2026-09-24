@@ -11,6 +11,16 @@ interface BookmarkRowProps {
   folders?: FolderEntry[];
   showFolder?: boolean;
   draggable?: boolean;
+  /**
+   * Shows the row's folder in the tree instead of following the link. Given in
+   * the issue lists, where the question a row raises is *where does this live*
+   * — following the link would leave the manager entirely. A modified click
+   * still opens the bookmark, which is the browser's own convention.
+   */
+  onReveal?: (folderId: string) => void;
+  /** Present where the row takes part in a bulk selection. */
+  checked?: boolean;
+  onToggleChecked?: (id: string) => void;
   onEdit: (id: string, changes: { title: string; url: string }) => void;
   onDelete: (id: string) => void;
   onMove?: (id: string, parentId: string) => void;
@@ -29,6 +39,9 @@ export function BookmarkRow({
   folders,
   showFolder = false,
   draggable = false,
+  onReveal,
+  checked,
+  onToggleChecked,
   onEdit,
   onDelete,
   onMove
@@ -102,12 +115,34 @@ export function BookmarkRow({
         event.dataTransfer.effectAllowed = 'move';
       }}
     >
+      {onToggleChecked ? (
+        <input
+          type="checkbox"
+          className={classes.checkbox}
+          checked={checked ?? false}
+          aria-label={`Select ${entry.title}`}
+          onChange={() => {
+            onToggleChecked(entry.id);
+          }}
+        />
+      ) : null}
       {icon ? (
         <img className={classes.icon} src={icon} alt="" />
       ) : (
         <span className={classes.icon} aria-hidden="true" />
       )}
-      <a className={classes.link} href={entry.url} title={entry.url}>
+      <a
+        className={classes.link}
+        href={entry.url}
+        title={onReveal ? "Show this bookmark's folder in the tree" : entry.url}
+        onClick={(event) => {
+          if (!onReveal || event.ctrlKey || event.metaKey || event.shiftKey) {
+            return;
+          }
+          event.preventDefault();
+          onReveal(entry.parentId);
+        }}
+      >
         <span className={classes.title}>{entry.title || entry.url}</span>
         <span className={classes.url}>
           {showFolder && entry.folderPath ? `${entry.folderPath} — ` : ''}

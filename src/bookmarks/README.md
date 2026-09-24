@@ -56,6 +56,19 @@ The tree tracks which folders are *collapsed* rather than which are expanded, so
 a folder created here or synced in from another machine is open by default
 instead of hidden until someone thinks to look for it.
 
+## Selection, scope and reveal
+
+Three different things, deliberately kept apart:
+
+- **Checked** rows are the bulk selection, shared by both halves so a duplicate
+  can be ticked where it is found and moved or deleted with the rest. The set is
+  filtered against the live tree on every render, so a row deleted elsewhere
+  cannot leave a count that nothing can act on.
+- **Selected** is the folder shown in the tree and opened in the contents pane.
+- **Scoped** is what the issue lists describe. It follows a folder chosen in the
+  tree, but *not* one reached by clicking a duplicate: narrowing the lists to the
+  folder you just jumped to would drop the counterpart you were comparing with.
+
 ## Scope
 
 The lists describe whichever tree `BookmarksApp` hands them, which is the whole

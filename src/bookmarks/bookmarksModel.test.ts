@@ -1,4 +1,5 @@
 import {
+  ancestorIdsOf,
   canDropInto,
   duplicateFolderNameGroups,
   filterFolderGroups,
@@ -183,6 +184,20 @@ describe('filters', () => {
     const groups = duplicateNameGroups(flattenBookmarks(tree()));
     expect(filterGroups(groups, 'archive')[0].entries).toHaveLength(1);
     expect(filterGroups(groups, 'nothing')).toEqual([]);
+  });
+});
+
+describe('ancestorIdsOf', () => {
+  it('lists the folders above a bookmark, outermost first', () => {
+    expect(ancestorIdsOf(tree(), '100')).toEqual(['1', '10']);
+  });
+
+  it('leaves the node itself out', () => {
+    expect(ancestorIdsOf(tree(), '10')).toEqual(['1']);
+  });
+
+  it('is empty for something that is not there', () => {
+    expect(ancestorIdsOf(tree(), 'nope')).toEqual([]);
   });
 });
 

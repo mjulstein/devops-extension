@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import clsx from 'clsx';
 import { Button } from '../sidepanel/atoms/Button';
 import type { BookmarkNode } from './bookmarksModel';
@@ -18,6 +18,13 @@ interface FolderTreeProps {
   /** Called only where flattening is possible; the row hides the button otherwise. */
   onFlatten: (id: string) => void;
   canFlatten: (id: string) => boolean;
+  /**
+   * Which folders are closed. Held by the page rather than here because
+   * revealing a folder has to open whatever is closed above it, and that request
+   * arrives from the lists below.
+   */
+  collapsed: Set<string>;
+  onToggleCollapsed: (id: string) => void;
 }
 
 function subfolders(node: BookmarkNode): BookmarkNode[] {
@@ -41,24 +48,20 @@ export function FolderTree({
   onRename,
   onDelete,
   onFlatten,
-  canFlatten
+  canFlatten,
+  collapsed,
+  onToggleCollapsed
 }: FolderTreeProps) {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
-  // Collapsed rather than expanded state, so a folder created or synced in
-  // later is open by default instead of hidden until it is found and clicked.
-  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftTitle, setDraftTitle] = useState('');
 
-  function toggleCollapsed(id: string): void {
-    setCollapsed((current) => {
-      const next = new Set(current);
-      if (!next.delete(id)) {
-        next.add(id);
-      }
-      return next;
-    });
-  }
+  // Brings a folder selected from somewhere else into view. A reveal that
+  // leaves you looking at the wrong part of a long tree has not revealed
+  // anything.
+  const scrollSelectedIntoView = useCallback((node: HTMLDivElement | null) => {
+    node?.scrollIntoView({ block: 'nearest' });
+  }, []);
 
   function commitRename(id: string): void {
     const title = draftTitle.trim();
@@ -79,6 +82,7 @@ export function FolderTree({
         return (
           <li key={node.id}>
             <div
+              ref={node.id === selectedId ? scrollSelectedIntoView : undefined}
               className={clsx(
                 classes.folder,
                 node.id === selectedId && classes.selected,
@@ -125,7 +129,7 @@ export function FolderTree({
                       : `Collapse ${node.title}`
                   }
                   onClick={() => {
-                    toggleCollapsed(node.id);
+                    onToggleCollapsed(node.id);
                   }}
                 />
               ) : (

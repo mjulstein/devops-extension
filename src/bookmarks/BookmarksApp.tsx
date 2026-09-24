@@ -6,6 +6,7 @@ import { BookmarkRow } from './BookmarkRow';
 import { BOOKMARK_DRAG_TYPE, FolderTree } from './FolderTree';
 import { IssuesPanel } from './IssuesPanel';
 import {
+  ancestorIdsOf,
   canDropInto,
   planFlatten,
   collectFolders,
@@ -39,6 +40,14 @@ import classes from './BookmarksApp.module.css';
 export function BookmarksApp() {
   const [tree, setTree] = useState<BookmarkNode[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // What the issue lists describe. It follows a folder chosen in the tree, but
+  // not one reached by clicking a duplicate: narrowing the lists to the folder
+  // you just jumped from would drop the very copy you were comparing it with.
+  const [scopeId, setScopeId] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+  // Bulk selection, shared by both halves of the page: rows are checked
+  // wherever they are found, and acted on together from one bar.
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
   const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -59,6 +68,24 @@ export function BookmarksApp() {
 
   const folders = useMemo(() => collectFolders(tree), [tree]);
   const entries = useMemo(() => flattenBookmarks(tree), [tree]);
+
+  // A checked bookmark can be deleted from the browser's own manager or by the
+  // bulk action itself, and a selection counting rows that no longer exist would
+  // report a number nothing can act on.
+  const checked = useMemo(() => {
+    const live = new Set(entries.map((entry) => entry.id));
+    return new Set([...checkedIds].filter((id) => live.has(id)));
+  }, [checkedIds, entries]);
+
+  const toggleChecked = useCallback((id: string) => {
+    setCheckedIds((current) => {
+      const next = new Set(current);
+      if (!next.delete(id)) {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
 
   // The selection picks the folder; the search ignores it, because looking for a
   // bookmark you cannot place is exactly when you do not know its folder.
@@ -98,12 +125,73 @@ export function BookmarksApp() {
     [act]
   );
 
-  const selected = selectedId ? findNode(tree, selectedId) : null;
+  const bulkMove = useCallback(
+    (parentId: string) => {
+      const ids = [...checked];
+      setCheckedIds(new Set());
+      act(async () => {
+        for (const id of ids) {
+          await moveInto(id, parentId);
+        }
+      });
+    },
+    [act, checked]
+  );
 
-  // Selecting a folder narrows the lists below to that subtree. A duplicate is
-  // only worth reading about where you are working: the whole-tree list is long
-  // enough that the two copies you just made go unnoticed in it.
-  const scopedTree = selected ? [selected] : tree;
+  const bulkDelete = useCallback(() => {
+    const ids = [...checked];
+    if (
+      ids.length === 0 ||
+      !window.confirm(
+        `Delete ${ids.length} bookmark${ids.length === 1 ? '' : 's'}?`
+      )
+    ) {
+      return;
+    }
+    setCheckedIds(new Set());
+    act(async () => {
+      for (const id of ids) {
+        await removeNode(id, false);
+      }
+    });
+  }, [act, checked]);
+
+  const selected = selectedId ? findNode(tree, selectedId) : null;
+  const scope = scopeId ? findNode(tree, scopeId) : null;
+
+  const toggleCollapsed = useCallback((id: string) => {
+    setCollapsed((current) => {
+      const next = new Set(current);
+      if (!next.delete(id)) {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  /**
+   * Shows a folder in the tree: opens whatever is closed above it and selects
+   * it, so its contents are on screen beside the list that sent you there.
+   */
+  const revealFolder = useCallback(
+    (folderId: string) => {
+      const ancestors = ancestorIdsOf(tree, folderId);
+      setCollapsed((current) => {
+        const next = new Set(current);
+        for (const id of ancestors) {
+          next.delete(id);
+        }
+        return next;
+      });
+      setSelectedId(folderId);
+    },
+    [tree]
+  );
+
+  // Choosing a folder in the tree narrows the lists below to that subtree. A
+  // duplicate is only worth reading about where you are working: the whole-tree
+  // list is long enough that the two copies you just made go unnoticed in it.
+  const scopedTree = scope ? [scope] : tree;
 
   return (
     <div className={classes.page}>
@@ -132,6 +220,47 @@ export function BookmarksApp() {
 
       {error ? <p className={classes.error}>{error}</p> : null}
 
+      {checked.size > 0 ? (
+        <div
+          className={classes.bulkBar}
+          role="group"
+          aria-label="Selected bookmarks"
+        >
+          <strong>{checked.size} selected</strong>
+          <select
+            className={classes.bulkSelect}
+            aria-label="Move the selected bookmarks to a folder"
+            value=""
+            onChange={(event) => {
+              if (event.target.value) {
+                bulkMove(event.target.value);
+              }
+            }}
+          >
+            <option value="">Move to…</option>
+            {folders.map((folder) => (
+              <option key={folder.id} value={folder.id}>
+                {folder.path
+                  ? `${folder.path} / ${folder.title}`
+                  : folder.title}
+              </option>
+            ))}
+          </select>
+          <Button icon="🗑" size="compact" onClick={bulkDelete}>
+            Delete
+          </Button>
+          <Button
+            size="compact"
+            variant="quiet"
+            onClick={() => {
+              setCheckedIds(new Set());
+            }}
+          >
+            Clear
+          </Button>
+        </div>
+      ) : null}
+
       <div className={classes.split}>
         <div className={classes.organiser}>
           <aside className={classes.tree}>
@@ -144,6 +273,7 @@ export function BookmarksApp() {
                 description="Clear the selection and describe the whole tree again"
                 onClick={() => {
                   setSelectedId(null);
+                  setScopeId(null);
                 }}
               >
                 All
@@ -152,11 +282,16 @@ export function BookmarksApp() {
             <FolderTree
               nodes={tree}
               selectedId={selectedId}
-              onSelect={setSelectedId}
+              onSelect={(id) => {
+                setSelectedId(id);
+                setScopeId(id);
+              }}
               canDrop={(dragId, targetId) =>
                 canDropInto(tree, dragId, targetId)
               }
               onDrop={handleMove}
+              collapsed={collapsed}
+              onToggleCollapsed={toggleCollapsed}
               canFlatten={(id) => planFlatten(tree, id) !== null}
               onFlatten={(id) => {
                 const plan = planFlatten(tree, id);
@@ -165,6 +300,9 @@ export function BookmarksApp() {
                 }
                 if (id === selectedId) {
                   setSelectedId(null);
+                }
+                if (id === scopeId) {
+                  setScopeId(null);
                 }
                 act(() => applyFlatten(plan));
               }}
@@ -177,6 +315,9 @@ export function BookmarksApp() {
                 // way to tell why.
                 if (id === selectedId) {
                   setSelectedId(null);
+                }
+                if (id === scopeId) {
+                  setScopeId(null);
                 }
                 act(() => removeNode(id, true));
               }}
@@ -222,6 +363,8 @@ export function BookmarksApp() {
                   folders={folders}
                   showFolder={Boolean(search.trim())}
                   draggable
+                  checked={checked.has(entry.id)}
+                  onToggleChecked={toggleChecked}
                   onEdit={(id, changes) => {
                     act(() => updateNode(id, changes));
                   }}
@@ -245,7 +388,10 @@ export function BookmarksApp() {
         <IssuesPanel
           tree={scopedTree}
           folders={folders}
-          scopeLabel={selected ? selected.title || '(untitled)' : null}
+          scopeLabel={scope ? scope.title || '(untitled)' : null}
+          onReveal={revealFolder}
+          checkedIds={checked}
+          onToggleChecked={toggleChecked}
           onEdit={(id, changes) => {
             act(() => updateNode(id, changes));
           }}

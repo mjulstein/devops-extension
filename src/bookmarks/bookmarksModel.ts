@@ -271,6 +271,31 @@ export function filterFolderGroups(
     .filter((group) => group.folders.length > 0);
 }
 
+/**
+ * The folders above a node, outermost first.
+ *
+ * Revealing something in the tree means opening whatever is closed above it,
+ * which is what this answers. The node's own id is not included: revealing a
+ * folder should not also force it open.
+ */
+export function ancestorIdsOf(tree: BookmarkNode[], id: string): string[] {
+  function walk(nodes: BookmarkNode[], trail: string[]): string[] | null {
+    for (const node of nodes) {
+      if (node.id === id) {
+        return trail;
+      }
+      const found = node.children
+        ? walk(node.children, [...trail, node.id])
+        : null;
+      if (found) {
+        return found;
+      }
+    }
+    return null;
+  }
+  return walk(tree, []) ?? [];
+}
+
 export interface FlattenPlan {
   /** Each child, with where it lands in the grandparent. */
   moves: { id: string; parentId: string; index: number }[];

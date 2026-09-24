@@ -251,9 +251,18 @@ Selecting a folder in the tree narrows all four lists to that subtree, so a
 duplicate you just created is visible where you are working instead of buried in
 a whole-tree list. **All** above the tree clears the selection.
 
+Clicking a row in one of these lists shows that bookmark's folder in the tree
+rather than following the link, opening whatever was collapsed above it — the
+question a duplicate raises is where it lives. Hold **Ctrl** to open the bookmark
+instead. The lists themselves stay as they were: narrowing them to the folder you
+just jumped to would drop the very copy you were comparing it with.
+
 Every row in both halves carries the same actions: a pencil to edit the title and
 address in place, a trash can to delete it, and a **Move to…** list to send it to
-another folder without leaving the list you found it in. The page follows
+another folder without leaving the list you found it in. The checkbox on the left
+of a row adds it to a selection that spans both halves of the page; while
+anything is selected a bar appears at the top to move all of it into one folder
+or delete it in one go. The page follows
 whatever change happens elsewhere — another window, the browser's own manager, or
 a sync from another machine — so it never shows a tree that no longer exists.
 
