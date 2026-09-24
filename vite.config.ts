@@ -47,8 +47,8 @@ function buildContentScriptPlugin() {
           logLevel: 'warn',
           resolve: {
             alias: {
-              '@/types': resolve(__dirname, 'types/index.ts'),
-              '@': resolve(__dirname, 'src')
+              '@/types': resolve(import.meta.dirname, 'types/index.ts'),
+              '@': resolve(import.meta.dirname, 'src')
             }
           },
           build: {
@@ -60,7 +60,7 @@ function buildContentScriptPlugin() {
             // being able to read them in DevTools is worth more than the bytes.
             minify: false,
             lib: {
-              entry: resolve(__dirname, `src/${entry}.ts`),
+              entry: resolve(import.meta.dirname, `src/${entry}.ts`),
               formats: ['iife'],
               name: toGlobalName(entry),
               fileName: () => `${entry}.js`
@@ -76,8 +76,8 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
     alias: {
-      '@/types': resolve(__dirname, 'types/index.ts'),
-      '@': resolve(__dirname, 'src')
+      '@/types': resolve(import.meta.dirname, 'types/index.ts'),
+      '@': resolve(import.meta.dirname, 'src')
     }
   },
   publicDir: false,
