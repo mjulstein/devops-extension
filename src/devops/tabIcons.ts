@@ -133,6 +133,40 @@ function refreshIconCache(): void {
 let faviconGuard: MutationObserver | null = null;
 let currentIconUrl: string | null = null;
 
+/**
+ * A budget on how often the guard may repaint before it gives up.
+ *
+ * The guard reacts to a favicon it did not write by writing its own. Anything
+ * else on the page that does the same thing — another copy of this script left
+ * behind by an extension reload, or Azure DevOps itself — turns that into two
+ * observers repainting each other's work without pause, which locks the tab up
+ * and eventually kills it. A favicon is cosmetic and a hung tab is not, so past
+ * this budget the guard stops rather than wins.
+ */
+const GUARD_REPAINT_BUDGET = 40;
+const GUARD_WINDOW_MS = 2000;
+let repaintCount = 0;
+let repaintWindowStart = 0;
+
+/** True while the guard still has budget; disconnects it when it runs out. */
+function guardMayRepaint(): boolean {
+  const now = Date.now();
+  if (now - repaintWindowStart > GUARD_WINDOW_MS) {
+    repaintWindowStart = now;
+    repaintCount = 0;
+  }
+  repaintCount += 1;
+  if (repaintCount <= GUARD_REPAINT_BUDGET) {
+    return true;
+  }
+  faviconGuard?.disconnect();
+  faviconGuard = null;
+  console.warn(
+    '[devops-extension] favicon guard stood down: something else on the page keeps rewriting the favicon.'
+  );
+  return false;
+}
+
 function isFaviconLink(el: Element): el is HTMLLinkElement {
   if (!(el instanceof HTMLLinkElement)) return false;
   const rel = (el.getAttribute('rel') ?? '').toLowerCase();
@@ -170,6 +204,7 @@ function startFaviconGuard(): void {
     // Re-evaluate from the current URL so mid-navigation overrides immediately
     // show the correct section rather than the previous one.
     if (favicons.length !== 1 || favicons[0].href !== currentIconUrl) {
+      if (!guardMayRepaint()) return;
       applyFavicon();
     }
   });
@@ -186,7 +221,7 @@ function applyFavicon(): void {
 
 // ── Nav readiness ────────────────────────────────────────────────────────────
 
-function waitForNav(): Promise<void> {
+function waitForNav(signal: AbortSignal): Promise<void> {
   // Any of these aria-label anchors confirm the sidebar has rendered
   const probe = SCRAPABLE_SECTIONS.map((s) => SECTION_NAV_SELECTORS[s]).join(
     ', '
@@ -204,26 +239,57 @@ function waitForNav(): Promise<void> {
       }
     });
     obs.observe(document.body, { childList: true, subtree: true });
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       obs.disconnect();
       resolve();
     }, 8000);
+    signal.addEventListener('abort', () => {
+      clearTimeout(timer);
+      obs.disconnect();
+      resolve();
+    });
   });
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
+/**
+ * Everything this module attached to the page, so it can let go again.
+ *
+ * A content script cannot be unloaded, but it can be made inert — which is what
+ * an extension reload needs. The copy left behind by the reload keeps running
+ * its observers with no way to reach the extension any more, so it holds the
+ * favicon it last computed forever while the fresh copy insists on its own. The
+ * two then repaint each other until the tab dies. The fresh copy asks the old
+ * one to stand down instead, and this is what answers that.
+ */
+let teardown: (() => void) | null = null;
+
+export function teardownTabIcons(): void {
+  teardown?.();
+  teardown = null;
+}
+
 export function initTabIcons(): void {
+  // A second init in one page would be a second set of observers fighting the
+  // first, which is the failure this teardown exists to prevent.
+  teardownTabIcons();
+
+  const abort = new AbortController();
+  const { signal } = abort;
+
   startFaviconGuard();
   applyFavicon();
 
   void (async () => {
     await loadCachedIcons();
+    if (signal.aborted) return;
     applyFavicon();
 
     const missing = SCRAPABLE_SECTIONS.filter((s) => !iconCache.has(s));
     if (missing.length > 0) {
-      await waitForNav();
+      await waitForNav(signal);
+      if (signal.aborted) return;
       refreshIconCache();
       applyFavicon();
     }
@@ -245,15 +311,19 @@ export function initTabIcons(): void {
     origReplace.apply(this, args);
     applyFavicon();
   };
-  window.addEventListener('popstate', () => applyFavicon());
+  window.addEventListener('popstate', () => applyFavicon(), { signal });
 
   // Re-apply whenever the tab is switched back to — Azure DevOps may have
   // overwritten the favicon while the tab was in the background.
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      applyFavicon();
-    }
-  });
+  document.addEventListener(
+    'visibilitychange',
+    () => {
+      if (document.visibilityState === 'visible') {
+        applyFavicon();
+      }
+    },
+    { signal }
+  );
 
   // Azure DevOps updates <title> early in every SPA navigation — before
   // history.pushState and long before the React render settles.  Observing
@@ -274,6 +344,18 @@ export function initTabIcons(): void {
       subtree: true
     });
   }
+
+  teardown = () => {
+    abort.abort();
+    titleObserver.disconnect();
+    faviconGuard?.disconnect();
+    faviconGuard = null;
+    currentIconUrl = null;
+    // Restoring the patches matters as much as disconnecting: left in place they
+    // chain, so after three reloads one navigation repaints three times.
+    history.pushState = origPush;
+    history.replaceState = origReplace;
+  };
 }
 
 export async function rescrapeTabIcons(): Promise<void> {

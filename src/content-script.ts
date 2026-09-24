@@ -1,4 +1,8 @@
-import { initTabIcons, rescrapeTabIcons } from './devops/tabIcons';
+import {
+  initTabIcons,
+  rescrapeTabIcons,
+  teardownTabIcons
+} from './devops/tabIcons';
 import { resolveActiveWorkItemContext } from './devops/activeParentContext';
 import { fetchChildTasksForActiveParent } from './devops/childTasks';
 import { createChildTaskFromActivePage } from './devops/taskCreation';
@@ -52,6 +56,40 @@ type RuntimeMessage =
       };
     };
 
+// ── Handover ────────────────────────────────────────────────────────────────
+//
+// Reloading the extension orphans the copy of this script already in the page.
+// It keeps running — a content script cannot be unloaded — but it can no longer
+// reach the extension, so it holds whatever favicon it last computed while the
+// fresh copy injected afterwards insists on its own. Both watch <head> and
+// repaint on seeing a favicon they did not write, so the two lock the tab into
+// repainting each other until it is killed.
+//
+// The fix is a handover rather than a second guard: the new copy announces
+// itself on a window event, and every earlier copy hears it and stands down.
+// The announcement goes out *before* this copy starts listening, so it does not
+// shut itself down on the way in.
+const SHUTDOWN_EVENT = 'devops-ext-content-script-shutdown';
+
+window.dispatchEvent(new Event(SHUTDOWN_EVENT));
+
+const scriptLifetime = new AbortController();
+
+window.addEventListener(
+  SHUTDOWN_EVENT,
+  () => {
+    scriptLifetime.abort();
+    teardownTabIcons();
+    try {
+      chrome.runtime.onMessage.removeListener(handleRuntimeMessage);
+    } catch {
+      // An orphaned script has no runtime left to remove a listener from, and
+      // its listener is already dead. The DOM teardown above is what mattered.
+    }
+  },
+  { once: true }
+);
+
 initTabIcons();
 
 function relayBearerCaptured(): void {
@@ -73,22 +111,30 @@ if (
 // Relay the main-world token-interceptor's fresh-Bearer signal to the service
 // worker, which has no access to the page's main world. The interceptor posts on
 // window; we forward as a runtime message (spec FR-008, plan Phase 4).
-window.addEventListener('message', (event) => {
-  if (event.source !== window) {
-    return;
-  }
-  const data = event.data as { source?: unknown; type?: unknown } | undefined;
-  if (
-    data?.source !== 'devops-ext-token-interceptor' ||
-    data.type !== 'bearer-captured'
-  ) {
-    return;
-  }
-  relayBearerCaptured();
-});
+window.addEventListener(
+  'message',
+  (event) => {
+    if (event.source !== window) {
+      return;
+    }
+    const data = event.data as { source?: unknown; type?: unknown } | undefined;
+    if (
+      data?.source !== 'devops-ext-token-interceptor' ||
+      data.type !== 'bearer-captured'
+    ) {
+      return;
+    }
+    relayBearerCaptured();
+  },
+  { signal: scriptLifetime.signal }
+);
 
-chrome.runtime.onMessage.addListener(
-  (message: RuntimeMessage, _sender, sendResponse) => {
+function handleRuntimeMessage(
+  message: RuntimeMessage,
+  _sender: chrome.runtime.MessageSender,
+  sendResponse: (response: unknown) => void
+): boolean | undefined {
+  {
     if (message.type === 'OPEN_FAVORITES_PALETTE') {
       // The palette is drawn here rather than in the side panel because this
       // document has focus, so its search field can simply take it.
@@ -189,4 +235,7 @@ chrome.runtime.onMessage.addListener(
       return true;
     }
   }
-);
+  return undefined;
+}
+
+chrome.runtime.onMessage.addListener(handleRuntimeMessage);
