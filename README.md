@@ -225,7 +225,11 @@ opened in the first place.
 The page is split two thirds to one third. The left two thirds are for
 reorganising: the folder tree, the selected folder's contents beside it, and
 dragging a bookmark or a folder onto a folder files it there. A folder cannot be
-dropped into itself or into one of its own descendants. The search box at the top
+dropped into itself or into one of its own descendants. Each folder row carries
+the same pencil and trash can as a bookmark — rename in place, or delete, with a
+confirmation first when the folder is not empty, since deleting takes everything
+inside it. The **−** button collapses a folder's subfolders, **+** brings them
+back. The search box at the top
 spans every folder, which is what you want when you cannot remember where
 something was filed.
 

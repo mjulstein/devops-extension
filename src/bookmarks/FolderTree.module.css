@@ -15,6 +15,42 @@
   background: var(--color-surface-hover);
 }
 
+/* The row's controls appear on hover or keyboard focus. Shown always they turn
+   a tree of folders into a wall of icons; hidden from the keyboard they would
+   be unreachable, which is why focus-within counts too. */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  visibility: hidden;
+}
+
+.folder:hover .actions,
+.folder:focus-within .actions {
+  visibility: visible;
+}
+
+.twisty {
+  flex: 0 0 auto;
+}
+
+.twistyPlaceholder {
+  flex: 0 0 auto;
+  inline-size: 20px;
+}
+
+.renameInput {
+  font: inherit;
+  font-size: 12px;
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  margin-block: 2px;
+  padding: 2px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+}
+
 .folderButton {
   font: inherit;
   font-size: 12px;

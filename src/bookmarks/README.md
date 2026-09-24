@@ -16,7 +16,7 @@ those three lists under the organiser and gives every row the same three actions
 | [`bookmarksModel.ts`](./bookmarksModel.ts) | The pure rules: flattening the tree, the two kinds of duplicate, empty folders, the filters, and whether a drag may land where it was dropped. No browser API, so it is all testable. |
 | [`bookmarksApi.ts`](./bookmarksApi.ts) | The `chrome.bookmarks` calls, in one place, plus a subscription that reloads the tree on any change — including one made in another window or synced in from another machine. |
 | [`BookmarksApp.tsx`](./BookmarksApp.tsx) | The page: header search, the folder tree beside the selected folder's contents, and the issue lists below. |
-| [`FolderTree.tsx`](./FolderTree.tsx) | Every folder, nested, each one a drop target. |
+| [`FolderTree.tsx`](./FolderTree.tsx) | Every folder, nested, each one a drop target, each with collapse, rename and delete. |
 | [`BookmarkRow.tsx`](./BookmarkRow.tsx) | One bookmark row, the same in the organiser and in every issue list. |
 | [`IssuesPanel.tsx`](./IssuesPanel.tsx) | The **Duplicate name** / **Duplicate path** / **Duplicate folder** / **Empty folders** tabs, each with its own filter. |
 
@@ -31,6 +31,22 @@ and only reports a group whose members sit in *different* folders. Two copies
 inside one folder are already side by side in the organiser; the case worth
 surfacing is the same page filed twice where neither copy is visible from the
 other.
+
+## Folder rows
+
+Rename and delete sit on the row rather than in a menu, so a folder is fixed
+where it is seen — the same bargain the bookmark rows make. They appear on hover
+or keyboard focus: shown always, a tree of folders becomes a wall of icons.
+
+Deleting a folder takes everything under it and, unlike a bookmark, that is not
+something the address bar can give back, so a non-empty folder asks first. An
+empty one goes without the interruption. The selection is cleared when its own
+folder is deleted, since a selection pointing at a deleted id shows an empty
+contents pane with no way to tell why.
+
+The tree tracks which folders are *collapsed* rather than which are expanded, so
+a folder created here or synced in from another machine is open by default
+instead of hidden until someone thinks to look for it.
 
 ## Scope
 

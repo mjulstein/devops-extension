@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import clsx from 'clsx';
+import { Button } from '../sidepanel/atoms/Button';
 import type { BookmarkNode } from './bookmarksModel';
 import classes from './FolderTree.module.css';
 
@@ -12,6 +13,12 @@ interface FolderTreeProps {
   /** Answers whether this drop is legal, so the row can refuse it visibly. */
   canDrop: (dragId: string, targetId: string) => boolean;
   onDrop: (dragId: string, targetId: string) => void;
+  onRename: (id: string, title: string) => void;
+  onDelete: (id: string) => void;
+}
+
+function subfolders(node: BookmarkNode): BookmarkNode[] {
+  return (node.children ?? []).filter((child) => child.url === undefined);
 }
 
 /**
@@ -27,72 +34,185 @@ export function FolderTree({
   selectedId,
   onSelect,
   canDrop,
-  onDrop
+  onDrop,
+  onRename,
+  onDelete
 }: FolderTreeProps) {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  // Collapsed rather than expanded state, so a folder created or synced in
+  // later is open by default instead of hidden until it is found and clicked.
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftTitle, setDraftTitle] = useState('');
+
+  function toggleCollapsed(id: string): void {
+    setCollapsed((current) => {
+      const next = new Set(current);
+      if (!next.delete(id)) {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function commitRename(id: string): void {
+    const title = draftTitle.trim();
+    if (title) {
+      onRename(id, title);
+    }
+    setEditingId(null);
+  }
 
   function renderNodes(list: BookmarkNode[], depth: number) {
     return list
       .filter((node) => node.url === undefined)
-      .map((node) => (
-        <li key={node.id}>
-          <div
-            className={clsx(
-              classes.folder,
-              node.id === selectedId && classes.selected,
-              node.id === dragOverId && classes.dropTarget
-            )}
-            style={{ paddingInlineStart: `${6 + depth * 14}px` }}
-            draggable
-            onDragStart={(event) => {
-              event.dataTransfer.setData(BOOKMARK_DRAG_TYPE, node.id);
-              event.dataTransfer.effectAllowed = 'move';
-            }}
-            onDragOver={(event) => {
-              if (!event.dataTransfer.types.includes(BOOKMARK_DRAG_TYPE)) {
-                return;
-              }
-              event.preventDefault();
-              event.dataTransfer.dropEffect = 'move';
-              setDragOverId(node.id);
-            }}
-            onDragLeave={() => {
-              setDragOverId((current) =>
-                current === node.id ? null : current
-              );
-            }}
-            onDrop={(event) => {
-              event.preventDefault();
-              setDragOverId(null);
-              const dragId = event.dataTransfer.getData(BOOKMARK_DRAG_TYPE);
-              if (dragId && canDrop(dragId, node.id)) {
-                onDrop(dragId, node.id);
-              }
-            }}
-          >
-            <button
-              type="button"
-              className={classes.folderButton}
-              onClick={() => {
-                onSelect(node.id);
+      .map((node) => {
+        const children = subfolders(node);
+        const isCollapsed = collapsed.has(node.id);
+        const childCount = (node.children ?? []).length;
+
+        return (
+          <li key={node.id}>
+            <div
+              className={clsx(
+                classes.folder,
+                node.id === selectedId && classes.selected,
+                node.id === dragOverId && classes.dropTarget
+              )}
+              style={{ paddingInlineStart: `${6 + depth * 14}px` }}
+              draggable={editingId !== node.id}
+              onDragStart={(event) => {
+                event.dataTransfer.setData(BOOKMARK_DRAG_TYPE, node.id);
+                event.dataTransfer.effectAllowed = 'move';
+              }}
+              onDragOver={(event) => {
+                if (!event.dataTransfer.types.includes(BOOKMARK_DRAG_TYPE)) {
+                  return;
+                }
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'move';
+                setDragOverId(node.id);
+              }}
+              onDragLeave={() => {
+                setDragOverId((current) =>
+                  current === node.id ? null : current
+                );
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                setDragOverId(null);
+                const dragId = event.dataTransfer.getData(BOOKMARK_DRAG_TYPE);
+                if (dragId && canDrop(dragId, node.id)) {
+                  onDrop(dragId, node.id);
+                }
               }}
             >
-              <span aria-hidden="true">📁</span>
-              <span className={classes.folderTitle}>
-                {node.title || '(untitled)'}
-              </span>
-              <span className={classes.count}>
-                {(node.children ?? []).length}
-              </span>
-            </button>
-          </div>
-          {node.children?.some((child) => child.url === undefined) ? (
-            <ul className={classes.list}>
-              {renderNodes(node.children, depth + 1)}
-            </ul>
-          ) : null}
-        </li>
-      ));
+              {children.length > 0 ? (
+                <Button
+                  size="compact"
+                  variant="quiet"
+                  className={classes.twisty}
+                  icon={isCollapsed ? '+' : '−'}
+                  isExpanded={!isCollapsed}
+                  description={
+                    isCollapsed
+                      ? `Expand ${node.title}`
+                      : `Collapse ${node.title}`
+                  }
+                  onClick={() => {
+                    toggleCollapsed(node.id);
+                  }}
+                />
+              ) : (
+                // Holds the column open so titles line up whether or not a
+                // folder has anything to collapse.
+                <span
+                  className={classes.twistyPlaceholder}
+                  aria-hidden="true"
+                />
+              )}
+
+              {editingId === node.id ? (
+                <input
+                  className={classes.renameInput}
+                  value={draftTitle}
+                  autoFocus
+                  aria-label="Folder name"
+                  onChange={(event) => {
+                    setDraftTitle(event.target.value);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      commitRename(node.id);
+                    }
+                    if (event.key === 'Escape') {
+                      setEditingId(null);
+                    }
+                  }}
+                  onBlur={() => {
+                    commitRename(node.id);
+                  }}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className={classes.folderButton}
+                  onClick={() => {
+                    onSelect(node.id);
+                  }}
+                >
+                  <span aria-hidden="true">📁</span>
+                  <span className={classes.folderTitle}>
+                    {node.title || '(untitled)'}
+                  </span>
+                  <span className={classes.count}>{childCount}</span>
+                </button>
+              )}
+
+              {editingId === node.id ? null : (
+                <span className={classes.actions}>
+                  <Button
+                    size="compact"
+                    variant="quiet"
+                    icon="✏️"
+                    description={`Rename ${node.title}`}
+                    onClick={() => {
+                      setDraftTitle(node.title);
+                      setEditingId(node.id);
+                    }}
+                  />
+                  <Button
+                    size="compact"
+                    variant="quiet"
+                    icon="🗑"
+                    description={`Delete ${node.title}`}
+                    onClick={() => {
+                      // A folder deletes everything under it, and unlike a
+                      // bookmark that is not something you can put back from
+                      // the address bar. An empty one has nothing to lose, so
+                      // it goes without the interruption.
+                      if (
+                        childCount > 0 &&
+                        !window.confirm(
+                          `Delete “${node.title}” and the ${childCount} item${childCount === 1 ? '' : 's'} inside it?`
+                        )
+                      ) {
+                        return;
+                      }
+                      onDelete(node.id);
+                    }}
+                  />
+                </span>
+              )}
+            </div>
+            {children.length > 0 && !isCollapsed ? (
+              <ul className={classes.list}>
+                {renderNodes(node.children ?? [], depth + 1)}
+              </ul>
+            ) : null}
+          </li>
+        );
+      });
   }
 
   return (

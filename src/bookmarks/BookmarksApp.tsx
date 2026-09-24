@@ -155,6 +155,18 @@ export function BookmarksApp() {
                 canDropInto(tree, dragId, targetId)
               }
               onDrop={handleMove}
+              onRename={(id, title) => {
+                act(() => updateNode(id, { title }));
+              }}
+              onDelete={(id) => {
+                // The selection cannot survive its own folder, and leaving it
+                // pointing at a deleted id shows an empty contents pane with no
+                // way to tell why.
+                if (id === selectedId) {
+                  setSelectedId(null);
+                }
+                act(() => removeNode(id, true));
+              }}
             />
           </aside>
 
