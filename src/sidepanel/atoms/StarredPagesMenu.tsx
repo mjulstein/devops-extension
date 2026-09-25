@@ -457,7 +457,10 @@ export function StarredPagesMenu({
                     index === highlight && classes.itemHighlighted
                   )}
                   title={rowDetail(entry)}
-                  onMouseEnter={() => setHighlight(index)}
+                  // Hover is left to CSS: moving the keyboard highlight with the
+                  // cursor means Enter opens whatever the mouse happens to be
+                  // resting over rather than what the arrow keys chose. They are
+                  // two separate selections and stay separate.
                   onKeyDown={onNavigationKeyDown}
                   onClick={(event) => {
                     void activateRow(entry, event);

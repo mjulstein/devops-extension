@@ -452,10 +452,14 @@ export function openFavoritesPalette({
 
       text.append(label, url);
       row.append(text);
-      row.addEventListener('mouseenter', () => {
-        view = { ...view, highlight: index };
-        render();
-      });
+      // Hover is left to CSS on purpose, and this is not a style preference.
+      // Moving the highlight on mouseenter re-rendered the list, which replaced
+      // the very button the pointer was pressing: the mouseup landed on a node
+      // that no longer existed, so no click was ever synthesized and a row could
+      // only be opened with Enter. It also tied the keyboard to the cursor,
+      // so Enter opened whatever the mouse happened to be resting over rather
+      // than what the arrow keys had chosen. The two are separate selections
+      // and stay separate.
       row.addEventListener('click', (event) => openRow(index, event));
       list.append(row);
     });
