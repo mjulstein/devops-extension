@@ -11,7 +11,7 @@ function copyManifestPlugin() {
 
       // Vite keeps the source folder in the output path for an HTML entry; the
       // manifest refers to these pages at the root, so they are lifted back.
-      for (const page of ['sidepanel.html', 'bookmarks.html']) {
+      for (const page of ['sidepanel.html', 'bookmarks.html', 'palette.html']) {
         const nested = resolve(`dist/src/${page}`);
         if (existsSync(nested)) {
           renameSync(nested, resolve(`dist/${page}`));
@@ -95,6 +95,7 @@ export default defineConfig({
       input: {
         sidepanel: resolve('src/sidepanel.html'),
         bookmarks: resolve('src/bookmarks.html'),
+        palette: resolve('src/palette.html'),
         'service-worker': resolve('src/service-worker.ts')
       },
       output: {

@@ -67,6 +67,21 @@ export interface PaletteOptions {
    * (Ctrl or Cmd). The palette closes first either way.
    */
   onOpenPage: (url: string, newTab: boolean) => void;
+  /**
+   * A pin toggle in the header, and its starting state. Given only by the
+   * window host: pinning means "do not close this on your own", which is a
+   * question that only arises for a palette that closes itself. Drawn over a
+   * page there is nothing to pin — the palette is dismissed by the same click
+   * that takes attention away from it.
+   */
+  onTogglePin?: (pinned: boolean) => void;
+  isPinned?: boolean;
+  /**
+   * Called once the palette has closed, for whatever reason: Escape, the
+   * backdrop, or a row being opened. The window host uses it to close the
+   * window the palette was the only content of.
+   */
+  onClose?: () => void;
   /** Where to attach. Defaults to the document body. */
   container?: HTMLElement;
 }
@@ -227,6 +242,9 @@ export function openFavoritesPalette({
   searchAllBookmarks,
   onOpenBookmarkManager,
   tokens,
+  onTogglePin,
+  isPinned = false,
+  onClose,
   container = document.body
 }: PaletteOptions): PaletteHandle {
   closeFavoritesPalette(container);
@@ -281,6 +299,30 @@ export function openFavoritesPalette({
     header.append(manage);
   }
 
+  if (onTogglePin) {
+    const pin = document.createElement('button');
+    pin.type = 'button';
+    pin.className = 'manage';
+    let pinned = isPinned;
+    const paintPin = () => {
+      pin.textContent = pinned ? '📌 Pinned' : '📌 Pin';
+      pin.title = pinned
+        ? 'Pinned: this window stays open until you close it'
+        : 'Pin this window so it does not close on its own';
+      pin.setAttribute('aria-pressed', String(pinned));
+    };
+    paintPin();
+    pin.addEventListener('click', () => {
+      pinned = !pinned;
+      paintPin();
+      onTogglePin(pinned);
+      // The search is where typing belongs, and clicking the pin took the
+      // caret out of it.
+      search.focus();
+    });
+    header.append(pin);
+  }
+
   dialog.append(header, list);
   backdrop.append(dialog);
   shadow.append(style, backdrop);
@@ -290,9 +332,16 @@ export function openFavoritesPalette({
   let allIcons: FaviconMap = { ...icons };
   let view: PaletteView = buildPaletteView(favorites, '', 0, quickTasks);
 
+  let closed = false;
+
   function close() {
+    if (closed) {
+      return;
+    }
+    closed = true;
     host.remove();
     document.removeEventListener('keydown', onDocumentKeyDown, true);
+    onClose?.();
   }
 
   /**

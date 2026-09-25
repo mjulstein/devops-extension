@@ -203,9 +203,18 @@ npm test
     and picking one — or typing its name — shows what is inside it. Rows carry
     each site's icon. The **Bookmarks** button opens the extension's own
     bookmark manager page (see below).
-    **Ctrl+Period** opens a centred favorites palette over the Azure DevOps page
-    you are on, with its search already focused; on any other page it opens the
-    panel straight into the same search instead; Settings →
+    **Ctrl+Period** opens the favorites palette in a small window of its own,
+    centred on the browser window and with its search already focused. It works
+    on any page, not only Azure DevOps, because a window does not depend on a
+    content script and takes focus by being a window. It closes itself when
+    another browser window takes focus, or after fifteen seconds untouched —
+    **📌 Pin** in its header stops both, and as with the other windows only one
+    is ever open. Switching to another application does not close it, which
+    would otherwise make it unusable the moment you copied something from
+    somewhere else. Escape, the backdrop and opening a favorite all close it as
+    before. The in-page overlay it replaced is still in the code behind
+    `FAVORITES_SEARCH_SURFACE` in the service worker, while the window is being
+    lived with; Settings →
     **Tools** shows which keys the browser actually bound to it, and browsers
     silently leave the suggested combination unbound when it clashes with one of
     their own — assign your own at `edge://extensions/shortcuts` if it is blank. Name a

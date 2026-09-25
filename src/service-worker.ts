@@ -100,7 +100,54 @@ chrome.commands?.onCommand.addListener((command) => {
  * one is in front, otherwise in the side panel. Shared by the keyboard command
  * and the panel's own trigger so both land on the same surface.
  */
-async function openFavoritesSearch(): Promise<'overlay' | 'panel'> {
+/** Everything the palette needs to draw itself, wherever it is drawn. */
+async function loadFavoritesPaletteData() {
+  const [favorites, quickTasks, tokens] = await Promise.all([
+    loadStarredPages(),
+    loadQuickTaskLinks(),
+    loadThemeTokens()
+  ]);
+  const icons = await loadFavicons([
+    ...favorites.map((page) => page.url),
+    ...quickTasks.map((page) => page.url)
+  ]);
+  return { favorites, quickTasks, tokens, icons };
+}
+
+/**
+ * Which surface the shortcut opens.
+ *
+ * The window reaches every page, not only the ones a content script runs on,
+ * and takes focus by being a window rather than by asking. The overlay is
+ * faster and appears where the eye already is, but only on Azure DevOps. Both
+ * are kept while the window is being lived with; this is the switch.
+ */
+type FavoritesSearchSurface = 'window' | 'overlay';
+const FAVORITES_SEARCH_SURFACE: FavoritesSearchSurface = 'window';
+
+async function openFavoritesSearch(): Promise<'overlay' | 'panel' | 'window'> {
+  if (FAVORITES_SEARCH_SURFACE === 'window') {
+    try {
+      await openSingletonWindow('palette');
+      await recordShortcutRun({
+        opened: true,
+        delivered: true,
+        error: null,
+        surface: 'window'
+      });
+      return 'window';
+    } catch (windowError) {
+      // Falls through to the surfaces below rather than leaving the keypress
+      // with nothing to show for it.
+      await recordShortcutRun({
+        opened: false,
+        delivered: false,
+        error: describeError(windowError),
+        surface: 'window'
+      });
+    }
+  }
+
   return await (async () => {
     let opened = false;
     let delivered = false;
@@ -241,6 +288,12 @@ const SINGLETON_WINDOWS = {
     boundsKey: 'bookmarkManagerWindowBounds',
     defaults: { width: 1280, height: 900 }
   },
+  palette: {
+    page: 'palette.html',
+    boundsKey: 'paletteWindowBounds',
+    // Roughly the dialog's own size. It is a search box, not a workspace.
+    defaults: { width: 620, height: 520 }
+  },
   panel: {
     page: 'sidepanel.html',
     boundsKey: 'panelWindowBounds',
@@ -291,6 +344,9 @@ async function findSingletonWindowTabs(
  * if a window was restored by the browser on startup.
  */
 async function openSingletonWindow(name: SingletonWindowName): Promise<void> {
+  if (name === 'palette') {
+    palettePinned = false;
+  }
   const { page, boundsKey, defaults } = SINGLETON_WINDOWS[name];
   const url = chrome.runtime.getURL(page);
   const [existing, ...extras] = await findSingletonWindowTabs(name);
@@ -321,8 +377,41 @@ async function openSingletonWindow(name: SingletonWindowName): Promise<void> {
   await chrome.windows.create({
     url,
     type: 'popup',
-    ...(isWindowBounds(bounds) ? bounds : defaults)
+    ...(isWindowBounds(bounds)
+      ? bounds
+      : { ...defaults, ...(await centredOnCurrentWindow(defaults)) })
   });
+}
+
+/**
+ * Where to put a window that has never been placed.
+ *
+ * Centred on the browser window in front rather than on the screen, since that
+ * is the monitor being worked on — an extension cannot ask which display that
+ * is without a permission that exists for a bigger purpose than this.
+ */
+async function centredOnCurrentWindow(size: {
+  width: number;
+  height: number;
+}): Promise<{ left: number; top: number } | Record<string, never>> {
+  try {
+    const current = await chrome.windows.getLastFocused();
+    if (
+      current.left == null ||
+      current.top == null ||
+      current.width == null ||
+      current.height == null
+    ) {
+      return {};
+    }
+    return {
+      left: Math.round(current.left + (current.width - size.width) / 2),
+      top: Math.round(current.top + (current.height - size.height) / 2)
+    };
+  } catch {
+    // Letting the browser place it is a worse position, not a failure.
+    return {};
+  }
 }
 
 /**
@@ -334,6 +423,37 @@ async function openSingletonWindow(name: SingletonWindowName): Promise<void> {
 async function openBookmarkManager(): Promise<void> {
   await openSingletonWindow('bookmarks');
 }
+
+/**
+ * Whether the palette window has been pinned open.
+ *
+ * Kept in memory on purpose: it describes the window that is open right now, and
+ * a pin surviving into a later window would be a setting nobody asked for. The
+ * worker restarting closes nothing, it only forgets a pin — the safe direction.
+ */
+let palettePinned = false;
+
+/**
+ * Closes the palette window when another browser window takes focus.
+ *
+ * `WINDOW_ID_NONE` is deliberately ignored: it means the browser itself went to
+ * the background, which happens on every glance at another application, and
+ * closing then would make the palette unusable the moment anything is copied
+ * from somewhere else.
+ */
+chrome.windows.onFocusChanged.addListener((windowId) => {
+  if (windowId === chrome.windows.WINDOW_ID_NONE || palettePinned) {
+    return;
+  }
+  void (async () => {
+    const tabs = await findSingletonWindowTabs('palette');
+    for (const tab of tabs) {
+      if (tab.windowId != null && tab.windowId !== windowId) {
+        await chrome.windows.remove(tab.windowId);
+      }
+    }
+  })();
+});
 
 /** Remembers where one of these windows was left, for the next time it opens. */
 chrome.windows.onBoundsChanged.addListener((window) => {
@@ -398,6 +518,14 @@ type RuntimeMessage =
   | {
       type: 'OPEN_PANEL_WINDOW';
       payload?: undefined;
+    }
+  | {
+      type: 'GET_FAVORITES_PALETTE_DATA';
+      payload?: undefined;
+    }
+  | {
+      type: 'SET_PALETTE_PINNED';
+      payload: { pinned: boolean };
     }
   | {
       type: 'OPEN_BOOKMARK_MANAGER';
@@ -590,6 +718,21 @@ chrome.runtime.onMessage.addListener(
           sendResponse({ ok: false, error: error.message })
         );
       return true;
+    }
+
+    if (message.type === 'GET_FAVORITES_PALETTE_DATA') {
+      loadFavoritesPaletteData()
+        .then((result) => sendResponse({ ok: true, result }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'SET_PALETTE_PINNED') {
+      palettePinned = message.payload.pinned;
+      sendResponse({ ok: true, result: null });
+      return false;
     }
 
     if (message.type === 'OPEN_PANEL_WINDOW') {

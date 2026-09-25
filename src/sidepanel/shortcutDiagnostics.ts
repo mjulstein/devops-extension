@@ -82,7 +82,7 @@ export interface ShortcutRun {
    * Which surface answered: the palette drawn over an Azure DevOps page, or the
    * side panel's own menu. Optional for runs recorded before the palette.
    */
-  surface?: 'overlay' | 'panel';
+  surface?: 'overlay' | 'panel' | 'window';
   /**
    * Why the palette was not used, when the page was an Azure DevOps one. The
    * usual answer is that the tab has no content script yet — it was open before
@@ -110,6 +110,9 @@ export function describeShortcutRun(
   const ago = formatAgo(now - run.at);
   if (run.paletteError !== undefined) {
     return `Last pressed ${ago}: fell back to the side panel because the palette could not be opened on that page (${run.paletteError}). A tab open since before the extension was last reloaded has no content script until it is refreshed.`;
+  }
+  if (run.surface === 'window' && run.delivered) {
+    return `Last pressed ${ago}: opened the palette in its own window.`;
   }
   if (run.surface === 'overlay' && run.delivered) {
     return `Last pressed ${ago}: opened the palette over the page.`;
