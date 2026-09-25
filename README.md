@@ -193,7 +193,11 @@ npm test
     menu opens at the full width of the side panel, and each entry shows the
     page's icon taken from the browser's own favicon cache — the same icon the
     bookmarks menu draws, so favorites synced in from another machine are
-    recognisable too.
+    recognisable too. Azure DevOps favorites are the exception: all of Azure
+    DevOps is one site, so its favicon would make every entry look the same.
+    Those show the section icon instead — boards, repos, pipelines, wiki — taken
+    from Azure DevOps's own navigation where it has been seen, and from icons
+    built into the extension until then.
     A favorite opens in the current tab; hold **Ctrl** to open it in a new one.
     Quick tasks that are in progress are listed under the favorites behind a
     divider, and mirrored into a **Quick tasks** sub-folder of the bookmarks
