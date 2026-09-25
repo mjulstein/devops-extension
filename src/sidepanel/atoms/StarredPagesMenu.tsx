@@ -14,6 +14,7 @@ import {
 import { parseFavoritesQuery } from '../favoritesQuery';
 import { searchAllBookmarks } from '../bookmarkSync';
 import { getFavoriteIconUrl } from '../favoriteIcon';
+import { useSectionIcons } from '../useSectionIcons';
 import { Button } from './Button';
 
 /**
@@ -87,6 +88,7 @@ export function StarredPagesMenu({
   onOpenStarredPage,
   onRequestFavoritesSearch
 }: StarredPagesMenuProps) {
+  const sectionIcons = useSectionIcons();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   // Which row the keyboard is on. Reset whenever the result set changes, so it
@@ -471,7 +473,10 @@ export function StarredPagesMenu({
                       📁
                     </span>
                   ) : (
-                    <FavoriteIcon url={entry.page.url} />
+                    <FavoriteIcon
+                      url={entry.page.url}
+                      sectionIcons={sectionIcons}
+                    />
                   )}
                   <span className={classes.itemText}>
                     {rowLabel(entry)}
@@ -493,9 +498,18 @@ export function StarredPagesMenu({
  * Kept silent on failure: an icon is a scanning aid, and a broken-image glyph
  * beside a favorite would be worse than the blank space it replaces.
  */
-function FavoriteIcon({ url }: { url: string }) {
+function FavoriteIcon({
+  url,
+  sectionIcons
+}: {
+  url: string;
+  sectionIcons: Record<string, string>;
+}) {
   const [isBroken, setIsBroken] = useState(false);
-  const source = useMemo(() => getFavoriteIconUrl(url), [url]);
+  const source = useMemo(
+    () => getFavoriteIconUrl(url, sectionIcons),
+    [sectionIcons, url]
+  );
 
   if (source === null || isBroken) {
     return <span className={classes.iconPlaceholder} aria-hidden="true" />;

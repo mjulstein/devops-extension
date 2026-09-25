@@ -22,6 +22,7 @@ import {
   blobToDataUrl,
   loadFaviconsForUrls
 } from './favoritesPalette/faviconData';
+import { TAB_ICON_STORAGE_KEY, sectionIconForUrl } from './devops/sectionIcons';
 import { fetchChildTasksForActiveParent } from './devops/childTasks';
 import { fetchPullRequestActivity } from './devops/pullRequestActivity';
 import { fetchAdoTheme, setAdoTheme, type AdoTheme } from './devops/theme';
@@ -79,11 +80,22 @@ void chrome.commands?.getAll().then((commands) => {
 // a wide search does not re-read the same pictures on every keystroke.
 const faviconCache = new Map<string, string>();
 
-function loadFavicons(urls: string[]) {
-  return loadFaviconsForUrls(urls, faviconCache, {
+async function loadFavicons(urls: string[]) {
+  // The section icons the content script scraped from Azure DevOps's own nav,
+  // or the built-in ones when it has not scraped yet. Without these every
+  // Azure DevOps favorite draws the same site logo, which tells you nothing
+  // about which of them is a board and which is a pipeline.
+  const stored = await chrome.storage.local.get(TAB_ICON_STORAGE_KEY);
+  const sectionIcons = (stored[TAB_ICON_STORAGE_KEY] ?? {}) as Record<
+    string,
+    string
+  >;
+
+  return await loadFaviconsForUrls(urls, faviconCache, {
     fetchFn: (input: RequestInfo | URL, init?: RequestInit) =>
       fetch(input, init),
-    toDataUrl: blobToDataUrl
+    toDataUrl: blobToDataUrl,
+    ownIconFor: (url) => sectionIconForUrl(url, sectionIcons)
   });
 }
 

@@ -23,7 +23,7 @@ import {
   rowLabel,
   type WidenedSearchData
 } from '@/sidepanel/favoritesListing';
-import { originOf, type FaviconMap } from './faviconData';
+import { iconKeyFor, type FaviconMap } from './faviconData';
 import {
   buildPaletteView,
   resolvePaletteKey,
@@ -491,8 +491,8 @@ export function openFavoritesPalette({
 
       // The icon is a scanning aid, so a missing one leaves its space rather
       // than shifting every title. A folder shows a folder, not a site.
-      const origin = entry.kind === 'page' ? originOf(entry.page.url) : null;
-      const iconSrc = origin === null ? undefined : allIcons[origin];
+      const iconKey = entry.kind === 'page' ? iconKeyFor(entry.page.url) : null;
+      const iconSrc = iconKey === null ? undefined : allIcons[iconKey];
       if (entry.kind === 'folder') {
         const icon = document.createElement('span');
         icon.className = 'icon folderIcon';
