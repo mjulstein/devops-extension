@@ -77,6 +77,13 @@ export interface PaletteOptions {
   onTogglePin?: (pinned: boolean) => void;
   isPinned?: boolean;
   /**
+   * Opens the settings window. A footer button rather than a header one: it
+   * leaves the palette rather than acting within it.
+   */
+  onOpenSettings?: () => void;
+  /** Shows the side panel on the window being browsed in. */
+  onOpenSidePanel?: () => void;
+  /**
    * Called once the palette has closed, for whatever reason: Escape, the
    * backdrop, or a row being opened. The window host uses it to close the
    * window the palette was the only content of.
@@ -147,6 +154,34 @@ const STYLES = `
     border-color: var(--color-border-strong, #8b949e);
   }
   .list { overflow-y: auto; }
+  /* A footer rather than more buttons in the header: these open something
+     else, which is a different kind of act from searching, and the header is
+     already carrying the search. Right-aligned, where a dialog's own controls
+     sit. */
+  .footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-block-start: 1px solid var(--color-border, var(--palette-neutral-20, #d0d7de));
+  }
+  .iconButton {
+    font: inherit;
+    font-size: 14px;
+    line-height: 1;
+    flex: 0 0 auto;
+    padding: 5px 8px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+  .iconButton:hover {
+    border-color: var(--color-border, var(--palette-neutral-20, #d0d7de));
+    background: var(--color-surface-raised, transparent);
+  }
   .row {
     display: flex;
     align-items: center;
@@ -244,6 +279,8 @@ export function openFavoritesPalette({
   tokens,
   onTogglePin,
   isPinned = false,
+  onOpenSettings,
+  onOpenSidePanel,
   onClose,
   container = document.body
 }: PaletteOptions): PaletteHandle {
@@ -323,7 +360,41 @@ export function openFavoritesPalette({
     header.append(pin);
   }
 
+  const footer = document.createElement('div');
+  footer.className = 'footer';
+
+  if (onOpenSidePanel) {
+    const panelButton = document.createElement('button');
+    panelButton.type = 'button';
+    panelButton.className = 'iconButton';
+    panelButton.textContent = '▤';
+    panelButton.title = 'Show the side panel';
+    panelButton.setAttribute('aria-label', 'Show the side panel');
+    panelButton.addEventListener('click', () => {
+      close();
+      onOpenSidePanel();
+    });
+    footer.append(panelButton);
+  }
+
+  if (onOpenSettings) {
+    const settingsButton = document.createElement('button');
+    settingsButton.type = 'button';
+    settingsButton.className = 'iconButton';
+    settingsButton.textContent = '⚙';
+    settingsButton.title = 'Open settings';
+    settingsButton.setAttribute('aria-label', 'Open settings');
+    settingsButton.addEventListener('click', () => {
+      close();
+      onOpenSettings();
+    });
+    footer.append(settingsButton);
+  }
+
   dialog.append(header, list);
+  if (footer.childElementCount > 0) {
+    dialog.append(footer);
+  }
   backdrop.append(dialog);
   shadow.append(style, backdrop);
   container.append(host);

@@ -108,3 +108,36 @@
   background: var(--color-surface-raised);
   color: var(--color-text-subtle);
 }
+
+/* In a window there is room for the fields to sit beside each other instead of
+   in one narrow ribbon, which is the whole reason the settings open in a window
+   at all. In the side panel this rule does nothing: the regions stay as they
+   were. */
+:global(:root[data-surface='window']) .regionBody {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  column-gap: 28px;
+  align-items: start;
+}
+
+/* Things that read as a break or a paragraph rather than as a field belong
+   across the whole width; in a column they read as belonging to that column
+   only, which is the wrong claim. */
+:global(:root[data-surface='window']) .regionBody > .help,
+:global(:root[data-surface='window']) .regionBody > .separator,
+:global(:root[data-surface='window']) .regionBody > .sectionHeading,
+:global(:root[data-surface='window']) .regionBody > .description,
+:global(:root[data-surface='window']) .regionBody > .buttonRow,
+:global(:root[data-surface='window']) .regionBody > .fieldRow {
+  grid-column: 1 / -1;
+}
+
+/* An editor is a layout of its own and does not survive being one column of
+   another. */
+:global(:root[data-surface='window']) .regionBody > div:not([class]),
+:global(:root[data-surface='window']) .regionBody > section,
+:global(:root[data-surface='window']) .regionBody > details,
+:global(:root[data-surface='window']) .regionBody > p,
+:global(:root[data-surface='window']) .regionBody > ul {
+  grid-column: 1 / -1;
+}

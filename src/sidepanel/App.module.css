@@ -14,3 +14,11 @@
   align-items: stretch;
   margin: 0 0 10px;
 }
+
+/* A window is not a 460px panel: the shell stops stretching where lines stop
+   being readable, and centres what is left. */
+:global(:root[data-surface='window']) .wrap {
+  max-inline-size: 1000px;
+  margin-inline: auto;
+  padding: 24px;
+}

@@ -151,8 +151,21 @@ const MAX_DEBUG_LOG_ENTRIES = 120;
  */
 const BOOKMARK_EVENT_DEBOUNCE_MS = 400;
 
-export function useSidepanelController() {
-  const [activeTab, setActiveTab] = useState<SidepanelTabId>('work-items');
+export interface SidepanelControllerOptions {
+  /**
+   * Opens on this tab instead of the one last used. Given by a window that
+   * exists to show one thing — the settings window — where restoring the
+   * remembered tab would show the wrong thing and lose the reason it opened.
+   */
+  initialTab?: SidepanelTabId;
+}
+
+export function useSidepanelController({
+  initialTab
+}: SidepanelControllerOptions = {}) {
+  const [activeTab, setActiveTab] = useState<SidepanelTabId>(
+    initialTab ?? 'work-items'
+  );
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   // What is actually persisted, so the Settings tab can tell a draft from a
   // saved value and only offer Save when something differs.
@@ -387,7 +400,9 @@ export function useSidepanelController() {
           .catch(() => undefined);
       }
 
-      setActiveTab(storedActiveTab);
+      // A window opened on a given tab keeps it: the stored tab is the side
+      // panel's memory, not this window's.
+      setActiveTab(initialTab ?? storedActiveTab);
       setHiddenTaskStates(storedHiddenStates);
       setPinnedQuickTaskIds(storedPinnedQuickTaskIds);
       setStarredPages(storedStarredPages);

@@ -90,6 +90,12 @@ async function main(): Promise<void> {
         'SEARCH_BOOKMARKS',
         { term }
       )) ?? { bookmarks: [], folders: [], icons: {} },
+    onOpenSettings: () => {
+      void chrome.runtime.sendMessage({ type: 'OPEN_SETTINGS_WINDOW' });
+    },
+    onOpenSidePanel: () => {
+      void chrome.runtime.sendMessage({ type: 'OPEN_SIDE_PANEL' });
+    },
     onOpenBookmarkManager: () => {
       void chrome.runtime.sendMessage({ type: 'OPEN_BOOKMARK_MANAGER' });
     },

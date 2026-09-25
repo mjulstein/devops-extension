@@ -288,6 +288,12 @@ const SINGLETON_WINDOWS = {
     boundsKey: 'bookmarkManagerWindowBounds',
     defaults: { width: 1280, height: 900 }
   },
+  settings: {
+    page: 'settings.html',
+    boundsKey: 'settingsWindowBounds',
+    // Wide enough for the fields to sit in columns rather than in one ribbon.
+    defaults: { width: 960, height: 820 }
+  },
   palette: {
     page: 'palette.html',
     boundsKey: 'paletteWindowBounds',
@@ -345,7 +351,7 @@ async function findSingletonWindowTabs(
  */
 async function openSingletonWindow(name: SingletonWindowName): Promise<void> {
   if (name === 'palette') {
-    palettePinned = false;
+    await setPalettePinned(false);
   }
   const { page, boundsKey, defaults } = SINGLETON_WINDOWS[name];
   const url = chrome.runtime.getURL(page);
@@ -424,14 +430,25 @@ async function openBookmarkManager(): Promise<void> {
   await openSingletonWindow('bookmarks');
 }
 
+const PALETTE_PINNED_KEY = 'palettePinned';
+
 /**
  * Whether the palette window has been pinned open.
  *
- * Kept in memory on purpose: it describes the window that is open right now, and
- * a pin surviving into a later window would be a setting nobody asked for. The
- * worker restarting closes nothing, it only forgets a pin — the safe direction.
+ * In session storage rather than in a variable: this worker is unloaded after a
+ * short idle, and the focus change that would close the palette is exactly what
+ * wakes it again — so a pin held in memory was reliably forgotten before it was
+ * ever read, and the window closed anyway. Session storage is cleared when the
+ * browser restarts, which is the lifetime a pin should have.
  */
-let palettePinned = false;
+async function isPalettePinned(): Promise<boolean> {
+  const stored = await chrome.storage.session.get(PALETTE_PINNED_KEY);
+  return stored[PALETTE_PINNED_KEY] === true;
+}
+
+async function setPalettePinned(pinned: boolean): Promise<void> {
+  await chrome.storage.session.set({ [PALETTE_PINNED_KEY]: pinned });
+}
 
 /**
  * Closes the palette window when another browser window takes focus.
@@ -442,10 +459,13 @@ let palettePinned = false;
  * from somewhere else.
  */
 chrome.windows.onFocusChanged.addListener((windowId) => {
-  if (windowId === chrome.windows.WINDOW_ID_NONE || palettePinned) {
+  if (windowId === chrome.windows.WINDOW_ID_NONE) {
     return;
   }
   void (async () => {
+    if (await isPalettePinned()) {
+      return;
+    }
     const tabs = await findSingletonWindowTabs('palette');
     for (const tab of tabs) {
       if (tab.windowId != null && tab.windowId !== windowId) {
@@ -454,6 +474,24 @@ chrome.windows.onFocusChanged.addListener((windowId) => {
     }
   })();
 });
+
+/**
+ * Opens the side panel on the window being browsed in.
+ *
+ * Asked for from the palette, which is a popup of its own — a popup has no side
+ * panel, so opening it there would do nothing visible. The most recently focused
+ * ordinary window is the one the panel belongs to.
+ */
+async function openSidePanelForCurrentWindow(): Promise<void> {
+  const windows = await chrome.windows.getAll();
+  const target =
+    windows.find((window) => window.type === 'normal' && window.focused) ??
+    windows.find((window) => window.type === 'normal');
+  if (target?.id == null) {
+    throw new Error('No browser window to open the side panel in.');
+  }
+  await chrome.sidePanel.open({ windowId: target.id });
+}
 
 /** Remembers where one of these windows was left, for the next time it opens. */
 chrome.windows.onBoundsChanged.addListener((window) => {
@@ -526,6 +564,14 @@ type RuntimeMessage =
   | {
       type: 'SET_PALETTE_PINNED';
       payload: { pinned: boolean };
+    }
+  | {
+      type: 'OPEN_SETTINGS_WINDOW';
+      payload?: undefined;
+    }
+  | {
+      type: 'OPEN_SIDE_PANEL';
+      payload?: undefined;
     }
   | {
       type: 'OPEN_BOOKMARK_MANAGER';
@@ -730,9 +776,30 @@ chrome.runtime.onMessage.addListener(
     }
 
     if (message.type === 'SET_PALETTE_PINNED') {
-      palettePinned = message.payload.pinned;
-      sendResponse({ ok: true, result: null });
-      return false;
+      setPalettePinned(message.payload.pinned)
+        .then(() => sendResponse({ ok: true, result: null }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'OPEN_SETTINGS_WINDOW') {
+      openSingletonWindow('settings')
+        .then(() => sendResponse({ ok: true, result: null }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'OPEN_SIDE_PANEL') {
+      openSidePanelForCurrentWindow()
+        .then(() => sendResponse({ ok: true, result: null }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
     }
 
     if (message.type === 'OPEN_PANEL_WINDOW') {

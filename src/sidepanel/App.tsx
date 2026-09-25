@@ -10,11 +10,17 @@ import { ThemeSwitch } from './atoms/ThemeSwitch';
 import classes from './App.module.css';
 import { Tabs } from './Tabs';
 import { useSidepanelController } from './useSidepanelController';
+import type { SidepanelTabId } from './Tabs';
 import { WorkItemPane } from './work-item';
 import { WorkItemsPane } from './work-items';
 
-export function App() {
-  const controller = useSidepanelController();
+interface AppProps {
+  /** Opens on this tab; see `SidepanelControllerOptions`. */
+  initialTab?: SidepanelTabId;
+}
+
+export function App({ initialTab }: AppProps = {}) {
+  const controller = useSidepanelController({ initialTab });
 
   return (
     <div className={classes.wrap} data-panel-root="">
