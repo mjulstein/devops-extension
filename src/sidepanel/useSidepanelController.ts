@@ -1862,6 +1862,17 @@ export function useSidepanelController() {
     );
   }
 
+  /**
+   * Moves the panel into a window of its own.
+   *
+   * The service worker owns the window, not this panel: the panel instance that
+   * asked may be the one the browser closes on the way, and the single-window
+   * rule has to hold across every panel that could ask.
+   */
+  async function onPopOutPanel() {
+    await chrome.runtime.sendMessage({ type: 'OPEN_PANEL_WINDOW' });
+  }
+
   async function onToggleRecentFeaturesCollapsed() {
     const nextValue = !isRecentFeaturesCollapsed;
     setIsRecentFeaturesCollapsed(nextValue);
@@ -2030,6 +2041,7 @@ export function useSidepanelController() {
     visibleChildTasks,
     onActiveItemBannerClick,
     onDeduplicateTabs,
+    onPopOutPanel,
     onChangeDebugLogs: setDebugLogs,
     onChangeSettings: onChangeSettings,
     savedSettings,

@@ -2,6 +2,7 @@ import { DebugConsolePane } from './DebugConsolePane';
 import { SettingsPane } from './settings';
 import { ActiveWorkItemBanner } from './atoms/ActiveWorkItemBanner';
 import { DeduplicateTabsButton } from './atoms/DeduplicateTabsButton';
+import { PopOutPanelButton } from './atoms/PopOutPanelButton';
 import { StarPageToggle } from './atoms/StarPageToggle';
 import { StarredPagesMenu } from './atoms/StarredPagesMenu';
 import { ReconnectBanner } from './atoms/ReconnectBanner';
@@ -38,6 +39,11 @@ export function App() {
         <DeduplicateTabsButton
           onClick={() => {
             void controller.onDeduplicateTabs();
+          }}
+        />
+        <PopOutPanelButton
+          onClick={() => {
+            void controller.onPopOutPanel();
           }}
         />
         <ThemeSwitch

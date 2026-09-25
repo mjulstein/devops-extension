@@ -3,8 +3,9 @@
   flex-direction: column;
   gap: 12px;
   box-sizing: border-box;
-  max-inline-size: 1400px;
-  margin: 0 auto;
+  /* No cap: the columns below are sized by hand, and a cap here would put a
+     wall in the middle of a wide screen that dragging them cannot get past. */
+  min-block-size: 100vh;
   padding: 16px;
   font-size: 13px;
 }
@@ -31,36 +32,40 @@
   border-radius: 5px;
 }
 
-/* Two thirds for reorganising, one third for what wants fixing. The lists are
-   scanned while the organiser is being worked in, so they sit beside it rather
-   than under it where they would be scrolled away. */
+/* The three columns. The two outer ones are sized by hand and remembered; the
+   middle one takes whatever is left, so widening the window feeds the list of
+   bookmarks rather than the chrome around it. */
 .split {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
-  gap: 12px;
-  align-items: start;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
 }
 
-.organiser {
-  display: grid;
-  grid-template-columns: minmax(160px, 240px) minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
+.tree,
+.issues {
+  flex: 0 0 auto;
+  min-inline-size: 0;
+  /* Set inline by the page from the remembered layout. Carried as a custom
+     property rather than as a width so the narrow-window rule below can drop
+     back to one column without an !important fight. */
+  inline-size: var(--column-width);
+}
+
+.contents {
+  flex: 1 1 auto;
   min-inline-size: 0;
 }
 
-/* One column on a narrow window: the tree and the contents are each unusable at
-   half of a small screen, and this page is as likely to be opened in a split
-   window as full width. */
+/* One column on a narrow window, where a hand-set width is meaningless and the
+   splitters have nothing to divide. */
 @media (width <= 1000px) {
   .split {
-    grid-template-columns: minmax(0, 1fr);
+    flex-direction: column;
   }
-}
 
-@media (width <= 720px) {
-  .organiser {
-    grid-template-columns: minmax(0, 1fr);
+  .tree,
+  .issues {
+    inline-size: auto;
   }
 }
 
@@ -70,6 +75,8 @@
   border-radius: 6px;
   padding: 8px;
   min-block-size: 200px;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .contentsHeading {

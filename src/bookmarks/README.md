@@ -69,6 +69,20 @@ Three different things, deliberately kept apart:
   tree, but *not* one reached by clicking a duplicate: narrowing the lists to the
   folder you just jumped to would drop the counterpart you were comparing with.
 
+## Layout
+
+Three columns in a flex row with a [`ColumnSplitter`](./ColumnSplitter.tsx)
+between each. The outer two carry their width as a `--column-width` custom
+property set inline, rather than as a width, so the narrow-window rule can fall
+back to a single column without an `!important` fight. `columnWidths.ts` keeps
+the sizes in `localStorage`, not `chrome.storage`: it is a per-screen
+preference, and the machine with the wide monitor should not push its layout
+onto the laptop. Every access to it is guarded, because a layout preference is
+never worth failing a render over.
+
+The page itself has no maximum width. A cap would put a wall in the middle of a
+wide screen that dragging the columns cannot get past.
+
 ## Scope
 
 The lists describe whichever tree `BookmarksApp` hands them, which is the whole

@@ -1,8 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties
+} from 'react';
 import clsx from 'clsx';
 import { Button } from '../sidepanel/atoms/Button';
 import { applyTheme, loadLastKnownTheme } from '../sidepanel/theme';
 import { BookmarkRow } from './BookmarkRow';
+import { ColumnSplitter } from './ColumnSplitter';
 import { BOOKMARK_DRAG_TYPE, FolderTree } from './FolderTree';
 import { IssuesPanel } from './IssuesPanel';
 import {
@@ -25,6 +32,12 @@ import {
   subscribeToBookmarkChanges,
   updateNode
 } from './bookmarksApi';
+import {
+  COLUMN_LIMITS,
+  loadColumnWidths,
+  saveColumnWidths,
+  type ColumnWidths
+} from './columnWidths';
 import classes from './BookmarksApp.module.css';
 
 /**
@@ -48,6 +61,9 @@ export function BookmarksApp() {
   // Bulk selection, shared by both halves of the page: rows are checked
   // wherever they are found, and acted on together from one bar.
   const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
+  // Read once on mount rather than on every render: it touches storage, which
+  // can throw.
+  const [widths, setWidths] = useState<ColumnWidths>(loadColumnWidths);
   const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -65,6 +81,10 @@ export function BookmarksApp() {
   useEffect(() => {
     void loadLastKnownTheme().then(applyTheme);
   }, []);
+
+  useEffect(() => {
+    saveColumnWidths(widths);
+  }, [widths]);
 
   const folders = useMemo(() => collectFolders(tree), [tree]);
   const entries = useMemo(() => flattenBookmarks(tree), [tree]);
@@ -262,150 +282,167 @@ export function BookmarksApp() {
       ) : null}
 
       <div className={classes.split}>
-        <div className={classes.organiser}>
-          <aside className={classes.tree}>
-            <div className={classes.treeHeader}>
-              <span>Folders</span>
-              <Button
-                size="compact"
-                variant="quiet"
-                disabled={!selectedId}
-                description="Clear the selection and describe the whole tree again"
-                onClick={() => {
-                  setSelectedId(null);
-                  setScopeId(null);
-                }}
-              >
-                All
-              </Button>
-            </div>
-            <FolderTree
-              nodes={tree}
-              selectedId={selectedId}
-              onSelect={(id) => {
-                setSelectedId(id);
-                setScopeId(id);
+        <aside
+          className={classes.tree}
+          style={{ '--column-width': `${widths.tree}px` } as CSSProperties}
+        >
+          <div className={classes.treeHeader}>
+            <span>Folders</span>
+            <Button
+              size="compact"
+              variant="quiet"
+              disabled={!selectedId}
+              description="Clear the selection and describe the whole tree again"
+              onClick={() => {
+                setSelectedId(null);
+                setScopeId(null);
               }}
-              canDrop={(dragId, targetId) =>
-                canDropInto(tree, dragId, targetId)
-              }
-              onDrop={handleMove}
-              collapsed={collapsed}
-              onToggleCollapsed={toggleCollapsed}
-              canFlatten={(id) => planFlatten(tree, id) !== null}
-              onFlatten={(id) => {
-                const plan = planFlatten(tree, id);
-                if (!plan) {
-                  return;
-                }
-                if (id === selectedId) {
-                  setSelectedId(null);
-                }
-                if (id === scopeId) {
-                  setScopeId(null);
-                }
-                act(() => applyFlatten(plan));
-              }}
-              onRename={(id, title) => {
-                act(() => updateNode(id, { title }));
-              }}
-              onDelete={(id) => {
-                // The selection cannot survive its own folder, and leaving it
-                // pointing at a deleted id shows an empty contents pane with no
-                // way to tell why.
-                if (id === selectedId) {
-                  setSelectedId(null);
-                }
-                if (id === scopeId) {
-                  setScopeId(null);
-                }
-                act(() => removeNode(id, true));
-              }}
-            />
-          </aside>
-
-          <section
-            className={clsx(
-              classes.contents,
-              search.trim() && classes.searching
-            )}
-            aria-label="Folder contents"
-            onDragOver={(event) => {
-              if (
-                selectedId &&
-                event.dataTransfer.types.includes(BOOKMARK_DRAG_TYPE)
-              ) {
-                event.preventDefault();
-              }
+            >
+              All
+            </Button>
+          </div>
+          <FolderTree
+            nodes={tree}
+            selectedId={selectedId}
+            onSelect={(id) => {
+              setSelectedId(id);
+              setScopeId(id);
             }}
-            onDrop={(event) => {
-              event.preventDefault();
-              const dragId = event.dataTransfer.getData(BOOKMARK_DRAG_TYPE);
-              if (
-                selectedId &&
-                dragId &&
-                canDropInto(tree, dragId, selectedId)
-              ) {
-                handleMove(dragId, selectedId);
+            canDrop={(dragId, targetId) => canDropInto(tree, dragId, targetId)}
+            onDrop={handleMove}
+            collapsed={collapsed}
+            onToggleCollapsed={toggleCollapsed}
+            canFlatten={(id) => planFlatten(tree, id) !== null}
+            onFlatten={(id) => {
+              const plan = planFlatten(tree, id);
+              if (!plan) {
+                return;
               }
+              if (id === selectedId) {
+                setSelectedId(null);
+              }
+              if (id === scopeId) {
+                setScopeId(null);
+              }
+              act(() => applyFlatten(plan));
             }}
-          >
-            <h2 className={classes.contentsHeading}>
-              {search.trim()
-                ? `Matches for “${search.trim()}”`
-                : (selected?.title ?? 'Pick a folder')}
-            </h2>
-            <ul className={classes.list}>
-              {listed.map((entry) => (
-                <BookmarkRow
-                  key={entry.id}
-                  entry={entry}
-                  folders={folders}
-                  showFolder={Boolean(search.trim())}
-                  draggable
-                  checked={checked.has(entry.id)}
-                  onToggleChecked={toggleChecked}
-                  onEdit={(id, changes) => {
-                    act(() => updateNode(id, changes));
-                  }}
-                  onDelete={(id) => {
-                    act(() => removeNode(id, false));
-                  }}
-                  onMove={handleMove}
-                />
-              ))}
-            </ul>
-            {listed.length === 0 ? (
-              <p className={classes.empty}>
-                {search.trim()
-                  ? 'Nothing matches.'
-                  : 'Drag bookmarks and folders onto a folder to file them.'}
-              </p>
-            ) : null}
-          </section>
-        </div>
+            onRename={(id, title) => {
+              act(() => updateNode(id, { title }));
+            }}
+            onDelete={(id) => {
+              // The selection cannot survive its own folder, and leaving it
+              // pointing at a deleted id shows an empty contents pane with no
+              // way to tell why.
+              if (id === selectedId) {
+                setSelectedId(null);
+              }
+              if (id === scopeId) {
+                setScopeId(null);
+              }
+              act(() => removeNode(id, true));
+            }}
+          />
+        </aside>
 
-        <IssuesPanel
-          tree={scopedTree}
-          folders={folders}
-          scopeLabel={scope ? scope.title || '(untitled)' : null}
-          onReveal={revealFolder}
-          checkedIds={checked}
-          onToggleChecked={toggleChecked}
-          onEdit={(id, changes) => {
-            act(() => updateNode(id, changes));
+        <ColumnSplitter
+          label="Resize the folder tree"
+          width={widths.tree}
+          min={COLUMN_LIMITS.tree.min}
+          max={COLUMN_LIMITS.tree.max}
+          onResize={(tree) => {
+            setWidths((current) => ({ ...current, tree }));
           }}
-          onDelete={(id) => {
-            act(() => removeNode(id, false));
-          }}
-          onDeleteFolder={(id) => {
-            act(() => removeNode(id, true));
-          }}
-          onRenameFolder={(id, title) => {
-            act(() => updateNode(id, { title }));
-          }}
-          onMove={handleMove}
         />
+
+        <section
+          className={clsx(classes.contents, search.trim() && classes.searching)}
+          aria-label="Folder contents"
+          onDragOver={(event) => {
+            if (
+              selectedId &&
+              event.dataTransfer.types.includes(BOOKMARK_DRAG_TYPE)
+            ) {
+              event.preventDefault();
+            }
+          }}
+          onDrop={(event) => {
+            event.preventDefault();
+            const dragId = event.dataTransfer.getData(BOOKMARK_DRAG_TYPE);
+            if (selectedId && dragId && canDropInto(tree, dragId, selectedId)) {
+              handleMove(dragId, selectedId);
+            }
+          }}
+        >
+          <h2 className={classes.contentsHeading}>
+            {search.trim()
+              ? `Matches for “${search.trim()}”`
+              : (selected?.title ?? 'Pick a folder')}
+          </h2>
+          <ul className={classes.list}>
+            {listed.map((entry) => (
+              <BookmarkRow
+                key={entry.id}
+                entry={entry}
+                folders={folders}
+                showFolder={Boolean(search.trim())}
+                draggable
+                checked={checked.has(entry.id)}
+                onToggleChecked={toggleChecked}
+                onEdit={(id, changes) => {
+                  act(() => updateNode(id, changes));
+                }}
+                onDelete={(id) => {
+                  act(() => removeNode(id, false));
+                }}
+                onMove={handleMove}
+              />
+            ))}
+          </ul>
+          {listed.length === 0 ? (
+            <p className={classes.empty}>
+              {search.trim()
+                ? 'Nothing matches.'
+                : 'Drag bookmarks and folders onto a folder to file them.'}
+            </p>
+          ) : null}
+        </section>
+        <ColumnSplitter
+          label="Resize the issue lists"
+          width={widths.issues}
+          min={COLUMN_LIMITS.issues.min}
+          max={COLUMN_LIMITS.issues.max}
+          direction={-1}
+          onResize={(issues) => {
+            setWidths((current) => ({ ...current, issues }));
+          }}
+        />
+
+        <div
+          className={classes.issues}
+          style={{ '--column-width': `${widths.issues}px` } as CSSProperties}
+        >
+          <IssuesPanel
+            tree={scopedTree}
+            folders={folders}
+            scopeLabel={scope ? scope.title || '(untitled)' : null}
+            onReveal={revealFolder}
+            checkedIds={checked}
+            onToggleChecked={toggleChecked}
+            onEdit={(id, changes) => {
+              act(() => updateNode(id, changes));
+            }}
+            onDelete={(id) => {
+              act(() => removeNode(id, false));
+            }}
+            onDeleteFolder={(id) => {
+              act(() => removeNode(id, true));
+            }}
+            onRenameFolder={(id, title) => {
+              act(() => updateNode(id, { title }));
+            }}
+            onMove={handleMove}
+          />
+        </div>
       </div>
     </div>
   );

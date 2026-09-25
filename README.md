@@ -185,7 +185,11 @@ npm test
 8. Adjust the closed-date range inputs to refresh closed items for a specific window, or use **Reset to default** to restore the default today-to-7-days-ago range.
 9. Optionally enable **Show task parent details** to see the full hierarchy grouped instead, with each task under its parent.
 10. Use the per-day refetch button beside any closed-date heading to reload only that day.
-11. Star an Azure DevOps page with the toggle beside the favorites menu. The
+11. The pop-out button beside **Close duplicate tabs** moves the panel into a
+    window of its own — useful on a second screen, since the browser's side
+    panel is fixed to one edge. Only one is ever open, and it remembers its
+    size and position.
+12. Star an Azure DevOps page with the toggle beside the favorites menu. The
     menu opens at the full width of the side panel, and each entry shows the
     page's icon taken from the browser's own favicon cache — the same icon the
     bookmarks menu draws, so favorites synced in from another machine are
@@ -211,18 +215,31 @@ npm test
     bookmark sync. A favorite added, renamed or deleted on another machine is
     adopted here once the browser syncs it; the panel only overrides the folder
     for a favorite you just added.
-12. Open the **Active item** tab to create child tasks. The tab resolves context from the last visited Azure DevOps work-item view (or the pinned item if set), so it can continue working even when a non-DevOps tab is active.
+13. Open the **Active item** tab to create child tasks. The tab resolves context from the last visited Azure DevOps work-item view (or the pinned item if set), so it can continue working even when a non-DevOps tab is active.
 
 The extension queries Azure DevOps with its runtime-minted PAT (over HTTP Basic auth) and displays matching work items in the side panel.
 
 ## Bookmark manager
 
 The **Bookmarks** button in the favorites palette opens the extension's own
-bookmark manager instead of the browser's. The browser's manager cannot tell you
+bookmark manager instead of the browser's. It opens in a window of its own — a
+popup, so there is no tab strip, bookmarks bar or navigation toolbar in the way
+— and there is never more than one: pressing the button again raises the window
+already open rather than starting a second view of the same tree. The window
+remembers where you left it and how big it was, which is the point on a wide
+screen. The browser's manager cannot tell you
 what is saved twice or what is now empty, which is most of the reason it gets
 opened in the first place.
 
-The page is split two thirds to one third. The left two thirds are for
+The page is three columns with a drag handle between each. The folder tree and
+the issue lists are sized by hand and remembered per browser; the contents in
+the middle take whatever is left, so widening the window feeds the list of
+bookmarks rather than the chrome around it. The handles work from the keyboard
+too — focus one and use the arrow keys. Below 1000px the columns stack and the
+handles go away. The defaults are the sizes the page has always had, so nothing
+moves until you drag something.
+
+The left of the page is for
 reorganising: the folder tree, the selected folder's contents beside it, and
 dragging a bookmark or a folder onto a folder files it there. A folder cannot be
 dropped into itself or into one of its own descendants. Each folder row carries
@@ -236,7 +253,7 @@ brings them back. The search box at the top
 spans every folder, which is what you want when you cannot remember where
 something was filed.
 
-The right third holds four lists, one tab at a time and each with its own filter:
+The right column holds four lists, one tab at a time and each with its own filter:
 
 - **Duplicate name** — bookmarks sharing a title, wherever they live.
 - **Duplicate path** — the same address, ignoring search parameters and the

@@ -228,25 +228,133 @@ async function reloadActiveAzureDevOpsTab(): Promise<void> {
 }
 
 /**
- * Opens this extension's bookmark manager, reusing its tab if one is open.
+ * The extension's own pages that open in a window of their own.
  *
- * It replaces the browser's own manager here because the browser's cannot show
- * what is duplicated or empty, which is most of what the page is opened to fix.
- * A second tab of it would be two views of the same tree that can disagree on
- * screen, so an open one is raised instead.
+ * Both follow the same rule: exactly one at a time, in a window rather than a
+ * tab, remembering where it was left. A second copy of either would be a second
+ * view of the same state, free to disagree with the first on screen and to act
+ * on things the other has already changed.
  */
-async function openBookmarkManager(): Promise<void> {
-  const url = chrome.runtime.getURL('bookmarks.html');
-  const [open] = await chrome.tabs.query({ url });
-  if (open?.id != null) {
-    await chrome.tabs.update(open.id, { active: true });
-    if (open.windowId != null) {
-      await chrome.windows.update(open.windowId, { focused: true });
+const SINGLETON_WINDOWS = {
+  bookmarks: {
+    page: 'bookmarks.html',
+    boundsKey: 'bookmarkManagerWindowBounds',
+    defaults: { width: 1280, height: 900 }
+  },
+  panel: {
+    page: 'sidepanel.html',
+    boundsKey: 'panelWindowBounds',
+    // Narrow, because it is the side panel: the layout is built for that width
+    // and a wide window only stretches the rows.
+    defaults: { width: 460, height: 900 }
+  }
+} as const;
+
+type SingletonWindowName = keyof typeof SINGLETON_WINDOWS;
+
+interface WindowBounds {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+function isWindowBounds(value: unknown): value is WindowBounds {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const bounds = value as Record<string, unknown>;
+  return (['left', 'top', 'width', 'height'] as const).every(
+    (key) => typeof bounds[key] === 'number'
+  );
+}
+
+/** Every tab showing one of these pages, across every window. */
+async function findSingletonWindowTabs(
+  name: SingletonWindowName
+): Promise<chrome.tabs.Tab[]> {
+  const url = chrome.runtime.getURL(SINGLETON_WINDOWS[name].page);
+  const tabs = await chrome.tabs.query({});
+  // Matched by prefix rather than through the query's url filter: a tab still
+  // loading carries its address in pendingUrl, and one the page has since given
+  // a hash would not match the bare address exactly. The side panel's own
+  // instance is not a tab, so it is never caught here.
+  return tabs.filter((tab) =>
+    (tab.url ?? tab.pendingUrl ?? '').startsWith(url)
+  );
+}
+
+/**
+ * Opens one of these pages in its own window, or raises the one already open.
+ *
+ * Any extra copy that has appeared regardless is closed, so the rule holds even
+ * if a window was restored by the browser on startup.
+ */
+async function openSingletonWindow(name: SingletonWindowName): Promise<void> {
+  const { page, boundsKey, defaults } = SINGLETON_WINDOWS[name];
+  const url = chrome.runtime.getURL(page);
+  const [existing, ...extras] = await findSingletonWindowTabs(name);
+
+  if (existing?.id != null) {
+    // Closed before focusing, so the one being raised is the survivor.
+    const extraIds = extras
+      .map((tab) => tab.id)
+      .filter((id): id is number => id != null);
+    if (extraIds.length > 0) {
+      await chrome.tabs.remove(extraIds);
+    }
+    await chrome.tabs.update(existing.id, { active: true });
+    if (existing.windowId != null) {
+      // A minimized window takes focus without showing itself, so it is
+      // restored first.
+      await chrome.windows.update(existing.windowId, {
+        focused: true,
+        state: 'normal'
+      });
     }
     return;
   }
-  await chrome.tabs.create({ url });
+
+  const stored = await chrome.storage.local.get(boundsKey);
+  const bounds = stored[boundsKey];
+
+  await chrome.windows.create({
+    url,
+    type: 'popup',
+    ...(isWindowBounds(bounds) ? bounds : defaults)
+  });
 }
+
+/**
+ * Opens this extension's bookmark manager.
+ *
+ * It replaces the browser's own because the browser's cannot show what is
+ * duplicated or empty, which is most of what it gets opened for.
+ */
+async function openBookmarkManager(): Promise<void> {
+  await openSingletonWindow('bookmarks');
+}
+
+/** Remembers where one of these windows was left, for the next time it opens. */
+chrome.windows.onBoundsChanged.addListener((window) => {
+  void (async () => {
+    const { left, top, width, height } = window;
+    if (left == null || top == null || width == null || height == null) {
+      return;
+    }
+    for (const name of Object.keys(
+      SINGLETON_WINDOWS
+    ) as SingletonWindowName[]) {
+      const tabs = await findSingletonWindowTabs(name);
+      if (tabs.some((tab) => tab.windowId === window.id)) {
+        await chrome.storage.local.set({
+          [SINGLETON_WINDOWS[name].boundsKey]: { left, top, width, height }
+        });
+        return;
+      }
+    }
+  })();
+});
 
 /**
  * Navigates to a favorite: in place by default, in a new tab when asked.
@@ -286,6 +394,10 @@ type RuntimeMessage =
       payload: {
         term: string;
       };
+    }
+  | {
+      type: 'OPEN_PANEL_WINDOW';
+      payload?: undefined;
     }
   | {
       type: 'OPEN_BOOKMARK_MANAGER';
@@ -474,6 +586,15 @@ chrome.runtime.onMessage.addListener(
         .then(({ result, icons }) =>
           sendResponse({ ok: true, result: { ...result, icons } })
         )
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'OPEN_PANEL_WINDOW') {
+      openSingletonWindow('panel')
+        .then(() => sendResponse({ ok: true, result: null }))
         .catch((error: Error) =>
           sendResponse({ ok: false, error: error.message })
         );
