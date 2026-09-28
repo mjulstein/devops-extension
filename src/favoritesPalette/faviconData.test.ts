@@ -133,7 +133,7 @@ describe('loadFaviconsForUrls with an icon the caller already has', () => {
       new Map(),
       {
         fetchFn: fetchFn,
-        toDataUrl: async () => '',
+        toDataUrl: () => Promise.resolve(''),
         ownIconFor: (url) => (url.includes('_git') ? 'repo.png' : 'board.png')
       }
     );
