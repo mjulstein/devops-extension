@@ -81,8 +81,13 @@ export interface PaletteOptions {
    * leaves the palette rather than acting within it.
    */
   onOpenSettings?: () => void;
-  /** Shows the side panel on the window being browsed in. */
-  onOpenSidePanel?: () => void;
+  /**
+   * Shows the side panel on the window being browsed in. Resolves false when
+   * the browser refuses, which it does when it does not count the click as a
+   * user gesture — the palette then stays open and says so rather than
+   * vanishing with nothing to show for itself.
+   */
+  onOpenSidePanel?: () => Promise<boolean>;
   /**
    * Called once the palette has closed, for whatever reason: Escape, the
    * backdrop, or a row being opened. The window host uses it to close the
@@ -371,8 +376,17 @@ export function openFavoritesPalette({
     panelButton.title = 'Show the side panel';
     panelButton.setAttribute('aria-label', 'Show the side panel');
     panelButton.addEventListener('click', () => {
-      close();
-      onOpenSidePanel();
+      // Not closed first: closing tears this page down, and the call below has
+      // to happen while the click is still the browser's idea of a gesture.
+      void onOpenSidePanel().then((opened) => {
+        if (opened) {
+          close();
+          return;
+        }
+        panelButton.textContent = '▤ refused';
+        panelButton.title =
+          'The browser would not open the side panel from here. Use the extension icon.';
+      });
     });
     footer.append(panelButton);
   }

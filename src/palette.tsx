@@ -50,6 +50,10 @@ async function main(): Promise<void> {
     icons: {}
   };
 
+  // Fetched now so the click handler has it without awaiting: see the note on
+  // onOpenSidePanel below.
+  const browsingWindowId = await ask<number>('GET_BROWSING_WINDOW_ID');
+
   let pinned = false;
   let idleTimer: number | undefined;
 
@@ -93,8 +97,25 @@ async function main(): Promise<void> {
     onOpenSettings: () => {
       void chrome.runtime.sendMessage({ type: 'OPEN_SETTINGS_WINDOW' });
     },
-    onOpenSidePanel: () => {
-      void chrome.runtime.sendMessage({ type: 'OPEN_SIDE_PANEL' });
+    onOpenSidePanel: async () => {
+      // Called here rather than in the worker because `sidePanel.open` needs a
+      // user gesture, and a runtime message does not carry this window's click
+      // into the worker — which is why routing it through the worker opened
+      // nothing at all. The window id was fetched when the palette loaded, so
+      // there is no await between the click and the call to spend the gesture.
+      try {
+        if (browsingWindowId !== null) {
+          await chrome.sidePanel.open({ windowId: browsingWindowId });
+          return true;
+        }
+      } catch {
+        // Falls through to asking the worker, which sometimes has a gesture of
+        // its own to spend.
+      }
+      const response: { ok: boolean } = await chrome.runtime.sendMessage({
+        type: 'OPEN_SIDE_PANEL'
+      });
+      return response.ok;
     },
     onOpenBookmarkManager: () => {
       void chrome.runtime.sendMessage({ type: 'OPEN_BOOKMARK_MANAGER' });

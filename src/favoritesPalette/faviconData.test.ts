@@ -126,10 +126,13 @@ describe('loadFaviconsForUrls with an icon the caller already has', () => {
   it('uses it and never asks the browser cache', async () => {
     const fetchFn = vi.fn();
     const icons = await loadFaviconsForUrls(
-      ['https://dev.azure.com/o/p/_boards/b', 'https://dev.azure.com/o/p/_git/r'],
+      [
+        'https://dev.azure.com/o/p/_boards/b',
+        'https://dev.azure.com/o/p/_git/r'
+      ],
       new Map(),
       {
-        fetchFn: fetchFn as unknown as typeof fetch,
+        fetchFn: fetchFn,
         toDataUrl: async () => '',
         ownIconFor: (url) => (url.includes('_git') ? 'repo.png' : 'board.png')
       }

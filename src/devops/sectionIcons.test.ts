@@ -23,7 +23,9 @@ describe('adoSectionOf', () => {
   });
 
   it('covers the legacy host too', () => {
-    expect(adoSectionOf('https://acme.visualstudio.com/p/_git/r')).toBe('repos');
+    expect(adoSectionOf('https://acme.visualstudio.com/p/_git/r')).toBe(
+      'repos'
+    );
   });
 
   it('is null for anywhere else, so the site favicon is used', () => {
@@ -36,9 +38,9 @@ describe('sectionIconForUrl', () => {
   const boards = 'https://dev.azure.com/org/proj/_boards/board';
 
   it('prefers the scraped icon when one has been cached', () => {
-    expect(sectionIconForUrl(boards, { boards: 'https://cdn.test/b.png' })).toBe(
-      'https://cdn.test/b.png'
-    );
+    expect(
+      sectionIconForUrl(boards, { boards: 'https://cdn.test/b.png' })
+    ).toBe('https://cdn.test/b.png');
   });
 
   it('uses the built-in icon when nothing has been scraped yet', () => {

@@ -494,15 +494,30 @@ chrome.windows.onFocusChanged.addListener((windowId) => {
  * panel, so opening it there would do nothing visible. The most recently focused
  * ordinary window is the one the panel belongs to.
  */
-async function openSidePanelForCurrentWindow(): Promise<void> {
+/**
+ * The ordinary browser window the side panel belongs to.
+ *
+ * Fetched before it is needed, because `sidePanel.open` has to be called while
+ * a user gesture is still active and any await in between spends it.
+ */
+async function browsingWindowId(): Promise<number | null> {
   const windows = await chrome.windows.getAll();
   const target =
     windows.find((window) => window.type === 'normal' && window.focused) ??
     windows.find((window) => window.type === 'normal');
-  if (target?.id == null) {
+  return target?.id ?? null;
+}
+
+async function openSidePanelForCurrentWindow(): Promise<void> {
+  const windowId = await browsingWindowId();
+  if (windowId === null) {
     throw new Error('No browser window to open the side panel in.');
   }
-  await chrome.sidePanel.open({ windowId: target.id });
+  // Worth attempting even though the gesture that asked for this happened in
+  // another page: when the worker was woken by something the browser does count,
+  // it works, and when it is refused the caller has already tried the direct
+  // route itself.
+  await chrome.sidePanel.open({ windowId });
 }
 
 /** Remembers where one of these windows was left, for the next time it opens. */
@@ -583,6 +598,10 @@ type RuntimeMessage =
     }
   | {
       type: 'OPEN_SIDE_PANEL';
+      payload?: undefined;
+    }
+  | {
+      type: 'GET_BROWSING_WINDOW_ID';
       payload?: undefined;
     }
   | {
@@ -799,6 +818,15 @@ chrome.runtime.onMessage.addListener(
     if (message.type === 'OPEN_SETTINGS_WINDOW') {
       openSingletonWindow('settings')
         .then(() => sendResponse({ ok: true, result: null }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'GET_BROWSING_WINDOW_ID') {
+      browsingWindowId()
+        .then((result) => sendResponse({ ok: true, result }))
         .catch((error: Error) =>
           sendResponse({ ok: false, error: error.message })
         );

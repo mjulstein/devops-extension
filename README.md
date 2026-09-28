@@ -214,7 +214,9 @@ npm test
     another browser window takes focus, or after fifteen seconds untouched —
     **📌 Pin** in its header stops both, and as with the other windows only one
     is ever open. Its footer has two buttons: **▤** shows the side panel on the
-    window you are browsing in, and **⚙** opens Settings in a window of its own,
+    window you are browsing in (the browser can refuse this — it wants a click
+    it recognises as yours, and the palette is a separate window; the button
+    says so rather than closing as if it had worked), and **⚙** opens Settings in a window of its own,
     wide enough to put the fields in columns rather than in the single narrow
     ribbon a side panel forces. Switching to another application does not close it, which
     would otherwise make it unusable the moment you copied something from
