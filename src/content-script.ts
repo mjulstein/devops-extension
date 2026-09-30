@@ -146,6 +146,12 @@ function handleRuntimeMessage(
         tokens: message.payload.tokens,
         icons: message.payload.icons,
         apps: message.payload.apps,
+        onRunCommand: (id, args) => {
+          void chrome.runtime.sendMessage({
+            type: 'RUN_QUICK_COMMAND',
+            payload: { id, args }
+          });
+        },
         onAddAppEnvironment: (app, env, url) => {
           void chrome.runtime.sendMessage({
             type: 'ADD_APP_ENVIRONMENT',

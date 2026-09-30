@@ -17,6 +17,11 @@ import { searchAllBookmarks } from '../bookmarkSync';
 import { getFavoriteIconUrl } from '../favoriteIcon';
 import { useSectionIcons } from '../useSectionIcons';
 import { useApps } from '../apps/useApps';
+import {
+  completeCommand,
+  QUICK_COMMANDS,
+  readCommand
+} from '../commands/quickCommands';
 import { Button } from './Button';
 
 /**
@@ -185,6 +190,17 @@ export function StarredPagesMenu({
       setQuery(`.${entry.folder.title}`);
       setHighlight(0);
       searchRef.current?.focus();
+      return;
+    }
+    if (entry.kind === 'command') {
+      const invocation = readCommand([entry.command], entry.text);
+      if (invocation !== null) {
+        close();
+        void chrome.runtime.sendMessage({
+          type: 'RUN_QUICK_COMMAND',
+          payload: { id: invocation.command.id, args: invocation.args }
+        });
+      }
       return;
     }
     if (entry.kind === 'app') {
@@ -375,6 +391,12 @@ export function StarredPagesMenu({
     }
     // Tab steps an app row through its environments, and is left to the
     // browser's focus cycle on every other kind of row.
+    if (event.key === 'Tab' && visible[highlight]?.kind === 'command') {
+      event.preventDefault();
+      const parsed = parseFavoritesQuery(query);
+      setQuery(`>${completeCommand(QUICK_COMMANDS, parsed.term)}`);
+      return;
+    }
     if (event.key === 'Tab' && visible[highlight]?.kind === 'app') {
       event.preventDefault();
       setAppStep((step) => step + (event.shiftKey ? -1 : 1));
@@ -496,6 +518,10 @@ export function StarredPagesMenu({
                   {entry.kind === 'folder' ? (
                     <span aria-hidden="true" className={classes.folderIcon}>
                       📁
+                    </span>
+                  ) : entry.kind === 'command' ? (
+                    <span aria-hidden="true" className={classes.folderIcon}>
+                      ›
                     </span>
                   ) : entry.kind === 'app' ? (
                     <span aria-hidden="true" className={classes.folderIcon}>

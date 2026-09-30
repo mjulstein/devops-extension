@@ -31,6 +31,11 @@ import {
   type PaletteView
 } from './paletteModel';
 import { parseFavoritesQuery } from '@/sidepanel/favoritesQuery';
+import {
+  completeCommand,
+  QUICK_COMMANDS,
+  readCommand
+} from '@/sidepanel/commands/quickCommands';
 import type { AppEntry } from '@/sidepanel/apps/appDns';
 
 const HOST_ID = 'devops-ext-favorites-palette';
@@ -94,6 +99,8 @@ export interface PaletteOptions {
    * a suggested address still opens — it just does not join the folder.
    */
   onAddAppEnvironment?: (app: string, env: string, url: string) => void;
+  /** Runs a command chosen from the `>` list. */
+  onRunCommand?: (id: string, args: string[]) => void;
   /**
    * Shows the side panel on the window being browsed in. Resolves false when
    * the browser refuses, which it does when it does not count the click as a
@@ -300,6 +307,7 @@ export function openFavoritesPalette({
   isPinned = false,
   onOpenSettings,
   onAddAppEnvironment,
+  onRunCommand,
   onOpenSidePanel,
   onClose,
   container = document.body
@@ -472,6 +480,16 @@ export function openFavoritesPalette({
       rebuild();
       requestWidenedSearch();
       search.focus();
+      return;
+    }
+
+    if (target.kind === 'command') {
+      const invocation = readCommand([target.command], target.text);
+      if (invocation === null || !onRunCommand) {
+        return;
+      }
+      close();
+      onRunCommand(invocation.command.id, invocation.args);
       return;
     }
 
@@ -658,6 +676,12 @@ export function openFavoritesPalette({
       // again rather than carrying the last row's position onto this one.
       appStep = 0;
       render();
+      return;
+    }
+    if (action.kind === 'complete-command') {
+      const parsed = parseFavoritesQuery(search.value);
+      search.value = `>${completeCommand(QUICK_COMMANDS, parsed.term)}`;
+      rebuild();
       return;
     }
     if (action.kind === 'step-app') {

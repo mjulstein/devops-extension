@@ -17,11 +17,17 @@ import { parseFavoritesQuery } from './favoritesQuery';
 import type { BookmarkFolder } from './bookmarkFolders';
 import type { AppEntry } from './apps/appDns';
 import { matchApps, parseAppQuery, resolveAppTarget } from './apps/appsQuery';
+import {
+  matchCommands,
+  QUICK_COMMANDS,
+  type QuickCommand
+} from './commands/quickCommands';
 
 /** A row is somewhere to go, a folder to look inside, or an app to aim. */
 export type FavoritesRow =
   | { kind: 'page'; page: StarredPage }
   | { kind: 'folder'; folder: BookmarkFolder }
+  | { kind: 'command'; command: QuickCommand; text: string }
   | {
       kind: 'app';
       app: AppEntry;
@@ -76,6 +82,20 @@ export function buildFavoritesListing(
   apps: AppEntry[] = []
 ): FavoritesListing {
   const parsed = parseFavoritesQuery(query);
+
+  if (parsed.scope === 'commands') {
+    return buildSections([
+      {
+        label: 'Commands',
+        indent: false,
+        rows: matchCommands(QUICK_COMMANDS, parsed.term).map((command) => ({
+          kind: 'command',
+          command,
+          text: parsed.term
+        }))
+      }
+    ]);
+  }
 
   if (parsed.scope === 'all') {
     return buildWidenedListing(widened, parsed.term);
@@ -197,6 +217,9 @@ export function rowKey(row: FavoritesRow): string {
   if (row.kind === 'page') {
     return `page:${row.page.url}`;
   }
+  if (row.kind === 'command') {
+    return `command:${row.command.id}`;
+  }
   return row.kind === 'folder'
     ? `folder:${row.folder.id}`
     : `app:${row.app.name}`;
@@ -206,6 +229,9 @@ export function rowKey(row: FavoritesRow): string {
 export function rowLabel(row: FavoritesRow): string {
   if (row.kind === 'page') {
     return row.page.label;
+  }
+  if (row.kind === 'command') {
+    return row.command.usage;
   }
   return row.kind === 'folder' ? row.folder.title : row.app.name;
 }
@@ -225,6 +251,9 @@ export function appRowTarget(row: FavoritesRow, step = 0) {
 export function rowDetail(row: FavoritesRow, step = 0): string {
   if (row.kind === 'page') {
     return row.page.url;
+  }
+  if (row.kind === 'command') {
+    return row.command.description;
   }
   if (row.kind === 'app') {
     const target = appRowTarget(row, step);

@@ -1,4 +1,5 @@
 import {
+  parseAppUrl,
   appBaseHost,
   deriveEnvUrl,
   envToken,
@@ -179,5 +180,62 @@ describe('deriveEnvUrl', () => {
 describe('envToken', () => {
   it('is a hostname-safe form of the name the user typed', () => {
     expect(envToken('  User Test ')).toBe('user-test');
+  });
+});
+
+describe('parseAppUrl', () => {
+  it('reads a hyphenless subdomain as the environment', () => {
+    expect(parseAppUrl('https://test.my-app.com/')).toEqual({
+      appHost: 'my-app.com',
+      appName: 'my-app',
+      envName: 'test',
+      style: 'own-domain'
+    });
+  });
+
+  it('reads a hyphenated subdomain as the app under somebody else domain', () => {
+    expect(parseAppUrl('https://my-app.orgname.com/')).toEqual({
+      appHost: 'my-app.orgname.com',
+      appName: 'my-app',
+      envName: null,
+      style: 'org-subdomain'
+    });
+  });
+
+  it('treats www and a bare domain as the app itself, with no environment', () => {
+    expect(parseAppUrl('https://www.my-app.com/')).toMatchObject({
+      appHost: 'my-app.com',
+      envName: null
+    });
+    expect(parseAppUrl('https://my-app.com/')).toMatchObject({
+      appHost: 'my-app.com',
+      envName: null
+    });
+  });
+
+  it('takes the marker off once the environment is named', () => {
+    // Without the name this looks like an app called my-app-test.
+    expect(parseAppUrl('https://my-app-test.orgname.com/', 'test')).toEqual({
+      appHost: 'my-app.orgname.com',
+      appName: 'my-app',
+      envName: 'test',
+      style: 'org-subdomain'
+    });
+    expect(parseAppUrl('https://test.my-app.com/', 'test')).toMatchObject({
+      appHost: 'my-app.com',
+      style: 'own-domain'
+    });
+  });
+
+  it('keeps the whole host when the named environment is not in the address', () => {
+    // Inconsistent DNS: the environment is called live but the host says nothing.
+    expect(parseAppUrl('https://my-app.orgname.com/', 'live')).toMatchObject({
+      appHost: 'my-app.orgname.com',
+      envName: 'live'
+    });
+  });
+
+  it('is null for something that is not an address', () => {
+    expect(parseAppUrl('not a url')).toBeNull();
   });
 });

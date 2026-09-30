@@ -17,7 +17,12 @@ import {
   loadStarredPages
 } from './sidepanel/chromeStorage';
 import { loadThemeTokens } from './sidepanel/theme';
-import { addAppEnvironment, loadApps } from './sidepanel/apps/appsFolder';
+import {
+  addAppEnvironment,
+  createApp,
+  loadApps
+} from './sidepanel/apps/appsFolder';
+import { parseAppUrl } from './sidepanel/apps/appDns';
 import { loadSettings } from './sidepanel/chromeStorage';
 import { searchAllBookmarks } from './sidepanel/bookmarkSync';
 import {
@@ -114,6 +119,67 @@ chrome.commands?.onCommand.addListener((command) => {
  * one is in front, otherwise in the side panel. Shared by the keyboard command
  * and the panel's own trigger so both land on the same surface.
  */
+/**
+ * The address of the page being looked at.
+ *
+ * The commands are run from the palette, which is a window of its own, so "the
+ * current page" is the active tab of the window being browsed in rather than
+ * anything the palette can see for itself.
+ */
+async function browsingPageUrl(): Promise<string | null> {
+  const windowId = await browsingWindowId();
+  if (windowId === null) {
+    return null;
+  }
+  const [tab] = await chrome.tabs.query({ active: true, windowId });
+  return tab?.url ?? null;
+}
+
+/**
+ * Runs a command from the `>` list.
+ *
+ * Both commands work from an address: `add app` registers the app that address
+ * belongs to, and `add app env` files the address under that app. Which app
+ * that is comes from the address itself — told the environment's name, the
+ * marker can be taken off the host, so `my-app-test.orgname.com` lands in
+ * `my-app` rather than in a folder that looks like a fourth app.
+ */
+async function runQuickCommand(
+  id: string,
+  args: string[]
+): Promise<{ ok: true } | { error: string }> {
+  const settings = await loadSettings();
+  const folder = settings.bookmarkFolderName;
+
+  if (id === 'add-app') {
+    const [givenName] = args;
+    if (givenName) {
+      return await createApp(folder, givenName);
+    }
+    const url = await browsingPageUrl();
+    const parsed = url === null ? null : parseAppUrl(url);
+    if (parsed === null) {
+      return { error: 'No page to take an app name from.' };
+    }
+    return await createApp(folder, parsed.appName);
+  }
+
+  if (id === 'add-app-env') {
+    const [env, givenUrl] = args;
+    if (!env) {
+      return { error: 'Name the environment: add app env <env> [url]' };
+    }
+    const url = givenUrl ?? (await browsingPageUrl());
+    const parsed = url == null ? null : parseAppUrl(url, env);
+    if (url == null || parsed === null) {
+      return { error: 'No address to add.' };
+    }
+    return await addAppEnvironment(folder, parsed.appName, env, url);
+  }
+
+  return { error: `No such command: ${id}` };
+}
+
 /** Everything the palette needs to draw itself, wherever it is drawn. */
 async function loadFavoritesPaletteData() {
   const [favorites, quickTasks, tokens, apps] = await Promise.all([
@@ -612,6 +678,10 @@ type RuntimeMessage =
       payload: { app: string; env: string; url: string };
     }
   | {
+      type: 'RUN_QUICK_COMMAND';
+      payload: { id: string; args: string[] };
+    }
+  | {
       type: 'OPEN_BOOKMARK_MANAGER';
       payload?: undefined;
     }
@@ -825,6 +895,21 @@ chrome.runtime.onMessage.addListener(
     if (message.type === 'OPEN_SETTINGS_WINDOW') {
       openSingletonWindow('settings')
         .then(() => sendResponse({ ok: true, result: null }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'RUN_QUICK_COMMAND') {
+      runQuickCommand(message.payload.id, message.payload.args)
+        .then((result) =>
+          sendResponse(
+            'error' in result
+              ? { ok: false, error: result.error }
+              : { ok: true, result: null }
+          )
+        )
         .catch((error: Error) =>
           sendResponse({ ok: false, error: error.message })
         );

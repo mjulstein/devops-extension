@@ -106,6 +106,43 @@ export async function loadApps(
   }
 }
 
+/** Creates an app's folder, or finds the one already there. */
+export async function createApp(
+  favoritesFolderName: string,
+  appName: string
+): Promise<{ ok: true } | { error: string }> {
+  const folder = await appFolderId(favoritesFolderName, appName);
+  return 'error' in folder ? folder : { ok: true };
+}
+
+/** The app's folder, making it and everything above it if need be. */
+async function appFolderId(
+  favoritesFolderName: string,
+  appName: string
+): Promise<{ id: string } | { error: string }> {
+  if (!favoritesFolderName.trim()) {
+    return { error: 'Name a favorites folder in Settings first.' };
+  }
+  if (!appName.trim()) {
+    return { error: 'That address does not say what the app is called.' };
+  }
+
+  const favorites = await findOrCreateFolderByName(favoritesFolderName);
+  if ('error' in favorites) {
+    return favorites;
+  }
+
+  const appsFolder = await findOrCreateChildFolder(
+    favorites.id,
+    APPS_BOOKMARK_FOLDER
+  );
+  if ('error' in appsFolder) {
+    return appsFolder;
+  }
+
+  return await findOrCreateChildFolder(appsFolder.id, appName.trim());
+}
+
 /**
  * Adds an environment to an app, creating the folders on the way.
  *
@@ -119,27 +156,7 @@ export async function addAppEnvironment(
   envName: string,
   url: string
 ): Promise<{ ok: true } | { error: string }> {
-  if (!favoritesFolderName.trim()) {
-    return { error: 'Name a favorites folder in Settings first.' };
-  }
-
-  const favorites = await findOrCreateFolderByName(favoritesFolderName);
-  if ('error' in favorites) {
-    return { error: favorites.error };
-  }
-
-  const appsFolder = await findOrCreateChildFolder(
-    favorites.id,
-    APPS_BOOKMARK_FOLDER
-  );
-  if ('error' in appsFolder) {
-    return { error: appsFolder.error };
-  }
-
-  const appFolder = await findOrCreateChildFolder(
-    appsFolder.id,
-    appName.trim()
-  );
+  const appFolder = await appFolderId(favoritesFolderName, appName);
   if ('error' in appFolder) {
     return { error: appFolder.error };
   }

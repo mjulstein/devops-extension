@@ -60,6 +60,8 @@ export type PaletteKeyAction =
   | { kind: 'move'; highlight: number }
   /** Aim the highlighted app row at its next environment. */
   | { kind: 'step-app'; delta: 1 | -1 }
+  /** Complete the typed command to the nearest name. */
+  | { kind: 'complete-command' }
   | { kind: 'ignore' };
 
 /**
@@ -92,7 +94,11 @@ export function resolvePaletteKey(
   // else in the dialog Tab should still move focus, which is what a keyboard
   // user expects of it.
   if (key === 'Tab') {
-    return view.rows[view.highlight]?.kind === 'app'
+    const row = view.rows[view.highlight];
+    if (row?.kind === 'command') {
+      return { kind: 'complete-command' };
+    }
+    return row?.kind === 'app'
       ? { kind: 'step-app', delta: shiftKey ? -1 : 1 }
       : { kind: 'ignore' };
   }

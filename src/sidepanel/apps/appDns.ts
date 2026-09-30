@@ -37,6 +37,104 @@ export interface AppEntry {
 
 export type AppDnsStyle = 'org-subdomain' | 'own-domain';
 
+export interface ParsedAppUrl {
+  /** The app's own address, with any environment marker taken off. */
+  appHost: string;
+  /** A folder name for the app: the label that identifies it. */
+  appName: string;
+  /** The environment the address names, if it names one. */
+  envName: string | null;
+  style: AppDnsStyle;
+}
+
+/** The label an app is known by: the leftmost part of its own address. */
+function nameFromHost(host: string): string {
+  return splitHost(host).label;
+}
+
+/**
+ * What a single address says about the app and environment it belongs to.
+ *
+ * The subdomain is the tell. A subdomain with no hyphen in it is an environment
+ * — `test.my-app.com` is the test environment of `my-app.com` — because an app
+ * whose name needs no hyphen is not what a subdomain there usually means. A
+ * subdomain *with* a hyphen is the app itself, sitting under somebody's domain:
+ * `my-app.orgname.com`. And `www`, or no subdomain at all, is the app on its own
+ * domain with no environment named.
+ *
+ * Naming the environment removes the guesswork entirely, which is what the
+ * commands do: told that this is `test`, the marker can be found in the address
+ * and taken off, so `my-app-test.orgname.com` files under `my-app` rather than
+ * under an app that looks like it is called `my-app-test`.
+ */
+export function parseAppUrl(
+  rawUrl: string,
+  knownEnv: string | null = null
+): ParsedAppUrl | null {
+  const host = hostOf(rawUrl);
+  if (host === null || host === '') {
+    return null;
+  }
+
+  const { label: sub, rest } = splitHost(host);
+  const token = knownEnv === null ? null : envToken(knownEnv);
+
+  if (token !== null && token !== '' && rest !== '') {
+    if (sub === token) {
+      return {
+        appHost: rest,
+        appName: nameFromHost(rest),
+        envName: knownEnv,
+        style: 'own-domain'
+      };
+    }
+    if (sub.endsWith(`-${token}`)) {
+      const label = sub.slice(0, -(token.length + 1));
+      return {
+        appHost: `${label}.${rest}`,
+        appName: label,
+        envName: knownEnv,
+        style: 'org-subdomain'
+      };
+    }
+  }
+
+  // No subdomain: the app is the domain itself.
+  if (rest === '' || host.split('.').length <= 2) {
+    return {
+      appHost: host,
+      appName: nameFromHost(host),
+      envName: knownEnv,
+      style: 'own-domain'
+    };
+  }
+
+  if (sub === 'www') {
+    return {
+      appHost: rest,
+      appName: nameFromHost(rest),
+      envName: knownEnv,
+      style: 'own-domain'
+    };
+  }
+
+  if (!sub.includes('-')) {
+    return {
+      appHost: rest,
+      appName: nameFromHost(rest),
+      envName: knownEnv ?? sub,
+      style: 'own-domain'
+    };
+  }
+
+  return {
+    appHost: host,
+    appName: sub,
+    envName: knownEnv,
+    style: 'org-subdomain'
+  };
+}
+
 /** An environment name as it appears in a hostname. */
 export function envToken(name: string): string {
   return name.trim().toLowerCase().replace(/\s+/g, '-');
@@ -122,10 +220,9 @@ export function inferDnsStyle(environments: AppEnvironment[]): AppDnsStyle {
     }
   }
 
-  const first = environments[0] ? hostOf(environments[0].url) : null;
-  return first !== null && first.split('.').length >= 3
-    ? 'org-subdomain'
-    : 'own-domain';
+  // Nothing to compare: the one address is read on its own terms.
+  const only = environments[0];
+  return only ? (parseAppUrl(only.url)?.style ?? 'own-domain') : 'own-domain';
 }
 
 /**

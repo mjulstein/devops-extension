@@ -49,9 +49,28 @@ Which shape an app uses is never configured and never guessed from a list of
 known environment names — there is no such list anywhere in here, deliberately.
 It is read back out of the addresses already stored for the app. Two of them are
 enough to see the pattern outright, including the case where every address
-carries its own marker and none is the plain one. With a single address the
-label count decides: three labels deep is somebody's subdomain, two is the app's
-own domain.
+carries its own marker and none is the plain one.
+
+With a single address, `parseAppUrl` reads the subdomain:
+
+- **no hyphen in it** — it is the environment. `test.my-app.com` is the test
+  environment of `my-app.com`, because an app whose name needs no hyphen is not
+  usually what a subdomain there means.
+- **`www`, or no subdomain at all** — the app is the main domain, with no
+  environment named.
+- **a hyphen in it** — it is the app, sitting under somebody else's domain:
+  `my-app.orgname.com`.
+
+Naming the environment removes the guesswork, which is what the commands do:
+told that an address is `test`, the marker is found and taken off, so
+`my-app-test.orgname.com` files under `my-app` rather than under something that
+looks like a fourth app.
+
+One consequence worth knowing: an app with no hyphen in its name, sitting on an
+organization's domain — `myapp.orgname.com` — reads as the `myapp` environment
+of `orgname.com`, because from the address alone there is nothing to tell the
+two apart. Give it a name when registering it (`>add app myapp`) and add its
+addresses explicitly.
 
 ## Derivation is a suggestion
 

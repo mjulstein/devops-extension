@@ -82,6 +82,12 @@ async function main(): Promise<void> {
     tokens: data.tokens,
     icons: data.icons,
     apps: data.apps,
+    onRunCommand: (id, args) => {
+      void chrome.runtime.sendMessage({
+        type: 'RUN_QUICK_COMMAND',
+        payload: { id, args }
+      });
+    },
     onAddAppEnvironment: (app, env, url) => {
       void chrome.runtime.sendMessage({
         type: 'ADD_APP_ENVIRONMENT',
