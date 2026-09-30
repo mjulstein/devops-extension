@@ -7,8 +7,16 @@ the row rather than each taking a row of its own.
 
 An app is a family of addresses for the same thing. Listing every environment
 separately would bury the favorites and the other apps between them, so the
-search shows the app once and the environment is picked three ways: **Enter**
-takes the first, **Tab** steps to the next, and typing a second word names one.
+plain search shows the app once and the environment is picked three ways:
+**Enter** takes the first, **Tab** steps to the next, and typing a second word
+names one.
+
+That is the fast path, and it assumes you know what the environment is called.
+The `-` prefix is the other one: on its own it lists the apps, naming one walks
+into its folder and shows the bookmarks inside, and a further word filters
+them. Same shape as the `.` prefix for bookmark folders, for the same reason —
+when you cannot remember what an app's environments are called, being shown
+them beats having to name one.
 
 | File | What it holds |
 | --- | --- |

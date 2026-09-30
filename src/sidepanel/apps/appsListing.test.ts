@@ -90,3 +90,66 @@ describe('apps in the favorites listing', () => {
     expect(listing.rows.every((row) => row.kind !== 'app')).toBe(true);
   });
 });
+
+describe('walking into the apps with the - prefix', () => {
+  const two: AppEntry[] = [
+    ...apps,
+    {
+      name: 'other-app',
+      environments: [{ name: 'live', url: 'https://other-app.com/' }]
+    }
+  ];
+
+  it('offers the apps themselves with nothing named', () => {
+    const listing = buildFavoritesListing([], [], '-', undefined, two);
+    expect(listing.rows.map((row) => row.kind)).toEqual([
+      'app-folder',
+      'app-folder'
+    ]);
+    expect(listing.rows.map(rowLabel)).toEqual(['my-app', 'other-app']);
+    expect(rowDetail(listing.rows[0])).toBe('2 environments');
+  });
+
+  it('walks in as soon as the typing names an app', () => {
+    // No second keystroke to enter it: naming the app is asking for it, the
+    // same as typing a bookmark folder's name in a widened search.
+    const listing = buildFavoritesListing([], [], '-other', undefined, two);
+    expect(listing.sections.map((section) => section.label)).toEqual([
+      'other-app'
+    ]);
+    expect(listing.rows.map(rowLabel)).toEqual(['live']);
+  });
+
+  it('shows every app a partial name matches, each under its own heading', () => {
+    const listing = buildFavoritesListing([], [], '-app', undefined, two);
+    expect(listing.sections.map((section) => section.label)).toEqual([
+      'my-app',
+      'other-app'
+    ]);
+  });
+
+  it('lists the environments inside a named app, under its name', () => {
+    const listing = buildFavoritesListing([], [], '-my-app ', undefined, two);
+    expect(listing.sections.map((section) => section.label)).toEqual(['my-app']);
+    expect(listing.sections[0].indent).toBe(true);
+    expect(listing.rows.map(rowLabel)).toEqual(['live', 'test']);
+    expect(rowDetail(listing.rows[0])).toBe('https://my-app.orgname.com/');
+  });
+
+  it('filters the environments by the word after the app', () => {
+    const listing = buildFavoritesListing([], [], '-my-app te', undefined, two);
+    expect(listing.rows.map(rowLabel)).toEqual(['test']);
+  });
+
+  it('shows the app rather than an empty list when nothing inside matches', () => {
+    const listing = buildFavoritesListing([], [], '-my-app zzz', undefined, two);
+    expect(listing.rows.map((row) => row.kind)).toEqual(['app-folder']);
+  });
+
+  it('says so for an app with nothing in it yet', () => {
+    const listing = buildFavoritesListing([], [], '-', undefined, [
+      { name: 'empty', environments: [] }
+    ]);
+    expect(rowDetail(listing.rows[0])).toBe('No environments yet');
+  });
+});

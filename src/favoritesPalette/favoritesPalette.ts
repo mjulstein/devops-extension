@@ -30,7 +30,7 @@ import {
   resolvePaletteKey,
   type PaletteView
 } from './paletteModel';
-import { parseFavoritesQuery } from '@/sidepanel/favoritesQuery';
+import { APPS_PREFIX, parseFavoritesQuery } from '@/sidepanel/favoritesQuery';
 import {
   completeCommand,
   QUICK_COMMANDS,
@@ -483,6 +483,16 @@ export function openFavoritesPalette({
       return;
     }
 
+    if (target.kind === 'app-folder') {
+      // Walks into the app, the same way picking a bookmark folder walks into
+      // that folder: retype the search as its name and show what is inside.
+      search.value = `${APPS_PREFIX}${target.app.name} `;
+      rebuild();
+      requestWidenedSearch();
+      search.focus();
+      return;
+    }
+
     if (target.kind === 'command') {
       const invocation = readCommand([target.command], target.text);
       if (invocation === null || !onRunCommand) {
@@ -573,7 +583,12 @@ export function openFavoritesPalette({
       // than shifting every title. A folder shows a folder, not a site.
       const iconKey = entry.kind === 'page' ? iconKeyFor(entry.page.url) : null;
       const iconSrc = iconKey === null ? undefined : allIcons[iconKey];
-      if (entry.kind === 'folder') {
+      if (entry.kind === 'app-folder') {
+        const icon = document.createElement('span');
+        icon.className = 'icon folderIcon';
+        icon.textContent = '▤';
+        row.append(icon);
+      } else if (entry.kind === 'folder') {
         const icon = document.createElement('span');
         icon.className = 'icon folderIcon';
         icon.textContent = '📁';

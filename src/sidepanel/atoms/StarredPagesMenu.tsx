@@ -12,7 +12,7 @@ import {
   type WidenedSearchData,
   appRowTarget
 } from '../favoritesListing';
-import { parseFavoritesQuery } from '../favoritesQuery';
+import { APPS_PREFIX, parseFavoritesQuery } from '../favoritesQuery';
 import { searchAllBookmarks } from '../bookmarkSync';
 import { getFavoriteIconUrl } from '../favoriteIcon';
 import { useSectionIcons } from '../useSectionIcons';
@@ -188,6 +188,12 @@ export function StarredPagesMenu({
   ) {
     if (entry.kind === 'folder') {
       setQuery(`.${entry.folder.title}`);
+      setHighlight(0);
+      searchRef.current?.focus();
+      return;
+    }
+    if (entry.kind === 'app-folder') {
+      setQuery(`${APPS_PREFIX}${entry.app.name} `);
       setHighlight(0);
       searchRef.current?.focus();
       return;
@@ -518,6 +524,10 @@ export function StarredPagesMenu({
                   {entry.kind === 'folder' ? (
                     <span aria-hidden="true" className={classes.folderIcon}>
                       📁
+                    </span>
+                  ) : entry.kind === 'app-folder' ? (
+                    <span aria-hidden="true" className={classes.folderIcon}>
+                      ▤
                     </span>
                   ) : entry.kind === 'command' ? (
                     <span aria-hidden="true" className={classes.folderIcon}>

@@ -17,6 +17,7 @@ import { parseFavoritesQuery } from './favoritesQuery';
 import type { BookmarkFolder } from './bookmarkFolders';
 import type { AppEntry } from './apps/appDns';
 import { matchApps, parseAppQuery, resolveAppTarget } from './apps/appsQuery';
+import { envToken } from './apps/appDns';
 import {
   matchCommands,
   QUICK_COMMANDS,
@@ -28,6 +29,8 @@ export type FavoritesRow =
   | { kind: 'page'; page: StarredPage }
   | { kind: 'folder'; folder: BookmarkFolder }
   | { kind: 'command'; command: QuickCommand; text: string }
+  /** An app to walk into, in the `-` listing. */
+  | { kind: 'app-folder'; app: AppEntry }
   | {
       kind: 'app';
       app: AppEntry;
@@ -95,6 +98,10 @@ export function buildFavoritesListing(
         }))
       }
     ]);
+  }
+
+  if (parsed.scope === 'apps') {
+    return buildAppsListing(apps, parsed.term);
   }
 
   if (parsed.scope === 'all') {
@@ -191,6 +198,62 @@ function buildWidenedListing(
   return buildSections(parts);
 }
 
+/**
+ * Walking into the apps: the apps themselves, then one app's environments.
+ *
+ * Environments come back as ordinary page rows under a divider carrying the
+ * app's name, exactly as a bookmark folder's contents do in the widened
+ * listing. They are pages — a name and an address — so every surface already
+ * knows how to draw, icon and open them, and the app they belong to is said
+ * once on the divider rather than repeated on every row.
+ */
+function buildAppsListing(apps: AppEntry[], term: string): FavoritesListing {
+  const { appTerm, envTerm } = parseAppQuery(term, apps);
+  const matched = matchApps(apps, appTerm);
+
+  const offerApps = (): FavoritesListing =>
+    buildSections([
+      {
+        label: 'Apps',
+        indent: false,
+        rows: matched.map((app) => ({ kind: 'app-folder', app }))
+      }
+    ]);
+
+  // Nothing named yet: the apps are the useful answer, the way the folders are
+  // in a widened search with nothing typed.
+  if (appTerm.trim() === '') {
+    return offerApps();
+  }
+
+  const needle = envTerm === null ? '' : envToken(envTerm);
+  const parts = matched.map((app) => ({
+    label: app.name,
+    indent: true,
+    rows: app.environments
+      .filter(
+        (environment) =>
+          needle === '' || envToken(environment.name).includes(needle)
+      )
+      .map(
+        (environment): FavoritesRow => ({
+          kind: 'page',
+          page: {
+            url: environment.url,
+            label: environment.name,
+            // An environment has no starred date; the listing never sorts on it.
+            starredAt: 0
+          }
+        })
+      )
+  }));
+
+  const listing = buildSections(parts);
+  // An app matched but nothing inside it did. Showing the app is more use than
+  // showing an empty list, because it says the app exists and is reachable.
+  return listing.rows.length === 0 ? offerApps() : listing;
+}
+
 function toPageRows(pages: StarredPage[]): FavoritesRow[] {
   return pages.map((page) => ({ kind: 'page', page }));
 }
@@ -220,6 +283,9 @@ export function rowKey(row: FavoritesRow): string {
   if (row.kind === 'command') {
     return `command:${row.command.id}`;
   }
+  if (row.kind === 'app-folder') {
+    return `app-folder:${row.app.name}`;
+  }
   return row.kind === 'folder'
     ? `folder:${row.folder.id}`
     : `app:${row.app.name}`;
@@ -232,6 +298,9 @@ export function rowLabel(row: FavoritesRow): string {
   }
   if (row.kind === 'command') {
     return row.command.usage;
+  }
+  if (row.kind === 'app-folder') {
+    return row.app.name;
   }
   return row.kind === 'folder' ? row.folder.title : row.app.name;
 }
@@ -254,6 +323,12 @@ export function rowDetail(row: FavoritesRow, step = 0): string {
   }
   if (row.kind === 'command') {
     return row.command.description;
+  }
+  if (row.kind === 'app-folder') {
+    const count = row.app.environments.length;
+    return count === 0
+      ? 'No environments yet'
+      : `${count} environment${count === 1 ? '' : 's'}`;
   }
   if (row.kind === 'app') {
     const target = appRowTarget(row, step);
