@@ -23,6 +23,7 @@ import {
   loadApps
 } from './sidepanel/apps/appsFolder';
 import { parseAppUrl } from './sidepanel/apps/appDns';
+import { shouldCloseOnFocusChange } from './favoritesPalette/idleClose';
 import { loadSettings } from './sidepanel/chromeStorage';
 import { searchAllBookmarks } from './sidepanel/bookmarkSync';
 import {
@@ -433,6 +434,7 @@ async function findSingletonWindowTabs(
 async function openSingletonWindow(name: SingletonWindowName): Promise<void> {
   if (name === 'palette') {
     await setPalettePinned(false);
+    await markPaletteOpened();
   }
   const { page, boundsKey, defaults } = SINGLETON_WINDOWS[name];
   const url = chrome.runtime.getURL(page);
@@ -464,6 +466,9 @@ async function openSingletonWindow(name: SingletonWindowName): Promise<void> {
   await chrome.windows.create({
     url,
     type: 'popup',
+    // Said outright rather than left to the default: this window is opened to
+    // be typed into, and it is the one case where taking focus is the point.
+    focused: true,
     ...(isWindowBounds(bounds)
       ? bounds
       : { ...defaults, ...(await centredOnCurrentWindow(defaults)) })
@@ -512,6 +517,33 @@ async function openBookmarkManager(): Promise<void> {
 }
 
 const PALETTE_PINNED_KEY = 'palettePinned';
+const PALETTE_OPENED_AT_KEY = 'paletteOpenedAt';
+
+/**
+ * How long after opening the palette a focus change is not a dismissal.
+ *
+ * A popup does not take focus cleanly. The window the shortcut was pressed in
+ * can hold it, or take it back, while the new one is being put on screen — and
+ * the close-on-focus-change rule read that as the user clicking away and shut
+ * the palette the instant it appeared. Focus has to settle before it can mean
+ * anything. Short enough that deliberately clicking away a moment later still
+ * closes it, and Escape and the backdrop never wait for it at all.
+ */
+const PALETTE_FOCUS_GRACE_MS = 1200;
+
+async function markPaletteOpened(): Promise<void> {
+  await chrome.storage.session.set({ [PALETTE_OPENED_AT_KEY]: Date.now() });
+}
+
+/** Whether the palette has just opened and its focus has yet to settle. */
+async function isPaletteSettling(): Promise<boolean> {
+  const stored = await chrome.storage.session.get(PALETTE_OPENED_AT_KEY);
+  const openedAt = stored[PALETTE_OPENED_AT_KEY];
+  return (
+    typeof openedAt === 'number' &&
+    Date.now() - openedAt < PALETTE_FOCUS_GRACE_MS
+  );
+}
 
 /**
  * Whether the palette window has been pinned open.
@@ -544,12 +576,21 @@ chrome.windows.onFocusChanged.addListener((windowId) => {
     return;
   }
   void (async () => {
-    if (await isPalettePinned()) {
-      return;
-    }
+    const [pinned, settling] = await Promise.all([
+      isPalettePinned(),
+      isPaletteSettling()
+    ]);
     const tabs = await findSingletonWindowTabs('palette');
     for (const tab of tabs) {
-      if (tab.windowId != null && tab.windowId !== windowId) {
+      if (
+        tab.windowId != null &&
+        shouldCloseOnFocusChange({
+          pinned,
+          settling,
+          focusedWindowId: windowId,
+          paletteWindowId: tab.windowId
+        })
+      ) {
         await chrome.windows.remove(tab.windowId);
       }
     }

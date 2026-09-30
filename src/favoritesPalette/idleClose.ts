@@ -1,7 +1,8 @@
 // When the palette window may close itself.
 //
-// It is one rule, kept out of the page so it can be stated once and tested:
-// a window you are typing in never closes under you.
+// Two rules, kept out of the page and the worker so they can be stated once and
+// tested. Both come down to the same thing: a window you are using never closes
+// under you.
 
 export interface IdleCloseState {
   /** The pin in the header, which switches the whole thing off. */
@@ -25,4 +26,36 @@ export interface IdleCloseState {
  */
 export function shouldIdleClose({ pinned, focused }: IdleCloseState): boolean {
   return !pinned && !focused;
+}
+
+export interface FocusCloseState {
+  pinned: boolean;
+  /** True while the palette has just opened and focus has yet to settle. */
+  settling: boolean;
+  /** The window that has just taken focus. */
+  focusedWindowId: number;
+  /** The palette's own window. */
+  paletteWindowId: number;
+}
+
+/**
+ * Whether a window taking focus should close the palette.
+ *
+ * Focus moving to another browser window is the user turning to something else,
+ * and closing then is the point. Two cases are not that: the palette taking its
+ * own focus, and any focus change in the moment after it opens — a popup does
+ * not take focus cleanly, and the window the shortcut was pressed in can hold it
+ * or take it back while the new one is being put on screen. Read literally, that
+ * shut the palette the instant it appeared.
+ */
+export function shouldCloseOnFocusChange({
+  pinned,
+  settling,
+  focusedWindowId,
+  paletteWindowId
+}: FocusCloseState): boolean {
+  if (pinned || settling) {
+    return false;
+  }
+  return focusedWindowId !== paletteWindowId;
 }
