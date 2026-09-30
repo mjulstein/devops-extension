@@ -206,7 +206,12 @@ npm test
     reach the browser's own bookmarks: on its own it lists your bookmark folders,
     and picking one — or typing its name — shows what is inside it. Rows carry
     each site's icon. The **Bookmarks** button opens the extension's own
-    bookmark manager page (see below).
+    bookmark manager page (see below). Start the search with `>` for commands
+    instead of places: **add app** registers the app you are looking at, and
+    **add app env `<env>` `[url]`** files an address under it. Tab completes a
+    command to the nearest name. Apps themselves appear under their own divider:
+    one row each, with **Enter** opening the first environment, **Tab** stepping
+    to the next, and a typed second word naming one.
     **Ctrl+Period** opens the favorites palette in a small window of its own,
     centred on the browser window and with its search already focused. It works
     on any page, not only Azure DevOps, because a window does not depend on a
