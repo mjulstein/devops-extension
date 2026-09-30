@@ -16,6 +16,7 @@ import type { WidenedSearchData } from './sidepanel/favoritesListing';
 import type { StarredPage } from './sidepanel/starredPages';
 import type { AppEntry } from './sidepanel/apps/appDns';
 import { applyTheme, loadLastKnownTheme } from './sidepanel/theme';
+import { shouldIdleClose } from './favoritesPalette/idleClose';
 
 /**
  * How long the window may sit untouched before it closes itself.
@@ -62,7 +63,7 @@ async function main(): Promise<void> {
 
   function armIdleClose(): void {
     window.clearTimeout(idleTimer);
-    if (pinned) {
+    if (!shouldIdleClose({ pinned, focused: document.hasFocus() })) {
       return;
     }
     idleTimer = window.setTimeout(() => {
@@ -70,10 +71,30 @@ async function main(): Promise<void> {
     }, IDLE_CLOSE_MS);
   }
 
+  // Gaining focus stops the clock and losing it starts it, which is the whole
+  // rule: see shouldIdleClose.
+  window.addEventListener('focus', armIdleClose);
+  window.addEventListener('blur', armIdleClose);
+
   // Any sign of life restarts the clock. Pointer movement counts: reading a
   // list is not idleness, and the mouse moves while it happens.
-  for (const type of ['keydown', 'pointermove', 'pointerdown', 'wheel']) {
-    window.addEventListener(type, armIdleClose, { passive: true });
+  //
+  // In the capture phase, because the palette stops key events at its own host
+  // so that the page underneath cannot act on them — a listener here in the
+  // bubble phase never saw a keystroke, which is how a window being typed into
+  // managed to close itself.
+  for (const type of [
+    'keydown',
+    'keypress',
+    'input',
+    'pointermove',
+    'pointerdown',
+    'wheel'
+  ]) {
+    window.addEventListener(type, armIdleClose, {
+      capture: true,
+      passive: true
+    });
   }
 
   openFavoritesPalette({

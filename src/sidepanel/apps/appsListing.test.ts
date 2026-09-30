@@ -130,7 +130,9 @@ describe('walking into the apps with the - prefix', () => {
 
   it('lists the environments inside a named app, under its name', () => {
     const listing = buildFavoritesListing([], [], '-my-app ', undefined, two);
-    expect(listing.sections.map((section) => section.label)).toEqual(['my-app']);
+    expect(listing.sections.map((section) => section.label)).toEqual([
+      'my-app'
+    ]);
     expect(listing.sections[0].indent).toBe(true);
     expect(listing.rows.map(rowLabel)).toEqual(['live', 'test']);
     expect(rowDetail(listing.rows[0])).toBe('https://my-app.orgname.com/');
@@ -142,7 +144,13 @@ describe('walking into the apps with the - prefix', () => {
   });
 
   it('shows the app rather than an empty list when nothing inside matches', () => {
-    const listing = buildFavoritesListing([], [], '-my-app zzz', undefined, two);
+    const listing = buildFavoritesListing(
+      [],
+      [],
+      '-my-app zzz',
+      undefined,
+      two
+    );
     expect(listing.rows.map((row) => row.kind)).toEqual(['app-folder']);
   });
 
