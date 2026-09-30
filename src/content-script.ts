@@ -11,6 +11,7 @@ import { detectActiveWorkItemId } from './devops/activeWorkItemDom';
 import { readAdoThemeColorsFromPage } from './devops/pageTheme';
 import { openFavoritesPalette } from './favoritesPalette/favoritesPalette';
 import type { StarredPage } from './sidepanel/starredPages';
+import type { AppEntry } from './sidepanel/apps/appDns';
 import type { WidenedSearchData } from './sidepanel/favoritesListing';
 type RuntimeMessage =
   | {
@@ -53,6 +54,7 @@ type RuntimeMessage =
         quickTasks?: StarredPage[];
         tokens?: Record<string, string>;
         icons?: Record<string, string>;
+        apps?: AppEntry[];
       };
     };
 
@@ -143,6 +145,13 @@ function handleRuntimeMessage(
         quickTasks: message.payload.quickTasks,
         tokens: message.payload.tokens,
         icons: message.payload.icons,
+        apps: message.payload.apps,
+        onAddAppEnvironment: (app, env, url) => {
+          void chrome.runtime.sendMessage({
+            type: 'ADD_APP_ENVIRONMENT',
+            payload: { app, env, url }
+          });
+        },
         searchAllBookmarks: async (term: string) => {
           const response: {
             ok: boolean;

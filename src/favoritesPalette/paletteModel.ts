@@ -11,6 +11,7 @@ import {
   type WidenedSearchData
 } from '@/sidepanel/favoritesListing';
 import type { StarredPage } from '@/sidepanel/starredPages';
+import type { AppEntry } from '@/sidepanel/apps/appDns';
 
 export interface PaletteView {
   /** Rows to show, ranked for the current query: favorites, then quick tasks. */
@@ -32,9 +33,16 @@ export function buildPaletteView(
   query: string,
   highlight: number,
   quickTasks: StarredPage[] = [],
-  widened: WidenedSearchData = { bookmarks: [], folders: [] }
+  widened: WidenedSearchData = { bookmarks: [], folders: [] },
+  apps: AppEntry[] = []
 ): PaletteView {
-  const listing = buildFavoritesListing(pages, quickTasks, query, widened);
+  const listing = buildFavoritesListing(
+    pages,
+    quickTasks,
+    query,
+    widened,
+    apps
+  );
   const rows = listing.rows;
   if (rows.length === 0) {
     return { rows, highlight: 0, sections: [] };
@@ -50,6 +58,8 @@ export type PaletteKeyAction =
   | { kind: 'close' }
   | { kind: 'open'; index: number }
   | { kind: 'move'; highlight: number }
+  /** Aim the highlighted app row at its next environment. */
+  | { kind: 'step-app'; delta: 1 | -1 }
   | { kind: 'ignore' };
 
 /**
@@ -61,7 +71,8 @@ export type PaletteKeyAction =
  */
 export function resolvePaletteKey(
   key: string,
-  view: PaletteView
+  view: PaletteView,
+  shiftKey = false
 ): PaletteKeyAction {
   if (key === 'Escape') {
     return { kind: 'close' };
@@ -74,6 +85,16 @@ export function resolvePaletteKey(
     const delta = key === 'ArrowDown' ? 1 : -1;
     const next = (view.highlight + delta + view.rows.length) % view.rows.length;
     return { kind: 'move', highlight: next };
+  }
+
+  // Tab steps an app row through its environments. It is taken from the
+  // browser's focus cycle only when the highlighted row is an app: everywhere
+  // else in the dialog Tab should still move focus, which is what a keyboard
+  // user expects of it.
+  if (key === 'Tab') {
+    return view.rows[view.highlight]?.kind === 'app'
+      ? { kind: 'step-app', delta: shiftKey ? -1 : 1 }
+      : { kind: 'ignore' };
   }
 
   if (key === 'Enter') {

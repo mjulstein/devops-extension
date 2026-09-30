@@ -9,12 +9,14 @@ import {
   rowLabel,
   type FavoritesListing,
   type FavoritesRow,
-  type WidenedSearchData
+  type WidenedSearchData,
+  appRowTarget
 } from '../favoritesListing';
 import { parseFavoritesQuery } from '../favoritesQuery';
 import { searchAllBookmarks } from '../bookmarkSync';
 import { getFavoriteIconUrl } from '../favoriteIcon';
 import { useSectionIcons } from '../useSectionIcons';
+import { useApps } from '../apps/useApps';
 import { Button } from './Button';
 
 /**
@@ -90,6 +92,10 @@ export function StarredPagesMenu({
 }: StarredPagesMenuProps) {
   const sectionIcons = useSectionIcons();
   const [isOpen, setIsOpen] = useState(false);
+  // How many times Tab has been pressed on the highlighted app row. Reset with
+  // the query and with the highlight, because it counts steps within one row
+  // rather than a setting of its own.
+  const [appStep, setAppStep] = useState(0);
   const [query, setQuery] = useState('');
   // Which row the keyboard is on. Reset whenever the result set changes, so it
   // can never point past the end of the list.
@@ -117,9 +123,10 @@ export function StarredPagesMenu({
   const idleTimerRef = useRef(0);
 
   // Title matches rank above address matches — see rankFavorites.
+  const apps = useApps();
   const listing = useMemo(
-    () => buildFavoritesListing(pages, quickTaskPages, query, widened),
-    [pages, quickTaskPages, query, widened]
+    () => buildFavoritesListing(pages, quickTaskPages, query, widened, apps),
+    [apps, pages, quickTaskPages, query, widened]
   );
   const visible = listing.rows;
 
@@ -178,6 +185,13 @@ export function StarredPagesMenu({
       setQuery(`.${entry.folder.title}`);
       setHighlight(0);
       searchRef.current?.focus();
+      return;
+    }
+    if (entry.kind === 'app') {
+      const target = appRowTarget(entry, appStep);
+      if (target !== null) {
+        await openPage(target.environment.url, event);
+      }
       return;
     }
     await openPage(entry.page.url, event);
@@ -352,8 +366,18 @@ export function StarredPagesMenu({
       const delta = event.key === 'ArrowDown' ? 1 : -1;
       const next = (highlight + delta + visible.length) % visible.length;
       setHighlight(next);
+      // A new row is a new question, so the environment starts from the top
+      // again rather than carrying the last row's position onto this one.
+      setAppStep(0);
       // Keep the highlighted row in view in a short, scrollable menu.
       itemElementsRef.current[next]?.scrollIntoView({ block: 'nearest' });
+      return;
+    }
+    // Tab steps an app row through its environments, and is left to the
+    // browser's focus cycle on every other kind of row.
+    if (event.key === 'Tab' && visible[highlight]?.kind === 'app') {
+      event.preventDefault();
+      setAppStep((step) => step + (event.shiftKey ? -1 : 1));
       return;
     }
     if (event.key === 'Enter') {
@@ -416,6 +440,7 @@ export function StarredPagesMenu({
               aria-label="Search favorites"
               onChange={(event) => {
                 setQuery(event.target.value);
+                setAppStep(0);
                 setHighlight(0);
               }}
               onKeyDown={onNavigationKeyDown}
@@ -472,6 +497,10 @@ export function StarredPagesMenu({
                     <span aria-hidden="true" className={classes.folderIcon}>
                       📁
                     </span>
+                  ) : entry.kind === 'app' ? (
+                    <span aria-hidden="true" className={classes.folderIcon}>
+                      ▤
+                    </span>
                   ) : (
                     <FavoriteIcon
                       url={entry.page.url}
@@ -480,7 +509,9 @@ export function StarredPagesMenu({
                   )}
                   <span className={classes.itemText}>
                     {rowLabel(entry)}
-                    <span className={classes.itemUrl}>{rowDetail(entry)}</span>
+                    <span className={classes.itemUrl}>
+                      {rowDetail(entry, index === highlight ? appStep : 0)}
+                    </span>
                   </span>
                 </button>
               </Fragment>

@@ -19,6 +19,7 @@
 
 import { wantsNewTab, type StarredPage } from '@/sidepanel/starredPages';
 import {
+  appRowTarget,
   rowDetail,
   rowLabel,
   type WidenedSearchData
@@ -30,6 +31,7 @@ import {
   type PaletteView
 } from './paletteModel';
 import { parseFavoritesQuery } from '@/sidepanel/favoritesQuery';
+import type { AppEntry } from '@/sidepanel/apps/appDns';
 
 const HOST_ID = 'devops-ext-favorites-palette';
 
@@ -37,6 +39,12 @@ export interface PaletteOptions {
   favorites: StarredPage[];
   /** Quick tasks in progress, listed under the favorites behind a divider. */
   quickTasks?: StarredPage[];
+  /**
+   * Apps, each with its environments in the order their bookmarks sit in. One
+   * row each: the environment is chosen on the row with Tab or by typing its
+   * name, not by giving every environment a row of its own.
+   */
+  apps?: AppEntry[];
   /**
    * Site icons by origin. Passed in because an extension resource — which the
    * browser's favicon cache is — cannot be loaded from a page, so the service
@@ -81,6 +89,11 @@ export interface PaletteOptions {
    * leaves the palette rather than acting within it.
    */
   onOpenSettings?: () => void;
+  /**
+   * Stores an environment that was only suggested, when it is opened. Absent,
+   * a suggested address still opens — it just does not join the folder.
+   */
+  onAddAppEnvironment?: (app: string, env: string, url: string) => void;
   /**
    * Shows the side panel on the window being browsed in. Resolves false when
    * the browser refuses, which it does when it does not count the click as a
@@ -277,6 +290,7 @@ const STYLES = `
 export function openFavoritesPalette({
   favorites,
   quickTasks = [],
+  apps = [],
   icons = {},
   onOpenPage,
   searchAllBookmarks,
@@ -285,6 +299,7 @@ export function openFavoritesPalette({
   onTogglePin,
   isPinned = false,
   onOpenSettings,
+  onAddAppEnvironment,
   onOpenSidePanel,
   onClose,
   container = document.body
@@ -413,9 +428,20 @@ export function openFavoritesPalette({
   shadow.append(style, backdrop);
   container.append(host);
 
+  // How many times Tab has been pressed on the highlighted app row: which
+  // environment that row points at, not a setting of its own, so it resets with
+  // the query and with the highlight.
+  let appStep = 0;
   let widened: WidenedSearchData = { bookmarks: [], folders: [] };
   let allIcons: FaviconMap = { ...icons };
-  let view: PaletteView = buildPaletteView(favorites, '', 0, quickTasks);
+  let view: PaletteView = buildPaletteView(
+    favorites,
+    '',
+    0,
+    quickTasks,
+    { bookmarks: [], folders: [] },
+    apps
+  );
 
   let closed = false;
 
@@ -446,6 +472,27 @@ export function openFavoritesPalette({
       rebuild();
       requestWidenedSearch();
       search.focus();
+      return;
+    }
+
+    if (target.kind === 'app') {
+      const aimed = appRowTarget(target, appStep);
+      if (aimed === null) {
+        return;
+      }
+      close();
+      // A suggested address is stored as it is opened: visiting an environment
+      // is how it joins the app's folder, which is the whole way the list fills
+      // up. A wrong guess is corrected by adding it again from the address that
+      // worked, or in the bookmark manager.
+      if (aimed.isDerived) {
+        onAddAppEnvironment?.(
+          target.app.name,
+          aimed.environment.name,
+          aimed.environment.url
+        );
+      }
+      onOpenPage(aimed.environment.url, wantsNewTab(event));
       return;
     }
 
@@ -501,7 +548,8 @@ export function openFavoritesPalette({
       ]
         .filter(Boolean)
         .join(' ');
-      row.title = rowDetail(entry);
+      const detail = rowDetail(entry, index === view.highlight ? appStep : 0);
+      row.title = detail;
 
       // The icon is a scanning aid, so a missing one leaves its space rather
       // than shifting every title. A folder shows a folder, not a site.
@@ -533,7 +581,7 @@ export function openFavoritesPalette({
       label.textContent = rowLabel(entry);
       const url = document.createElement('span');
       url.className = 'url';
-      url.textContent = rowDetail(entry);
+      url.textContent = detail;
 
       text.append(label, url);
       row.append(text);
@@ -555,7 +603,15 @@ export function openFavoritesPalette({
   }
 
   function rebuild() {
-    view = buildPaletteView(favorites, search.value, 0, quickTasks, widened);
+    appStep = 0;
+    view = buildPaletteView(
+      favorites,
+      search.value,
+      0,
+      quickTasks,
+      widened,
+      apps
+    );
     render();
   }
 
@@ -584,7 +640,7 @@ export function openFavoritesPalette({
   // bare keys of its own, and Enter or Escape reaching the page underneath
   // would be worse than having no palette at all.
   function onDocumentKeyDown(event: KeyboardEvent) {
-    const action = resolvePaletteKey(event.key, view);
+    const action = resolvePaletteKey(event.key, view, event.shiftKey);
     if (action.kind === 'ignore') {
       return;
     }
@@ -598,6 +654,14 @@ export function openFavoritesPalette({
     }
     if (action.kind === 'move') {
       view = { ...view, highlight: action.highlight };
+      // A new row is a new question, so the environment starts from the top
+      // again rather than carrying the last row's position onto this one.
+      appStep = 0;
+      render();
+      return;
+    }
+    if (action.kind === 'step-app') {
+      appStep += action.delta;
       render();
       return;
     }

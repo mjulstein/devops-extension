@@ -14,6 +14,7 @@ import { openFavoritesPalette } from './favoritesPalette/favoritesPalette';
 import type { FaviconMap } from './favoritesPalette/faviconData';
 import type { WidenedSearchData } from './sidepanel/favoritesListing';
 import type { StarredPage } from './sidepanel/starredPages';
+import type { AppEntry } from './sidepanel/apps/appDns';
 import { applyTheme, loadLastKnownTheme } from './sidepanel/theme';
 
 /**
@@ -30,6 +31,7 @@ interface PaletteData {
   quickTasks: StarredPage[];
   tokens: Record<string, string>;
   icons: FaviconMap;
+  apps: AppEntry[];
 }
 
 async function ask<T>(type: string, payload?: unknown): Promise<T | null> {
@@ -47,7 +49,8 @@ async function main(): Promise<void> {
     favorites: [],
     quickTasks: [],
     tokens: {},
-    icons: {}
+    icons: {},
+    apps: []
   };
 
   // Fetched now so the click handler has it without awaiting: see the note on
@@ -78,6 +81,13 @@ async function main(): Promise<void> {
     quickTasks: data.quickTasks,
     tokens: data.tokens,
     icons: data.icons,
+    apps: data.apps,
+    onAddAppEnvironment: (app, env, url) => {
+      void chrome.runtime.sendMessage({
+        type: 'ADD_APP_ENVIRONMENT',
+        payload: { app, env, url }
+      });
+    },
     isPinned: pinned,
     onTogglePin: (next) => {
       pinned = next;

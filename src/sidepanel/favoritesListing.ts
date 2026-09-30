@@ -15,11 +15,24 @@
 import { rankFavorites, type StarredPage } from './starredPages';
 import { parseFavoritesQuery } from './favoritesQuery';
 import type { BookmarkFolder } from './bookmarkFolders';
+import type { AppEntry } from './apps/appDns';
+import { matchApps, parseAppQuery, resolveAppTarget } from './apps/appsQuery';
 
-/** A row is somewhere to go, or a folder to look inside. */
+/** A row is somewhere to go, a folder to look inside, or an app to aim. */
 export type FavoritesRow =
   | { kind: 'page'; page: StarredPage }
-  | { kind: 'folder'; folder: BookmarkFolder };
+  | { kind: 'folder'; folder: BookmarkFolder }
+  | {
+      kind: 'app';
+      app: AppEntry;
+      /**
+       * The environment term typed alongside the app name, if any. The row
+       * resolves it to an address at render time rather than here, because
+       * which environment a row points at also depends on how many times Tab
+       * has been pressed on it — and that belongs to the view, not the list.
+       */
+      envTerm: string | null;
+    };
 
 export interface FavoritesSection {
   /** Shown on the divider above the section; null for the leading one. */
@@ -59,13 +72,21 @@ export function buildFavoritesListing(
   favorites: StarredPage[],
   quickTasks: StarredPage[],
   query: string,
-  widened: WidenedSearchData = { bookmarks: [], folders: [] }
+  widened: WidenedSearchData = { bookmarks: [], folders: [] },
+  apps: AppEntry[] = []
 ): FavoritesListing {
   const parsed = parseFavoritesQuery(query);
 
   if (parsed.scope === 'all') {
     return buildWidenedListing(widened, parsed.term);
   }
+
+  // One row per app whatever its environments, so a handful of apps cannot
+  // push the favorites off the list between them.
+  const appQuery = parseAppQuery(parsed.term, apps);
+  const appRows: FavoritesRow[] = matchApps(apps, appQuery.appTerm).map(
+    (app) => ({ kind: 'app', app, envTerm: appQuery.envTerm })
+  );
 
   const rankedFavorites = rankFavorites(favorites, parsed.term);
   // A quick task already in the favorites would otherwise appear twice.
@@ -76,6 +97,7 @@ export function buildFavoritesListing(
 
   return buildSections([
     { label: null, indent: false, rows: toPageRows(rankedFavorites) },
+    { label: 'Apps', indent: false, rows: appRows },
     {
       label: 'Quick tasks',
       indent: false,
@@ -170,22 +192,47 @@ function buildSections(
   return { sections, rows };
 }
 
-/** The key a row renders under, unique across pages and folders. */
+/** The key a row renders under, unique across every kind. */
 export function rowKey(row: FavoritesRow): string {
-  return row.kind === 'page'
-    ? `page:${row.page.url}`
-    : `folder:${row.folder.id}`;
+  if (row.kind === 'page') {
+    return `page:${row.page.url}`;
+  }
+  return row.kind === 'folder'
+    ? `folder:${row.folder.id}`
+    : `app:${row.app.name}`;
 }
 
 /** What a row says on screen. */
 export function rowLabel(row: FavoritesRow): string {
-  return row.kind === 'page' ? row.page.label : row.folder.title;
+  if (row.kind === 'page') {
+    return row.page.label;
+  }
+  return row.kind === 'folder' ? row.folder.title : row.app.name;
 }
 
-/** The second line: an address for a page, the location and size for a folder. */
-export function rowDetail(row: FavoritesRow): string {
+/**
+ * The address an app row currently points at, given how many times Tab has been
+ * pressed on it. Null for a row that is not an app, or an app with nothing in
+ * it yet.
+ */
+export function appRowTarget(row: FavoritesRow, step = 0) {
+  return row.kind === 'app'
+    ? resolveAppTarget(row.app, row.envTerm, step)
+    : null;
+}
+
+/** The second line: an address, a folder's location, or an app's environment. */
+export function rowDetail(row: FavoritesRow, step = 0): string {
   if (row.kind === 'page') {
     return row.page.url;
+  }
+  if (row.kind === 'app') {
+    const target = appRowTarget(row, step);
+    if (target === null) {
+      return 'No environments yet';
+    }
+    const suffix = target.isDerived ? ' · suggested' : '';
+    return `${target.environment.name} · ${target.environment.url}${suffix}`;
   }
   const count = `${row.folder.count} bookmark${row.folder.count === 1 ? '' : 's'}`;
   return row.folder.path ? `${row.folder.path} · ${count}` : count;

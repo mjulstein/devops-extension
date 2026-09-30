@@ -17,6 +17,8 @@ import {
   loadStarredPages
 } from './sidepanel/chromeStorage';
 import { loadThemeTokens } from './sidepanel/theme';
+import { addAppEnvironment, loadApps } from './sidepanel/apps/appsFolder';
+import { loadSettings } from './sidepanel/chromeStorage';
 import { searchAllBookmarks } from './sidepanel/bookmarkSync';
 import {
   blobToDataUrl,
@@ -114,16 +116,17 @@ chrome.commands?.onCommand.addListener((command) => {
  */
 /** Everything the palette needs to draw itself, wherever it is drawn. */
 async function loadFavoritesPaletteData() {
-  const [favorites, quickTasks, tokens] = await Promise.all([
+  const [favorites, quickTasks, tokens, apps] = await Promise.all([
     loadStarredPages(),
     loadQuickTaskLinks(),
-    loadThemeTokens()
+    loadThemeTokens(),
+    loadSettings().then((settings) => loadApps(settings.bookmarkFolderName))
   ]);
   const icons = await loadFavicons([
     ...favorites.map((page) => page.url),
     ...quickTasks.map((page) => page.url)
   ]);
-  return { favorites, quickTasks, tokens, icons };
+  return { favorites, quickTasks, tokens, icons, apps };
 }
 
 /**
@@ -605,6 +608,10 @@ type RuntimeMessage =
       payload?: undefined;
     }
   | {
+      type: 'ADD_APP_ENVIRONMENT';
+      payload: { app: string; env: string; url: string };
+    }
+  | {
       type: 'OPEN_BOOKMARK_MANAGER';
       payload?: undefined;
     }
@@ -818,6 +825,25 @@ chrome.runtime.onMessage.addListener(
     if (message.type === 'OPEN_SETTINGS_WINDOW') {
       openSingletonWindow('settings')
         .then(() => sendResponse({ ok: true, result: null }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'ADD_APP_ENVIRONMENT') {
+      const { app, env, url } = message.payload;
+      loadSettings()
+        .then((settings) =>
+          addAppEnvironment(settings.bookmarkFolderName, app, env, url)
+        )
+        .then((result) =>
+          sendResponse(
+            'error' in result
+              ? { ok: false, error: result.error }
+              : { ok: true, result: null }
+          )
+        )
         .catch((error: Error) =>
           sendResponse({ ok: false, error: error.message })
         );
