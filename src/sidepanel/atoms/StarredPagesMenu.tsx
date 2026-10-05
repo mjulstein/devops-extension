@@ -192,6 +192,14 @@ export function StarredPagesMenu({
       searchRef.current?.focus();
       return;
     }
+    if (entry.kind === 'app-env') {
+      close();
+      void chrome.runtime.sendMessage({
+        type: 'OPEN_APP_TARGET',
+        payload: { app: entry.app.name, url: entry.environment.url }
+      });
+      return;
+    }
     if (entry.kind === 'app-folder') {
       setQuery(`${APPS_PREFIX}${entry.app.name} `);
       setHighlight(0);
@@ -212,7 +220,11 @@ export function StarredPagesMenu({
     if (entry.kind === 'app') {
       const target = appRowTarget(entry, appStep);
       if (target !== null) {
-        await openPage(target.environment.url, event);
+        close();
+        void chrome.runtime.sendMessage({
+          type: 'OPEN_APP_TARGET',
+          payload: { app: entry.app.name, url: target.environment.url }
+        });
       }
       return;
     }
@@ -525,6 +537,11 @@ export function StarredPagesMenu({
                     <span aria-hidden="true" className={classes.folderIcon}>
                       📁
                     </span>
+                  ) : entry.kind === 'app-env' ? (
+                    <FavoriteIcon
+                      url={entry.environment.url}
+                      sectionIcons={sectionIcons}
+                    />
                   ) : entry.kind === 'app-folder' ? (
                     <span aria-hidden="true" className={classes.folderIcon}>
                       ▤

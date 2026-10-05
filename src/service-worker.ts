@@ -23,6 +23,10 @@ import {
   loadApps
 } from './sidepanel/apps/appsFolder';
 import { parseAppUrl } from './sidepanel/apps/appDns';
+import {
+  carryPathAcrossEnvironments,
+  isSamePage
+} from './sidepanel/apps/envSwitch';
 import { shouldCloseOnFocusChange } from './favoritesPalette/idleClose';
 import { loadSettings } from './sidepanel/chromeStorage';
 import { searchAllBookmarks } from './sidepanel/bookmarkSync';
@@ -179,6 +183,50 @@ async function runQuickCommand(
   }
 
   return { error: `No such command: ${id}` };
+}
+
+/**
+ * Opens one of an app's environments.
+ *
+ * Two things make this different from opening a favorite. The page you are on
+ * comes with you: picking another environment while looking at a record is a
+ * request for that record over there, not for the front page. And a tab already
+ * showing exactly that address is raised rather than a second one opened beside
+ * it — otherwise flipping between two environments leaves a row of duplicates
+ * behind. Anything not already open gets a new tab, so the page you came from
+ * is still there to go back to.
+ */
+async function openAppTarget(appName: string, url: string): Promise<void> {
+  const settings = await loadSettings();
+  const apps = await loadApps(settings.bookmarkFolderName);
+  const app = apps.find((entry) => entry.name === appName);
+
+  const target =
+    app === undefined
+      ? url
+      : carryPathAcrossEnvironments(app, url, await browsingPageUrl());
+
+  const tabs = await chrome.tabs.query({});
+  const open = tabs.find(
+    (tab) => tab.url !== undefined && isSamePage(tab.url, target)
+  );
+
+  if (open?.id != null) {
+    await chrome.tabs.update(open.id, { active: true });
+    if (open.windowId != null) {
+      await chrome.windows.update(open.windowId, { focused: true });
+    }
+    return;
+  }
+
+  const windowId = await browsingWindowId();
+  await chrome.tabs.create({
+    url: target,
+    ...(windowId === null ? {} : { windowId })
+  });
+  if (windowId !== null) {
+    await chrome.windows.update(windowId, { focused: true });
+  }
 }
 
 /** Everything the palette needs to draw itself, wherever it is drawn. */
@@ -723,6 +771,10 @@ type RuntimeMessage =
       payload: { id: string; args: string[] };
     }
   | {
+      type: 'OPEN_APP_TARGET';
+      payload: { app: string; url: string };
+    }
+  | {
       type: 'OPEN_BOOKMARK_MANAGER';
       payload?: undefined;
     }
@@ -935,6 +987,15 @@ chrome.runtime.onMessage.addListener(
 
     if (message.type === 'OPEN_SETTINGS_WINDOW') {
       openSingletonWindow('settings')
+        .then(() => sendResponse({ ok: true, result: null }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'OPEN_APP_TARGET') {
+      openAppTarget(message.payload.app, message.payload.url)
         .then(() => sendResponse({ ok: true, result: null }))
         .catch((error: Error) =>
           sendResponse({ ok: false, error: error.message })

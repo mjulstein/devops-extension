@@ -213,7 +213,10 @@ npm test
     one row each, with **Enter** opening the first environment, **Tab** stepping
     to the next, and a typed second word naming one. Start the search with `-`
     to walk into them instead: on its own it lists the apps, naming one shows
-    the bookmarks in its folder, and a further word filters those.
+    the bookmarks in its folder, and a further word filters those. Switching
+    environment keeps your place: from `env1.my-app.com/some/path` you land on
+    `env2.my-app.com/some/path`, reusing a tab already showing it and opening a
+    new one otherwise.
     **Ctrl+Period** opens the favorites palette in a small window of its own,
     centred on the browser window and with its search already focused. It works
     on any page, not only Azure DevOps, because a window does not depend on a

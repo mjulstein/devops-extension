@@ -17,7 +17,7 @@ import { parseFavoritesQuery } from './favoritesQuery';
 import type { BookmarkFolder } from './bookmarkFolders';
 import type { AppEntry } from './apps/appDns';
 import { matchApps, parseAppQuery, resolveAppTarget } from './apps/appsQuery';
-import { envToken } from './apps/appDns';
+import { envToken, type AppEnvironment } from './apps/appDns';
 import {
   matchCommands,
   QUICK_COMMANDS,
@@ -31,6 +31,13 @@ export type FavoritesRow =
   | { kind: 'command'; command: QuickCommand; text: string }
   /** An app to walk into, in the `-` listing. */
   | { kind: 'app-folder'; app: AppEntry }
+  /**
+   * One environment of an app. It carries the app rather than being a plain
+   * page row, because opening it is a switch *within* that app: the page you
+   * are standing on comes with you, and only the app's own addresses can say
+   * whether you are standing on a sibling environment.
+   */
+  | { kind: 'app-env'; app: AppEntry; environment: AppEnvironment }
   | {
       kind: 'app';
       app: AppEntry;
@@ -236,15 +243,7 @@ function buildAppsListing(apps: AppEntry[], term: string): FavoritesListing {
           needle === '' || envToken(environment.name).includes(needle)
       )
       .map(
-        (environment): FavoritesRow => ({
-          kind: 'page',
-          page: {
-            url: environment.url,
-            label: environment.name,
-            // An environment has no starred date; the listing never sorts on it.
-            starredAt: 0
-          }
-        })
+        (environment): FavoritesRow => ({ kind: 'app-env', app, environment })
       )
   }));
 
@@ -286,6 +285,9 @@ export function rowKey(row: FavoritesRow): string {
   if (row.kind === 'app-folder') {
     return `app-folder:${row.app.name}`;
   }
+  if (row.kind === 'app-env') {
+    return `app-env:${row.app.name}:${row.environment.name}`;
+  }
   return row.kind === 'folder'
     ? `folder:${row.folder.id}`
     : `app:${row.app.name}`;
@@ -301,6 +303,9 @@ export function rowLabel(row: FavoritesRow): string {
   }
   if (row.kind === 'app-folder') {
     return row.app.name;
+  }
+  if (row.kind === 'app-env') {
+    return row.environment.name;
   }
   return row.kind === 'folder' ? row.folder.title : row.app.name;
 }
@@ -323,6 +328,9 @@ export function rowDetail(row: FavoritesRow, step = 0): string {
   }
   if (row.kind === 'command') {
     return row.command.description;
+  }
+  if (row.kind === 'app-env') {
+    return row.environment.url;
   }
   if (row.kind === 'app-folder') {
     const count = row.app.environments.length;

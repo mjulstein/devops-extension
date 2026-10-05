@@ -102,6 +102,13 @@ export interface PaletteOptions {
   /** Runs a command chosen from the `>` list. */
   onRunCommand?: (id: string, args: string[]) => void;
   /**
+   * Opens one of an app's environments. Separate from `onOpenPage` because it
+   * is a switch rather than a navigation: whatever page of the app you are on
+   * comes with you, and a tab already showing it is reused rather than a second
+   * one opened beside it.
+   */
+  onOpenAppTarget?: (app: string, url: string) => void;
+  /**
    * Shows the side panel on the window being browsed in. Resolves false when
    * the browser refuses, which it does when it does not count the click as a
    * user gesture — the palette then stays open and says so rather than
@@ -308,6 +315,7 @@ export function openFavoritesPalette({
   onOpenSettings,
   onAddAppEnvironment,
   onRunCommand,
+  onOpenAppTarget,
   onOpenSidePanel,
   onClose,
   container = document.body
@@ -483,6 +491,12 @@ export function openFavoritesPalette({
       return;
     }
 
+    if (target.kind === 'app-env') {
+      close();
+      onOpenAppTarget?.(target.app.name, target.environment.url);
+      return;
+    }
+
     if (target.kind === 'app-folder') {
       // Walks into the app, the same way picking a bookmark folder walks into
       // that folder: retype the search as its name and show what is inside.
@@ -520,7 +534,7 @@ export function openFavoritesPalette({
           aimed.environment.url
         );
       }
-      onOpenPage(aimed.environment.url, wantsNewTab(event));
+      onOpenAppTarget?.(target.app.name, aimed.environment.url);
       return;
     }
 
@@ -581,7 +595,12 @@ export function openFavoritesPalette({
 
       // The icon is a scanning aid, so a missing one leaves its space rather
       // than shifting every title. A folder shows a folder, not a site.
-      const iconKey = entry.kind === 'page' ? iconKeyFor(entry.page.url) : null;
+      const iconKey =
+        entry.kind === 'page'
+          ? iconKeyFor(entry.page.url)
+          : entry.kind === 'app-env'
+            ? iconKeyFor(entry.environment.url)
+            : null;
       const iconSrc = iconKey === null ? undefined : allIcons[iconKey];
       if (entry.kind === 'app-folder') {
         const icon = document.createElement('span');

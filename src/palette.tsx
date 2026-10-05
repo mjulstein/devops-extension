@@ -103,6 +103,12 @@ async function main(): Promise<void> {
     tokens: data.tokens,
     icons: data.icons,
     apps: data.apps,
+    onOpenAppTarget: (app, url) => {
+      void chrome.runtime.sendMessage({
+        type: 'OPEN_APP_TARGET',
+        payload: { app, url }
+      });
+    },
     onRunCommand: (id, args) => {
       void chrome.runtime.sendMessage({
         type: 'RUN_QUICK_COMMAND',

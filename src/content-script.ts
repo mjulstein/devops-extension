@@ -146,6 +146,12 @@ function handleRuntimeMessage(
         tokens: message.payload.tokens,
         icons: message.payload.icons,
         apps: message.payload.apps,
+        onOpenAppTarget: (app, url) => {
+          void chrome.runtime.sendMessage({
+            type: 'OPEN_APP_TARGET',
+            payload: { app, url }
+          });
+        },
         onRunCommand: (id, args) => {
           void chrome.runtime.sendMessage({
             type: 'RUN_QUICK_COMMAND',
