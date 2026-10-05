@@ -23,6 +23,7 @@ them beats having to name one.
 | [`appDns.ts`](./appDns.ts) | Working out an app's other addresses from the ones it already has. |
 | [`appsQuery.ts`](./appsQuery.ts) | Reading `my-app test` into an app and an environment, and which environment a row points at after *n* presses of Tab. |
 | [`appsFolder.ts`](./appsFolder.ts) | The bookmark layout, and adding an environment to it. |
+| [`envSwitch.ts`](./envSwitch.ts) | Switching environment without losing your place, and when a tab can be reused. |
 | [`useApps.ts`](./useApps.ts) | The apps as the bookmarks currently hold them, kept current. |
 
 ## Where they live
@@ -79,6 +80,27 @@ organization's domain — `myapp.orgname.com` — reads as the `myapp` environme
 of `orgname.com`, because from the address alone there is nothing to tell the
 two apart. Give it a name when registering it (`>add app myapp`) and add its
 addresses explicitly.
+
+## Switching environment keeps your place
+
+Picking another environment of the app you are already looking at is almost
+never a request for its front page: you are on a record, a report, a search, and
+you want the same thing over there. So only the host changes and the path, query
+and fragment come with you — `env1.my-app.com/some/path?x=1` becomes
+`env2.my-app.com/some/path?x=1`.
+
+It applies only between two environments of the *same* app, checked against the
+app's own stored addresses rather than guessed from the names, because the
+addresses are the only thing reliably true: deployments are inconsistent enough
+that `myapp-dev` and `my-app-test` belong to one app. Standing anywhere else,
+the environment's own address opens untouched, and standing on its front page
+there is nothing worth carrying. The environment being switched *to* does not
+have to be stored, so a suggested one carries your place as well.
+
+A tab already showing exactly that address — query included, fragment ignored —
+is raised rather than a second one opened beside it, or flipping between two
+environments would leave a row of duplicates behind. Anything not already open
+gets a new tab, so the page you came from is still there to go back to.
 
 ## Derivation is a suggestion
 
