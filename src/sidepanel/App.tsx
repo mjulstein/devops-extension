@@ -46,6 +46,9 @@ export function App({ initialTab }: AppProps = {}) {
           onClick={() => {
             void controller.onDeduplicateTabs();
           }}
+          onCloseStale={() => {
+            void controller.onCloseStaleTabs();
+          }}
         />
         <PopOutPanelButton
           onClick={() => {

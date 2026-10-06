@@ -51,6 +51,7 @@ import {
 } from './workItemsDateRange';
 import { navigateToWorkItem } from './navigateToWorkItem';
 import { deduplicateTabs } from './deduplicateTabs';
+import { closeStaleTabs, STALE_TAB_DAYS } from './staleTabs';
 import {
   createChildTask,
   archiveQuickTask,
@@ -1888,6 +1889,28 @@ export function useSidepanelController({
     await chrome.runtime.sendMessage({ type: 'OPEN_PANEL_WINDOW' });
   }
 
+  /**
+   * Closes tabs nobody has looked at in a long time.
+   *
+   * It asks first, naming the count and the oldest: this is the one tidying
+   * action that can take something you wanted, and an undo for it would be a
+   * list of addresses nobody reads.
+   */
+  async function onCloseStaleTabs() {
+    const closed = await closeStaleTabs((message) => window.confirm(message));
+    setCreateTaskStatusMessage(
+      closed > 0
+        ? {
+            kind: 'success',
+            text: `Closed ${closed} tab${closed === 1 ? '' : 's'} untouched for ${STALE_TAB_DAYS} days.`
+          }
+        : {
+            kind: 'info',
+            text: `No tabs closed.`
+          }
+    );
+  }
+
   async function onToggleRecentFeaturesCollapsed() {
     const nextValue = !isRecentFeaturesCollapsed;
     setIsRecentFeaturesCollapsed(nextValue);
@@ -2056,6 +2079,7 @@ export function useSidepanelController({
     visibleChildTasks,
     onActiveItemBannerClick,
     onDeduplicateTabs,
+    onCloseStaleTabs,
     onPopOutPanel,
     onChangeDebugLogs: setDebugLogs,
     onChangeSettings: onChangeSettings,

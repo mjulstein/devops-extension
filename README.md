@@ -185,11 +185,15 @@ npm test
 8. Adjust the closed-date range inputs to refresh closed items for a specific window, or use **Reset to default** to restore the default today-to-7-days-ago range.
 9. Optionally enable **Show task parent details** to see the full hierarchy grouped instead, with each task under its parent.
 10. Use the per-day refetch button beside any closed-date heading to reload only that day.
-11. The pop-out button beside **Close duplicate tabs** moves the panel into a
+11. **Close duplicate tabs** keeps the most recently active copy of each page.
+    Right-click the same button to close tabs you have not looked at in 24 days
+    — it asks first, naming how many and how old the oldest is. Pinned tabs, the
+    tab you are on, and anything playing audio are left alone.
+12. The pop-out button beside **Close duplicate tabs** moves the panel into a
     window of its own — useful on a second screen, since the browser's side
     panel is fixed to one edge. Only one is ever open, and it remembers its
     size and position.
-12. Star an Azure DevOps page with the toggle beside the favorites menu. The
+13. Star an Azure DevOps page with the toggle beside the favorites menu. The
     menu opens at the full width of the side panel, and each entry shows the
     page's icon taken from the browser's own favicon cache — the same icon the
     bookmarks menu draws, so favorites synced in from another machine are
@@ -243,7 +247,7 @@ npm test
     bookmark sync. A favorite added, renamed or deleted on another machine is
     adopted here once the browser syncs it; the panel only overrides the folder
     for a favorite you just added.
-13. Open the **Active item** tab to create child tasks. The tab resolves context from the last visited Azure DevOps work-item view (or the pinned item if set), so it can continue working even when a non-DevOps tab is active.
+14. Open the **Active item** tab to create child tasks. The tab resolves context from the last visited Azure DevOps work-item view (or the pinned item if set), so it can continue working even when a non-DevOps tab is active.
 
 The extension queries Azure DevOps with its runtime-minted PAT (over HTTP Basic auth) and displays matching work items in the side panel.
 
