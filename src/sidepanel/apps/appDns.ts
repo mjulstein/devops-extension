@@ -140,6 +140,22 @@ export function envToken(name: string): string {
   return name.trim().toLowerCase().replace(/\s+/g, '-');
 }
 
+/**
+ * What a typed address means.
+ *
+ * A host typed into a command is an address, not a relative path: `https://` is
+ * put in front of anything that does not already say otherwise. An explicit
+ * `http://` is kept, which is the whole reason this is a rule rather than a
+ * silent upgrade, and so is any other scheme — a `chrome://` page typed in full
+ * should not be turned into a web address.
+ */
+export function normalizeTypedUrl(value: string): string {
+  const trimmed = value.trim();
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+}
+
 export function hostOf(url: string): string | null {
   try {
     return new URL(url).hostname.toLowerCase();

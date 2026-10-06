@@ -17,16 +17,13 @@ import {
   loadStarredPages
 } from './sidepanel/chromeStorage';
 import { loadThemeTokens } from './sidepanel/theme';
-import {
-  addAppEnvironment,
-  createApp,
-  loadApps
-} from './sidepanel/apps/appsFolder';
-import { parseAppUrl } from './sidepanel/apps/appDns';
+import { addAppEnvironment, loadApps } from './sidepanel/apps/appsFolder';
+import { normalizeTypedUrl, parseAppUrl } from './sidepanel/apps/appDns';
 import {
   carryPathAcrossEnvironments,
   isSamePage
 } from './sidepanel/apps/envSwitch';
+import { findAppForUrl, suggestEnvName } from './sidepanel/apps/appMatch';
 import { shouldCloseOnFocusChange } from './favoritesPalette/idleClose';
 import { loadSettings } from './sidepanel/chromeStorage';
 import { searchAllBookmarks } from './sidepanel/bookmarkSync';
@@ -143,11 +140,18 @@ async function browsingPageUrl(): Promise<string | null> {
 /**
  * Runs a command from the `>` list.
  *
- * Both commands work from an address: `add app` registers the app that address
- * belongs to, and `add app env` files the address under that app. Which app
- * that is comes from the address itself — told the environment's name, the
- * marker can be taken off the host, so `my-app-test.orgname.com` lands in
- * `my-app` rather than in a folder that looks like a fourth app.
+ * Both commands work from the page you are on, which is the point: you are
+ * looking at an environment, so there is nothing to type. Which app it belongs
+ * to is answered by the app folders you already have — an address containing an
+ * app's name goes in that app's folder, punctuation ignored, because
+ * `myapp-dev.orgname.com` is the app you called `my-app` and refusing it over a
+ * hyphen would be correct and useless. Only when no folder matches is a name
+ * read out of the address instead.
+ *
+ * The whole address is stored, path and query included, and the bookmark is
+ * named after whatever the address says the environment is — a placeholder, one
+ * rename away in the bookmark manager. Nothing depends on that name, so nothing
+ * waits for it to be right.
  */
 async function runQuickCommand(
   id: string,
@@ -155,18 +159,22 @@ async function runQuickCommand(
 ): Promise<{ ok: true } | { error: string }> {
   const settings = await loadSettings();
   const folder = settings.bookmarkFolderName;
+  const apps = await loadApps(folder);
 
   if (id === 'add-app') {
     const [givenName] = args;
-    if (givenName) {
-      return await createApp(folder, givenName);
-    }
     const url = await browsingPageUrl();
-    const parsed = url === null ? null : parseAppUrl(url);
-    if (parsed === null) {
-      return { error: 'No page to take an app name from.' };
+    if (url === null) {
+      return { error: 'No page to add. Open the app in a tab first.' };
     }
-    return await createApp(folder, parsed.appName);
+
+    const appName =
+      givenName ?? findAppForUrl(apps, url)?.name ?? parseAppUrl(url)?.appName;
+    if (!appName) {
+      return { error: 'That address does not say what the app is called.' };
+    }
+
+    return await addAppEnvironment(folder, appName, suggestEnvName(url), url);
   }
 
   if (id === 'add-app-env') {
@@ -174,12 +182,23 @@ async function runQuickCommand(
     if (!env) {
       return { error: 'Name the environment: add app env <env> [url]' };
     }
-    const url = givenUrl ?? (await browsingPageUrl());
-    const parsed = url == null ? null : parseAppUrl(url, env);
-    if (url == null || parsed === null) {
+    // A host typed into the command is an address: see normalizeTypedUrl.
+    const url =
+      givenUrl === undefined
+        ? await browsingPageUrl()
+        : normalizeTypedUrl(givenUrl);
+    if (url == null) {
       return { error: 'No address to add.' };
     }
-    return await addAppEnvironment(folder, parsed.appName, env, url);
+
+    // The folder you already have beats a name read out of the address.
+    const appName =
+      findAppForUrl(apps, url)?.name ?? parseAppUrl(url, env)?.appName;
+    if (!appName) {
+      return { error: 'That address does not say what the app is called.' };
+    }
+
+    return await addAppEnvironment(folder, appName, env, url);
   }
 
   return { error: `No such command: ${id}` };

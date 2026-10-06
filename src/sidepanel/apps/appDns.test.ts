@@ -1,4 +1,5 @@
 import {
+  normalizeTypedUrl,
   parseAppUrl,
   appBaseHost,
   deriveEnvUrl,
@@ -237,5 +238,39 @@ describe('parseAppUrl', () => {
 
   it('is null for something that is not an address', () => {
     expect(parseAppUrl('not a url')).toBeNull();
+  });
+});
+
+describe('normalizeTypedUrl', () => {
+  it('assumes https for a bare host', () => {
+    expect(normalizeTypedUrl('my-app-test.orgname.com')).toBe(
+      'https://my-app-test.orgname.com'
+    );
+  });
+
+  it('keeps an explicit http, which is the point of the rule', () => {
+    // What http is for in practice: a local server on a port.
+    expect(normalizeTypedUrl('http://localhost:8080/x')).toBe(
+      'http://localhost:8080/x'
+    );
+  });
+
+  it('still assumes https for a host:port with no scheme', () => {
+    // A port is not a scheme. "localhost:3000" is https by this rule, so a
+    // local server has to be typed with its http:// — which is the rule, not an
+    // oversight: guessing http from the word localhost would break a local
+    // server that does use https.
+    expect(normalizeTypedUrl('localhost:3000')).toBe('https://localhost:3000');
+  });
+
+  it('keeps https and leaves any other scheme alone', () => {
+    expect(normalizeTypedUrl('https://a.test/')).toBe('https://a.test/');
+    expect(normalizeTypedUrl('chrome://bookmarks/')).toBe(
+      'chrome://bookmarks/'
+    );
+  });
+
+  it('trims what was typed', () => {
+    expect(normalizeTypedUrl('  a.test  ')).toBe('https://a.test');
   });
 });

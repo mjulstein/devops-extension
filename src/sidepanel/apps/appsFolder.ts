@@ -106,15 +106,6 @@ export async function loadApps(
   }
 }
 
-/** Creates an app's folder, or finds the one already there. */
-export async function createApp(
-  favoritesFolderName: string,
-  appName: string
-): Promise<{ ok: true } | { error: string }> {
-  const folder = await appFolderId(favoritesFolderName, appName);
-  return 'error' in folder ? folder : { ok: true };
-}
-
 /** The app's folder, making it and everything above it if need be. */
 async function appFolderId(
   favoritesFolderName: string,

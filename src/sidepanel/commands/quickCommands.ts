@@ -36,7 +36,7 @@ export const QUICK_COMMANDS: QuickCommand[] = [
     name: 'add app',
     usage: 'add app [name]',
     description:
-      'Register the app you are looking at, as a folder in the apps folder. Names it from the address unless you give a name.',
+      'Add the page you are on to its app. Files it under the app folder whose name the address contains, or starts one named from the address.',
     argNames: ['name']
   },
   {
@@ -44,7 +44,7 @@ export const QUICK_COMMANDS: QuickCommand[] = [
     name: 'add app env',
     usage: 'add app env <env> [url]',
     description:
-      "Add an environment to the app the address belongs to. Uses the page you are on when you give no address, and the address itself says which app's folder it goes in.",
+      'The same, with the environment named rather than read off the address. Uses the page you are on when you give no address.',
     argNames: ['env', 'url']
   }
 ];

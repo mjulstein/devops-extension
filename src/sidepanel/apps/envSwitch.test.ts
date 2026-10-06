@@ -1,4 +1,8 @@
-import { carryPathAcrossEnvironments, isSamePage } from './envSwitch';
+import {
+  carryPathAcrossEnvironments,
+  identifyEnvironment,
+  isSamePage
+} from './envSwitch';
 import type { AppEntry } from './appDns';
 
 const app: AppEntry = {
@@ -95,5 +99,49 @@ describe('isSamePage', () => {
 
   it('separates two hosts', () => {
     expect(isSamePage('https://a.test/p', 'https://b.test/p')).toBe(false);
+  });
+});
+
+describe('identifyEnvironment', () => {
+  it('says which environment a page is in, by its host', () => {
+    expect(
+      identifyEnvironment(app, 'https://env2.my-app.com/deep/path?x=1')?.name
+    ).toBe('env2');
+  });
+
+  it('matches a bookmark that still carries a path of its own', () => {
+    const uncleaned: AppEntry = {
+      name: 'my-app',
+      environments: [
+        { name: 'uat', url: 'https://uat.my-app.com/some/page?a=1' }
+      ]
+    };
+    expect(
+      identifyEnvironment(uncleaned, 'https://uat.my-app.com/elsewhere')?.name
+    ).toBe('uat');
+  });
+
+  it('is null for a page outside the app', () => {
+    expect(identifyEnvironment(app, 'https://example.test/')).toBeNull();
+    expect(identifyEnvironment(app, null)).toBeNull();
+  });
+});
+
+describe('switching from a bookmark that has not been cleaned', () => {
+  it('takes only the origin from the target', () => {
+    const uncleaned: AppEntry = {
+      name: 'my-app',
+      environments: [
+        { name: 'env1', url: 'https://env1.my-app.com/' },
+        { name: 'env2', url: 'https://env2.my-app.com/left/over?stale=1' }
+      ]
+    };
+    expect(
+      carryPathAcrossEnvironments(
+        uncleaned,
+        'https://env2.my-app.com/left/over?stale=1',
+        'https://env1.my-app.com/some/path?x=1'
+      )
+    ).toBe('https://env2.my-app.com/some/path?x=1');
   });
 });

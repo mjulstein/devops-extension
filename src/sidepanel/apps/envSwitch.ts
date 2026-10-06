@@ -10,13 +10,32 @@
 // because the addresses are the only thing that is reliably true — deployments
 // are inconsistent enough that `myapp-dev` and `my-app-test` belong to one app.
 
-import { hostOf, type AppEntry } from './appDns';
+import { hostOf, type AppEntry, type AppEnvironment } from './appDns';
 
-/** Whether this address is one of the app's environments. */
-function belongsToApp(app: AppEntry, host: string | null): boolean {
+/**
+ * Which of the app's environments an address is in, by its host.
+ *
+ * The bookmarks are the authority, not the address: each one is named for its
+ * environment and holds that environment's own address, so matching the host
+ * against them says which environment you are standing in without reading
+ * anything out of the DNS. That is what makes an inconsistent deployment work —
+ * `myapp-dev` and `my-app-test` are both recognised because both are bookmarked,
+ * where any rule based on the names would miss one of them.
+ *
+ * Only the host is compared, so a bookmark that still carries a path or a query
+ * is matched the same as one that has been cleaned down to its origin.
+ */
+export function identifyEnvironment(
+  app: AppEntry,
+  url: string | null
+): AppEnvironment | null {
+  const host = url === null ? null : hostOf(url);
+  if (host === null) {
+    return null;
+  }
   return (
-    host !== null &&
-    app.environments.some((environment) => hostOf(environment.url) === host)
+    app.environments.find((environment) => hostOf(environment.url) === host) ??
+    null
   );
 }
 
@@ -42,7 +61,7 @@ export function carryPathAcrossEnvironments(
     targetHost === null ||
     currentHost === null ||
     targetHost === currentHost ||
-    !belongsToApp(app, currentHost)
+    identifyEnvironment(app, currentUrl) === null
   ) {
     return targetUrl;
   }
@@ -67,6 +86,9 @@ export function carryPathAcrossEnvironments(
     return targetUrl;
   }
 
+  // The target contributes its origin and nothing else. A bookmark that has not
+  // been cleaned down to its base still switches correctly, because where you
+  // are going is where you already are.
   target.pathname = current.pathname;
   target.search = current.search;
   target.hash = current.hash;

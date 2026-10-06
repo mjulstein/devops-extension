@@ -24,6 +24,7 @@ them beats having to name one.
 | [`appsQuery.ts`](./appsQuery.ts) | Reading `my-app test` into an app and an environment, and which environment a row points at after *n* presses of Tab. |
 | [`appsFolder.ts`](./appsFolder.ts) | The bookmark layout, and adding an environment to it. |
 | [`envSwitch.ts`](./envSwitch.ts) | Switching environment without losing your place, and when a tab can be reused. |
+| [`appMatch.ts`](./appMatch.ts) | Which app a page belongs to, once that app has a folder. |
 | [`useApps.ts`](./useApps.ts) | The apps as the bookmarks currently hold them, kept current. |
 
 ## Where they live
@@ -80,6 +81,28 @@ organization's domain — `myapp.orgname.com` — reads as the `myapp` environme
 of `orgname.com`, because from the address alone there is nothing to tell the
 two apart. Give it a name when registering it (`>add app myapp`) and add its
 addresses explicitly.
+
+## Adding what you are looking at
+
+`>add app` takes the page you are on and files it. Which app it belongs to is
+answered by the folders you already have: an address containing an app's name
+goes in that app's folder, punctuation ignored, because `myapp-dev.orgname.com`
+is the app you called `my-app` and refusing it over a hyphen would be correct
+and useless. The longest matching name wins, so `my-app-admin` is not swallowed
+by `my-app`. Only when no folder matches is a name read out of the address
+instead.
+
+The whole address is stored, path and query included. The bookmark is named
+after whatever the address says the environment is, or after the host when it
+says nothing — a placeholder, because there is no list of environment names here
+and inventing one would be worse than a name you can see is provisional. Nothing
+depends on it, so nothing waits for it to be right.
+
+A host typed into a command is an address: `https://` goes in front unless a
+scheme is already there. An explicit `http://` is kept, which is what it is for
+— a local server on a port. A port is not a scheme, so `localhost:3000` is still
+read as https; a local server has to be typed with its `http://`, since guessing
+from the word localhost would break the ones that do use https.
 
 ## Switching environment keeps your place
 
