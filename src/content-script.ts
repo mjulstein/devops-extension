@@ -13,6 +13,7 @@ import { openFavoritesPalette } from './favoritesPalette/favoritesPalette';
 import type { StarredPage } from './sidepanel/starredPages';
 import type { AppEntry } from './sidepanel/apps/appDns';
 import type { EnvContext } from './sidepanel/favoritesListing';
+import type { RecentWorkItem } from './devops/recentWorkItems';
 import type { WidenedSearchData } from './sidepanel/favoritesListing';
 type RuntimeMessage =
   | {
@@ -57,6 +58,7 @@ type RuntimeMessage =
         icons?: Record<string, string>;
         apps?: AppEntry[];
         envContext?: EnvContext;
+        recentWorkItems?: RecentWorkItem[];
       };
     };
 
@@ -149,6 +151,13 @@ function handleRuntimeMessage(
         icons: message.payload.icons,
         apps: message.payload.apps,
         envContext: message.payload.envContext,
+        recentWorkItems: message.payload.recentWorkItems,
+        onOpenWorkItem: (id, url) => {
+          void chrome.runtime.sendMessage({
+            type: 'OPEN_WORK_ITEM',
+            payload: { id, url }
+          });
+        },
         onOpenAppTarget: (app, url) => {
           void chrome.runtime.sendMessage({
             type: 'OPEN_APP_TARGET',

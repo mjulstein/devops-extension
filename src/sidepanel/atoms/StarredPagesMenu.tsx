@@ -18,6 +18,7 @@ import { getFavoriteIconUrl } from '../favoriteIcon';
 import { useSectionIcons } from '../useSectionIcons';
 import { useApps } from '../apps/useApps';
 import { useEnvContext } from '../apps/useEnvContext';
+import { useRecentWorkItems } from '../useRecentWorkItems';
 import {
   completeCommand,
   QUICK_COMMANDS,
@@ -131,6 +132,7 @@ export function StarredPagesMenu({
   // Title matches rank above address matches — see rankFavorites.
   const apps = useApps();
   const envContext = useEnvContext(isOpen);
+  const recentWorkItems = useRecentWorkItems();
   const listing = useMemo(
     () =>
       buildFavoritesListing(
@@ -139,9 +141,10 @@ export function StarredPagesMenu({
         query,
         widened,
         apps,
-        envContext
+        envContext,
+        recentWorkItems
       ),
-    [apps, envContext, pages, quickTaskPages, query, widened]
+    [apps, envContext, pages, quickTaskPages, query, recentWorkItems, widened]
   );
   const visible = listing.rows;
 
@@ -200,6 +203,14 @@ export function StarredPagesMenu({
       setQuery(`.${entry.folder.title}`);
       setHighlight(0);
       searchRef.current?.focus();
+      return;
+    }
+    if (entry.kind === 'work-item') {
+      close();
+      void chrome.runtime.sendMessage({
+        type: 'OPEN_WORK_ITEM',
+        payload: { id: entry.id, url: entry.item?.url }
+      });
       return;
     }
     if (entry.kind === 'app-env') {
@@ -546,6 +557,10 @@ export function StarredPagesMenu({
                   {entry.kind === 'folder' ? (
                     <span aria-hidden="true" className={classes.folderIcon}>
                       📁
+                    </span>
+                  ) : entry.kind === 'work-item' ? (
+                    <span aria-hidden="true" className={classes.folderIcon}>
+                      #
                     </span>
                   ) : entry.kind === 'app-env' ? (
                     <FavoriteIcon

@@ -7,7 +7,12 @@
 // leading ">" turns it into a command list instead, for the few things you want
 // while you are here that are not places at all.
 
-export type FavoritesSearchScope = 'favorites' | 'all' | 'commands' | 'apps';
+export type FavoritesSearchScope =
+  | 'favorites'
+  | 'all'
+  | 'commands'
+  | 'apps'
+  | 'work-items';
 
 export interface FavoritesQuery {
   scope: FavoritesSearchScope;
@@ -39,9 +44,20 @@ export const COMMANDS_PREFIX = '>';
  */
 export const APPS_PREFIX = '-';
 
+/**
+ * The character that asks for a work item.
+ *
+ * The number is how a work item is spoken about, so `#` and the number is the
+ * whole gesture. On its own it offers the ones you have looked at lately.
+ */
+export const WORK_ITEMS_PREFIX = '#';
+
 export function parseFavoritesQuery(raw: string): FavoritesQuery {
   if (raw.startsWith(COMMANDS_PREFIX)) {
     return { scope: 'commands', term: raw.slice(1).trimStart() };
+  }
+  if (raw.startsWith(WORK_ITEMS_PREFIX)) {
+    return { scope: 'work-items', term: raw.slice(1).trimStart() };
   }
   if (raw.startsWith(APPS_PREFIX)) {
     return { scope: 'apps', term: raw.slice(1).trimStart() };

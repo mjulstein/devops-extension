@@ -38,6 +38,7 @@ import {
 } from '@/sidepanel/commands/quickCommands';
 import type { AppEntry } from '@/sidepanel/apps/appDns';
 import type { EnvContext } from '@/sidepanel/favoritesListing';
+import type { RecentWorkItem } from '@/devops/recentWorkItems';
 
 const HOST_ID = 'devops-ext-favorites-palette';
 
@@ -56,6 +57,8 @@ export interface PaletteOptions {
    * apps listing can offer the other one first.
    */
   envContext?: EnvContext;
+  /** Work items visited lately, offered by the `#` prefix. */
+  recentWorkItems?: RecentWorkItem[];
   /**
    * Site icons by origin. Passed in because an extension resource — which the
    * browser's favicon cache is — cannot be loaded from a page, so the service
@@ -114,6 +117,12 @@ export interface PaletteOptions {
    * one opened beside it.
    */
   onOpenAppTarget?: (app: string, url: string) => void;
+  /**
+   * Opens a work item by number. The address is passed when it is known — a
+   * recently visited item carries its own — and worked out from the
+   * organization and project otherwise.
+   */
+  onOpenWorkItem?: (id: number, url?: string) => void;
   /**
    * Shows the side panel on the window being browsed in. Resolves false when
    * the browser refuses, which it does when it does not count the click as a
@@ -312,6 +321,7 @@ export function openFavoritesPalette({
   quickTasks = [],
   apps = [],
   envContext,
+  recentWorkItems = [],
   icons = {},
   onOpenPage,
   searchAllBookmarks,
@@ -323,6 +333,7 @@ export function openFavoritesPalette({
   onAddAppEnvironment,
   onRunCommand,
   onOpenAppTarget,
+  onOpenWorkItem,
   onOpenSidePanel,
   onClose,
   container = document.body
@@ -473,7 +484,8 @@ export function openFavoritesPalette({
     quickTasks,
     { bookmarks: [], folders: [] },
     apps,
-    envContext
+    envContext,
+    recentWorkItems
   );
 
   let closed = false;
@@ -505,6 +517,12 @@ export function openFavoritesPalette({
       rebuild();
       requestWidenedSearch();
       search.focus();
+      return;
+    }
+
+    if (target.kind === 'work-item') {
+      close();
+      onOpenWorkItem?.(target.id, target.item?.url);
       return;
     }
 
@@ -619,7 +637,12 @@ export function openFavoritesPalette({
             ? iconKeyFor(entry.environment.url)
             : null;
       const iconSrc = iconKey === null ? undefined : allIcons[iconKey];
-      if (entry.kind === 'app-folder') {
+      if (entry.kind === 'work-item') {
+        const icon = document.createElement('span');
+        icon.className = 'icon folderIcon';
+        icon.textContent = '#';
+        row.append(icon);
+      } else if (entry.kind === 'app-folder') {
         const icon = document.createElement('span');
         icon.className = 'icon folderIcon';
         icon.textContent = '▤';
@@ -680,7 +703,8 @@ export function openFavoritesPalette({
       quickTasks,
       widened,
       apps,
-      envContext
+      envContext,
+      recentWorkItems
     );
     render();
   }

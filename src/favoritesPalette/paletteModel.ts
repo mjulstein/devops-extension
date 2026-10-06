@@ -13,6 +13,7 @@ import {
 } from '@/sidepanel/favoritesListing';
 import type { StarredPage } from '@/sidepanel/starredPages';
 import type { AppEntry } from '@/sidepanel/apps/appDns';
+import type { RecentWorkItem } from '@/devops/recentWorkItems';
 
 export interface PaletteView {
   /** Rows to show, ranked for the current query: favorites, then quick tasks. */
@@ -36,7 +37,8 @@ export function buildPaletteView(
   quickTasks: StarredPage[] = [],
   widened: WidenedSearchData = { bookmarks: [], folders: [] },
   apps: AppEntry[] = [],
-  envContext?: EnvContext
+  envContext?: EnvContext,
+  recentWorkItems: RecentWorkItem[] = []
 ): PaletteView {
   const listing = buildFavoritesListing(
     pages,
@@ -44,7 +46,8 @@ export function buildPaletteView(
     query,
     widened,
     apps,
-    envContext
+    envContext,
+    recentWorkItems
   );
   const rows = listing.rows;
   if (rows.length === 0) {

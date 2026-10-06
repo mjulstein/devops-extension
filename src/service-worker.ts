@@ -24,6 +24,13 @@ import {
   parseAppUrl
 } from './sidepanel/apps/appDns';
 import {
+  buildWorkItemUrl,
+  recordRecentWorkItem,
+  RECENT_WORK_ITEMS_KEY,
+  type RecentWorkItem
+} from './devops/recentWorkItems';
+import { getWorkItemIdFromUrl } from './devops/urlContext';
+import {
   carryPathAcrossEnvironments,
   isSamePage,
   usageFromTabs
@@ -275,7 +282,17 @@ async function loadFavoritesPaletteData() {
     currentHost: currentUrl === null ? null : hostOf(currentUrl)
   };
 
-  return { favorites, quickTasks, tokens, icons, apps, envContext };
+  const recentWorkItems = await loadRecentWorkItems();
+
+  return {
+    favorites,
+    quickTasks,
+    tokens,
+    icons,
+    apps,
+    envContext,
+    recentWorkItems
+  };
 }
 
 /**
@@ -809,6 +826,10 @@ type RuntimeMessage =
       payload: { app: string; url: string };
     }
   | {
+      type: 'OPEN_WORK_ITEM';
+      payload: { id: number; url?: string };
+    }
+  | {
       type: 'OPEN_BOOKMARK_MANAGER';
       payload?: undefined;
     }
@@ -952,7 +973,8 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
     .then((tab) =>
       Promise.all([
         recordLastVisitedDevOpsContext(tab.url),
-        recordLastVisitedWorkItemRef(tab.url)
+        recordLastVisitedWorkItemRef(tab.url),
+        recordRecentWorkItemVisit(tab.url, tab.title)
       ])
     )
     .catch(() => undefined);
@@ -962,6 +984,7 @@ chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
   const candidateUrl = changeInfo.url ?? tab.url;
   void recordLastVisitedDevOpsContext(candidateUrl);
   void recordLastVisitedWorkItemRef(candidateUrl);
+  void recordRecentWorkItemVisit(candidateUrl, tab.title);
 });
 
 chrome.runtime.onMessage.addListener(
@@ -1021,6 +1044,15 @@ chrome.runtime.onMessage.addListener(
 
     if (message.type === 'OPEN_SETTINGS_WINDOW') {
       openSingletonWindow('settings')
+        .then(() => sendResponse({ ok: true, result: null }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'OPEN_WORK_ITEM') {
+      openWorkItem(message.payload.id, message.payload.url)
         .then(() => sendResponse({ ok: true, result: null }))
         .catch((error: Error) =>
           sendResponse({ ok: false, error: error.message })
@@ -1449,6 +1481,105 @@ async function recordLastVisitedDevOpsContext(
   await chrome.storage.local.set({
     [LAST_VISITED_DEVOPS_CONTEXT_KEY]: context
   });
+}
+
+/**
+ * Keeps the recently visited work items, for the `#` list.
+ *
+ * The title comes from the tab, because that is the only readable thing about a
+ * work item available without fetching it — and the point of the list is to
+ * recognise one you have seen rather than to remember its number.
+ */
+async function recordRecentWorkItemVisit(
+  rawUrl: string | undefined,
+  title: string | undefined
+): Promise<void> {
+  if (!rawUrl) {
+    return;
+  }
+  const id = getWorkItemIdFromUrl(rawUrl);
+  if (!id) {
+    return;
+  }
+
+  const stored = await chrome.storage.local.get(RECENT_WORK_ITEMS_KEY);
+  const list = Array.isArray(stored[RECENT_WORK_ITEMS_KEY])
+    ? (stored[RECENT_WORK_ITEMS_KEY] as RecentWorkItem[])
+    : [];
+
+  await chrome.storage.local.set({
+    [RECENT_WORK_ITEMS_KEY]: recordRecentWorkItem(list, {
+      id: Number(id),
+      title: (title ?? '').trim(),
+      url: rawUrl,
+      at: Date.now()
+    })
+  });
+}
+
+async function loadRecentWorkItems(): Promise<RecentWorkItem[]> {
+  const stored = await chrome.storage.local.get(RECENT_WORK_ITEMS_KEY);
+  return Array.isArray(stored[RECENT_WORK_ITEMS_KEY])
+    ? (stored[RECENT_WORK_ITEMS_KEY] as RecentWorkItem[])
+    : [];
+}
+
+/**
+ * Opens a work item, reusing a tab already showing it.
+ *
+ * A recently visited item carries its own address. A number typed by hand does
+ * not, so it is built from the organization and project — the saved settings
+ * first, then the last Azure DevOps page visited, which is what makes typing a
+ * number work before anything has been configured.
+ */
+async function openWorkItem(id: number, url?: string): Promise<void> {
+  let target = url;
+
+  if (target === undefined) {
+    const settings = await loadSettings();
+    let organization = settings.organization;
+    let project = settings.project;
+
+    if (!organization.trim() || !project.trim()) {
+      const stored = await chrome.storage.local.get(
+        LAST_VISITED_DEVOPS_CONTEXT_KEY
+      );
+      const context = parseLastVisitedDevOpsContext(
+        stored[LAST_VISITED_DEVOPS_CONTEXT_KEY]
+      );
+      organization = organization.trim() || (context?.organization ?? '');
+      project = project.trim() || (context?.project ?? '');
+    }
+
+    target = buildWorkItemUrl(organization, project, id) ?? undefined;
+  }
+
+  if (target === undefined) {
+    throw new Error(
+      'No organization and project yet. Visit an Azure DevOps page or set them in Settings.'
+    );
+  }
+
+  const tabs = await chrome.tabs.query({});
+  const open = tabs.find(
+    (tab) => tab.url !== undefined && isSamePage(tab.url, target)
+  );
+  if (open?.id != null) {
+    await chrome.tabs.update(open.id, { active: true });
+    if (open.windowId != null) {
+      await chrome.windows.update(open.windowId, { focused: true });
+    }
+    return;
+  }
+
+  const windowId = await browsingWindowId();
+  await chrome.tabs.create({
+    url: target,
+    ...(windowId === null ? {} : { windowId })
+  });
+  if (windowId !== null) {
+    await chrome.windows.update(windowId, { focused: true });
+  }
 }
 
 async function recordLastVisitedWorkItemRef(

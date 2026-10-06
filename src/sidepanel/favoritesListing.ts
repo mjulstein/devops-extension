@@ -20,6 +20,11 @@ import { matchApps, parseAppQuery, resolveAppTarget } from './apps/appsQuery';
 import { envToken, type AppEnvironment } from './apps/appDns';
 import { orderEnvironmentsForSwitching, type EnvUsage } from './apps/envSwitch';
 import {
+  matchRecentWorkItems,
+  parseWorkItemQuery,
+  type RecentWorkItem
+} from '@/devops/recentWorkItems';
+import {
   matchCommands,
   QUICK_COMMANDS,
   type QuickCommand
@@ -32,6 +37,12 @@ export type FavoritesRow =
   | { kind: 'command'; command: QuickCommand; text: string }
   /** An app to walk into, in the `-` listing. */
   | { kind: 'app-folder'; app: AppEntry }
+  /**
+   * A work item to open by number. `item` is absent when the number has only
+   * been typed rather than visited — the number is enough to go on, and
+   * waiting to confirm it exists would make the fast path the slow one.
+   */
+  | { kind: 'work-item'; id: number; item?: RecentWorkItem }
   /**
    * One environment of an app. It carries the app rather than being a plain
    * page row, because opening it is a switch *within* that app: the page you
@@ -101,7 +112,8 @@ export function buildFavoritesListing(
   query: string,
   widened: WidenedSearchData = { bookmarks: [], folders: [] },
   apps: AppEntry[] = [],
-  envContext: EnvContext = NO_ENV_CONTEXT
+  envContext: EnvContext = NO_ENV_CONTEXT,
+  recentWorkItems: RecentWorkItem[] = []
 ): FavoritesListing {
   const parsed = parseFavoritesQuery(query);
 
@@ -117,6 +129,10 @@ export function buildFavoritesListing(
         }))
       }
     ]);
+  }
+
+  if (parsed.scope === 'work-items') {
+    return buildWorkItemsListing(recentWorkItems, parsed.term);
   }
 
   if (parsed.scope === 'apps') {
@@ -226,6 +242,49 @@ function buildWidenedListing(
  * knows how to draw, icon and open them, and the app they belong to is said
  * once on the divider rather than repeated on every row.
  */
+/**
+ * A number to open, then the items you have looked at lately.
+ *
+ * The typed number leads and is never filtered away: `#12345` and Enter has to
+ * open 12345 whether or not it is in the list, which is the point of typing it.
+ * It is left out of the rows below so the same item is not offered twice.
+ */
+function buildWorkItemsListing(
+  recent: RecentWorkItem[],
+  term: string
+): FavoritesListing {
+  const { id, filter } = parseWorkItemQuery(term);
+  const matched = matchRecentWorkItems(recent, filter);
+
+  const typed: FavoritesRow[] =
+    id === null
+      ? []
+      : [
+          {
+            kind: 'work-item',
+            id,
+            item: matched.find((entry) => entry.id === id)
+          }
+        ];
+
+  return buildSections([
+    { label: null, indent: false, rows: typed },
+    {
+      label: 'Recent work items',
+      indent: false,
+      rows: matched
+        .filter((entry) => entry.id !== id)
+        .map(
+          (entry): FavoritesRow => ({
+            kind: 'work-item',
+            id: entry.id,
+            item: entry
+          })
+        )
+    }
+  ]);
+}
+
 function buildAppsListing(
   apps: AppEntry[],
   term: string,
@@ -308,6 +367,9 @@ export function rowKey(row: FavoritesRow): string {
   if (row.kind === 'app-env') {
     return `app-env:${row.app.name}:${row.environment.name}`;
   }
+  if (row.kind === 'work-item') {
+    return `work-item:${row.id}`;
+  }
   return row.kind === 'folder'
     ? `folder:${row.folder.id}`
     : `app:${row.app.name}`;
@@ -326,6 +388,13 @@ export function rowLabel(row: FavoritesRow): string {
   }
   if (row.kind === 'app-env') {
     return row.environment.name;
+  }
+  if (row.kind === 'work-item') {
+    // `||`, not `??`: an item recorded before its title loaded has an empty
+    // string, and a row labelled with nothing is worse than one labelled with
+    // its number.
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    return row.item?.title || `Work item ${row.id}`;
   }
   return row.kind === 'folder' ? row.folder.title : row.app.name;
 }
@@ -351,6 +420,9 @@ export function rowDetail(row: FavoritesRow, step = 0): string {
   }
   if (row.kind === 'app-env') {
     return row.environment.url;
+  }
+  if (row.kind === 'work-item') {
+    return row.item === undefined ? `Open #${row.id}` : `#${row.id}`;
   }
   if (row.kind === 'app-folder') {
     const count = row.app.environments.length;

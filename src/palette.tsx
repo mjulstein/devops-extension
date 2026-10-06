@@ -16,6 +16,7 @@ import type { WidenedSearchData } from './sidepanel/favoritesListing';
 import type { StarredPage } from './sidepanel/starredPages';
 import type { AppEntry } from './sidepanel/apps/appDns';
 import type { EnvContext } from './sidepanel/favoritesListing';
+import type { RecentWorkItem } from './devops/recentWorkItems';
 import { applyTheme, loadLastKnownTheme } from './sidepanel/theme';
 import { shouldIdleClose } from './favoritesPalette/idleClose';
 
@@ -35,6 +36,7 @@ interface PaletteData {
   icons: FaviconMap;
   apps: AppEntry[];
   envContext: EnvContext;
+  recentWorkItems: RecentWorkItem[];
 }
 
 async function ask<T>(type: string, payload?: unknown): Promise<T | null> {
@@ -54,7 +56,8 @@ async function main(): Promise<void> {
     tokens: {},
     icons: {},
     apps: [],
-    envContext: { usage: {}, currentHost: null }
+    envContext: { usage: {}, currentHost: null },
+    recentWorkItems: []
   };
 
   // Fetched now so the click handler has it without awaiting: see the note on
@@ -107,6 +110,13 @@ async function main(): Promise<void> {
     icons: data.icons,
     apps: data.apps,
     envContext: data.envContext,
+    recentWorkItems: data.recentWorkItems,
+    onOpenWorkItem: (id, url) => {
+      void chrome.runtime.sendMessage({
+        type: 'OPEN_WORK_ITEM',
+        payload: { id, url }
+      });
+    },
     onOpenAppTarget: (app, url) => {
       void chrome.runtime.sendMessage({
         type: 'OPEN_APP_TARGET',
