@@ -18,10 +18,15 @@ import {
 } from './sidepanel/chromeStorage';
 import { loadThemeTokens } from './sidepanel/theme';
 import { addAppEnvironment, loadApps } from './sidepanel/apps/appsFolder';
-import { normalizeTypedUrl, parseAppUrl } from './sidepanel/apps/appDns';
+import {
+  hostOf,
+  normalizeTypedUrl,
+  parseAppUrl
+} from './sidepanel/apps/appDns';
 import {
   carryPathAcrossEnvironments,
-  isSamePage
+  isSamePage,
+  usageFromTabs
 } from './sidepanel/apps/envSwitch';
 import { findAppForUrl, suggestEnvName } from './sidepanel/apps/appMatch';
 import { shouldCloseOnFocusChange } from './favoritesPalette/idleClose';
@@ -260,7 +265,17 @@ async function loadFavoritesPaletteData() {
     ...favorites.map((page) => page.url),
     ...quickTasks.map((page) => page.url)
   ]);
-  return { favorites, quickTasks, tokens, icons, apps };
+
+  // Which environment you were last in, and which you are in now, so the apps
+  // listing can offer the other one first.
+  const tabs = await chrome.tabs.query({});
+  const currentUrl = await browsingPageUrl();
+  const envContext = {
+    usage: usageFromTabs(tabs),
+    currentHost: currentUrl === null ? null : hostOf(currentUrl)
+  };
+
+  return { favorites, quickTasks, tokens, icons, apps, envContext };
 }
 
 /**

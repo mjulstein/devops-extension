@@ -37,6 +37,7 @@ import {
   readCommand
 } from '@/sidepanel/commands/quickCommands';
 import type { AppEntry } from '@/sidepanel/apps/appDns';
+import type { EnvContext } from '@/sidepanel/favoritesListing';
 
 const HOST_ID = 'devops-ext-favorites-palette';
 
@@ -50,6 +51,11 @@ export interface PaletteOptions {
    * name, not by giving every environment a row of its own.
    */
   apps?: AppEntry[];
+  /**
+   * Which environment was last looked at, and which is on screen now, so the
+   * apps listing can offer the other one first.
+   */
+  envContext?: EnvContext;
   /**
    * Site icons by origin. Passed in because an extension resource — which the
    * browser's favicon cache is — cannot be loaded from a page, so the service
@@ -305,6 +311,7 @@ export function openFavoritesPalette({
   favorites,
   quickTasks = [],
   apps = [],
+  envContext,
   icons = {},
   onOpenPage,
   searchAllBookmarks,
@@ -356,6 +363,9 @@ export function openFavoritesPalette({
   header.className = 'header';
   header.append(search);
 
+  /** Controls that leave the palette; appended below the list, not above it. */
+  const footerControls: HTMLButtonElement[] = [];
+
   if (onOpenBookmarkManager) {
     // Where a bookmark gets renamed, moved or deleted — none of which belongs in
     // a search box, and all of which people come looking for once the widened
@@ -369,7 +379,7 @@ export function openFavoritesPalette({
       close();
       onOpenBookmarkManager();
     });
-    header.append(manage);
+    footerControls.push(manage);
   }
 
   if (onTogglePin) {
@@ -393,11 +403,17 @@ export function openFavoritesPalette({
       // caret out of it.
       search.focus();
     });
-    header.append(pin);
+    footerControls.push(pin);
   }
 
   const footer = document.createElement('div');
   footer.className = 'footer';
+  // Everything that leaves the palette sits below the list, so Tab from the
+  // search walks the rows first and only then reaches these. A list you have to
+  // tab past two buttons to get into is a list you use the mouse for.
+  for (const control of footerControls) {
+    footer.append(control);
+  }
 
   if (onOpenSidePanel) {
     const panelButton = document.createElement('button');
@@ -456,7 +472,8 @@ export function openFavoritesPalette({
     0,
     quickTasks,
     { bookmarks: [], folders: [] },
-    apps
+    apps,
+    envContext
   );
 
   let closed = false;
@@ -662,7 +679,8 @@ export function openFavoritesPalette({
       0,
       quickTasks,
       widened,
-      apps
+      apps,
+      envContext
     );
     render();
   }

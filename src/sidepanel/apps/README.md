@@ -104,6 +104,25 @@ scheme is already there. An explicit `http://` is kept, which is what it is for
 read as https; a local server has to be typed with its `http://`, since guessing
 from the word localhost would break the ones that do use https.
 
+## The order they are offered in
+
+Walk into an app and its environments lead with whichever you were in most
+recently, with the one you are looking at now last — switching to where you
+already are is not a switch. Two environments and a tab open on each is then a
+flip: the other one is always the first row, so Enter goes back and forth
+between them.
+
+"Most recently" comes from the open tabs' own `lastAccessed`, not from a
+history this keeps: the question is which one you were just in, and the browser
+already knows, including the times you switched tabs without going near this
+search. Environments with no tab open keep the folder's order behind the ones
+that have.
+
+Everything that leaves the palette — Bookmarks, the pin, the side panel and the
+cog — sits below the list, so Tab from the search box walks the rows first and
+only then reaches those. A list you have to tab past two buttons to get into is
+a list you use the mouse for.
+
 ## Switching environment keeps your place
 
 Picking another environment of the app you are already looking at is almost

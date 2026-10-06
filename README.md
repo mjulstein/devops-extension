@@ -217,7 +217,10 @@ npm test
     one row each, with **Enter** opening the first environment, **Tab** stepping
     to the next, and a typed second word naming one. Start the search with `-`
     to walk into them instead: on its own it lists the apps, naming one shows
-    the bookmarks in its folder, and a further word filters those. Switching
+    the bookmarks in its folder, and a further word filters those. Walking into an app
+    lists its environments with the one you were last in first and the one you
+    are looking at last, so two environments are a flip between them; Tab from
+    the search box walks those rows before reaching the buttons below. Switching
     environment keeps your place: from `env1.my-app.com/some/path` you land on
     `env2.my-app.com/some/path`, reusing a tab already showing it and opening a
     new one otherwise.

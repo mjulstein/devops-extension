@@ -15,6 +15,7 @@ import type { FaviconMap } from './favoritesPalette/faviconData';
 import type { WidenedSearchData } from './sidepanel/favoritesListing';
 import type { StarredPage } from './sidepanel/starredPages';
 import type { AppEntry } from './sidepanel/apps/appDns';
+import type { EnvContext } from './sidepanel/favoritesListing';
 import { applyTheme, loadLastKnownTheme } from './sidepanel/theme';
 import { shouldIdleClose } from './favoritesPalette/idleClose';
 
@@ -33,6 +34,7 @@ interface PaletteData {
   tokens: Record<string, string>;
   icons: FaviconMap;
   apps: AppEntry[];
+  envContext: EnvContext;
 }
 
 async function ask<T>(type: string, payload?: unknown): Promise<T | null> {
@@ -51,7 +53,8 @@ async function main(): Promise<void> {
     quickTasks: [],
     tokens: {},
     icons: {},
-    apps: []
+    apps: [],
+    envContext: { usage: {}, currentHost: null }
   };
 
   // Fetched now so the click handler has it without awaiting: see the note on
@@ -103,6 +106,7 @@ async function main(): Promise<void> {
     tokens: data.tokens,
     icons: data.icons,
     apps: data.apps,
+    envContext: data.envContext,
     onOpenAppTarget: (app, url) => {
       void chrome.runtime.sendMessage({
         type: 'OPEN_APP_TARGET',

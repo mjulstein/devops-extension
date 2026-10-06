@@ -12,6 +12,7 @@ import { readAdoThemeColorsFromPage } from './devops/pageTheme';
 import { openFavoritesPalette } from './favoritesPalette/favoritesPalette';
 import type { StarredPage } from './sidepanel/starredPages';
 import type { AppEntry } from './sidepanel/apps/appDns';
+import type { EnvContext } from './sidepanel/favoritesListing';
 import type { WidenedSearchData } from './sidepanel/favoritesListing';
 type RuntimeMessage =
   | {
@@ -55,6 +56,7 @@ type RuntimeMessage =
         tokens?: Record<string, string>;
         icons?: Record<string, string>;
         apps?: AppEntry[];
+        envContext?: EnvContext;
       };
     };
 
@@ -146,6 +148,7 @@ function handleRuntimeMessage(
         tokens: message.payload.tokens,
         icons: message.payload.icons,
         apps: message.payload.apps,
+        envContext: message.payload.envContext,
         onOpenAppTarget: (app, url) => {
           void chrome.runtime.sendMessage({
             type: 'OPEN_APP_TARGET',

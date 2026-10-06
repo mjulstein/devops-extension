@@ -7,6 +7,7 @@
 import {
   buildFavoritesListing,
   type FavoritesRow,
+  type EnvContext,
   type FavoritesSection,
   type WidenedSearchData
 } from '@/sidepanel/favoritesListing';
@@ -34,14 +35,16 @@ export function buildPaletteView(
   highlight: number,
   quickTasks: StarredPage[] = [],
   widened: WidenedSearchData = { bookmarks: [], folders: [] },
-  apps: AppEntry[] = []
+  apps: AppEntry[] = [],
+  envContext?: EnvContext
 ): PaletteView {
   const listing = buildFavoritesListing(
     pages,
     quickTasks,
     query,
     widened,
-    apps
+    apps,
+    envContext
   );
   const rows = listing.rows;
   if (rows.length === 0) {

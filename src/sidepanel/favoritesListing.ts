@@ -18,6 +18,7 @@ import type { BookmarkFolder } from './bookmarkFolders';
 import type { AppEntry } from './apps/appDns';
 import { matchApps, parseAppQuery, resolveAppTarget } from './apps/appsQuery';
 import { envToken, type AppEnvironment } from './apps/appDns';
+import { orderEnvironmentsForSwitching, type EnvUsage } from './apps/envSwitch';
 import {
   matchCommands,
   QUICK_COMMANDS,
@@ -84,12 +85,23 @@ export interface WidenedSearchData {
   folders: BookmarkFolder[];
 }
 
+/** What the apps listing needs to know about the browser to order itself. */
+export interface EnvContext {
+  /** When each environment's host was last looked at. */
+  usage: EnvUsage;
+  /** The host of the page being browsed, which sorts to the bottom. */
+  currentHost: string | null;
+}
+
+const NO_ENV_CONTEXT: EnvContext = { usage: {}, currentHost: null };
+
 export function buildFavoritesListing(
   favorites: StarredPage[],
   quickTasks: StarredPage[],
   query: string,
   widened: WidenedSearchData = { bookmarks: [], folders: [] },
-  apps: AppEntry[] = []
+  apps: AppEntry[] = [],
+  envContext: EnvContext = NO_ENV_CONTEXT
 ): FavoritesListing {
   const parsed = parseFavoritesQuery(query);
 
@@ -108,7 +120,7 @@ export function buildFavoritesListing(
   }
 
   if (parsed.scope === 'apps') {
-    return buildAppsListing(apps, parsed.term);
+    return buildAppsListing(apps, parsed.term, envContext);
   }
 
   if (parsed.scope === 'all') {
@@ -214,7 +226,11 @@ function buildWidenedListing(
  * knows how to draw, icon and open them, and the app they belong to is said
  * once on the divider rather than repeated on every row.
  */
-function buildAppsListing(apps: AppEntry[], term: string): FavoritesListing {
+function buildAppsListing(
+  apps: AppEntry[],
+  term: string,
+  envContext: EnvContext
+): FavoritesListing {
   const { appTerm, envTerm } = parseAppQuery(term, apps);
   const matched = matchApps(apps, appTerm);
 
@@ -237,7 +253,11 @@ function buildAppsListing(apps: AppEntry[], term: string): FavoritesListing {
   const parts = matched.map((app) => ({
     label: app.name,
     indent: true,
-    rows: app.environments
+    rows: orderEnvironmentsForSwitching(
+      app.environments,
+      envContext.usage,
+      envContext.currentHost
+    )
       .filter(
         (environment) =>
           needle === '' || envToken(environment.name).includes(needle)

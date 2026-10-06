@@ -1,7 +1,9 @@
 import {
   carryPathAcrossEnvironments,
   identifyEnvironment,
-  isSamePage
+  isSamePage,
+  orderEnvironmentsForSwitching,
+  usageFromTabs
 } from './envSwitch';
 import type { AppEntry } from './appDns';
 
@@ -143,5 +145,67 @@ describe('switching from a bookmark that has not been cleaned', () => {
         'https://env1.my-app.com/some/path?x=1'
       )
     ).toBe('https://env2.my-app.com/some/path?x=1');
+  });
+});
+
+describe('orderEnvironmentsForSwitching', () => {
+  const three = [
+    { name: 'a', url: 'https://a.my-app.com/' },
+    { name: 'b', url: 'https://b.my-app.com/' },
+    { name: 'c', url: 'https://c.my-app.com/' }
+  ];
+
+  it('leads with the one used most recently', () => {
+    const order = orderEnvironmentsForSwitching(
+      three,
+      { 'b.my-app.com': 200, 'c.my-app.com': 100 },
+      null
+    );
+    expect(order.map((e) => e.name)).toEqual(['b', 'c', 'a']);
+  });
+
+  it('puts the one you are looking at last', () => {
+    const order = orderEnvironmentsForSwitching(
+      three,
+      { 'b.my-app.com': 200, 'a.my-app.com': 300 },
+      'a.my-app.com'
+    );
+    expect(order.map((e) => e.name)).toEqual(['b', 'c', 'a']);
+  });
+
+  it('makes two environments a flip between them', () => {
+    // On a, with b the other open tab: b is the first row, so Enter goes back.
+    const pair = three.slice(0, 2);
+    expect(
+      orderEnvironmentsForSwitching(
+        pair,
+        { 'a.my-app.com': 300, 'b.my-app.com': 200 },
+        'a.my-app.com'
+      ).map((e) => e.name)
+    ).toEqual(['b', 'a']);
+  });
+
+  it('keeps folder order among environments with no tab open', () => {
+    expect(
+      orderEnvironmentsForSwitching(three, {}, null).map((e) => e.name)
+    ).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('usageFromTabs', () => {
+  it('keeps the most recent access for each host', () => {
+    expect(
+      usageFromTabs([
+        { url: 'https://a.test/one', lastAccessed: 10 },
+        { url: 'https://a.test/two', lastAccessed: 50 },
+        { url: 'https://b.test/', lastAccessed: 20 }
+      ])
+    ).toEqual({ 'a.test': 50, 'b.test': 20 });
+  });
+
+  it('skips tabs with nothing to go on', () => {
+    expect(
+      usageFromTabs([{ url: 'https://a.test/' }, { lastAccessed: 1 }])
+    ).toEqual({});
   });
 });

@@ -17,6 +17,7 @@ import { searchAllBookmarks } from '../bookmarkSync';
 import { getFavoriteIconUrl } from '../favoriteIcon';
 import { useSectionIcons } from '../useSectionIcons';
 import { useApps } from '../apps/useApps';
+import { useEnvContext } from '../apps/useEnvContext';
 import {
   completeCommand,
   QUICK_COMMANDS,
@@ -129,9 +130,18 @@ export function StarredPagesMenu({
 
   // Title matches rank above address matches — see rankFavorites.
   const apps = useApps();
+  const envContext = useEnvContext(isOpen);
   const listing = useMemo(
-    () => buildFavoritesListing(pages, quickTaskPages, query, widened, apps),
-    [apps, pages, quickTaskPages, query, widened]
+    () =>
+      buildFavoritesListing(
+        pages,
+        quickTaskPages,
+        query,
+        widened,
+        apps,
+        envContext
+      ),
+    [apps, envContext, pages, quickTaskPages, query, widened]
   );
   const visible = listing.rows;
 

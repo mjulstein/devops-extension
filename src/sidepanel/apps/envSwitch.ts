@@ -116,3 +116,62 @@ export function isSamePage(a: string, b: string): boolean {
     return a === b;
   }
 }
+
+/**
+ * When each environment was last looked at, by host.
+ *
+ * Taken from the open tabs rather than from a history of its own: the question
+ * is "which of these was I just in", and the browser already knows, including
+ * the times you switched tabs without going near this search.
+ */
+export type EnvUsage = Record<string, number>;
+
+/**
+ * The environments in the order worth offering them.
+ *
+ * The one you are looking at goes last — switching to where you already are is
+ * not a switch — and the rest lead with whichever you were in most recently.
+ * Two environments and an open tab each is then a flip: the other one is always
+ * the first row, so Enter goes back and forth between them.
+ *
+ * Environments with no tab open keep the folder's own order behind the ones
+ * that have.
+ */
+export function orderEnvironmentsForSwitching(
+  environments: AppEnvironment[],
+  usage: EnvUsage,
+  currentHost: string | null
+): AppEnvironment[] {
+  return environments
+    .map((environment, index) => {
+      const host = hostOf(environment.url);
+      return {
+        environment,
+        index,
+        isCurrent: host !== null && host === currentHost,
+        lastUsed: host === null ? 0 : (usage[host] ?? 0)
+      };
+    })
+    .sort((a, b) => {
+      if (a.isCurrent !== b.isCurrent) {
+        return a.isCurrent ? 1 : -1;
+      }
+      return b.lastUsed - a.lastUsed || a.index - b.index;
+    })
+    .map((entry) => entry.environment);
+}
+
+/** The most recent access per host, from the open tabs. */
+export function usageFromTabs(
+  tabs: { url?: string; lastAccessed?: number }[]
+): EnvUsage {
+  const usage: EnvUsage = {};
+  for (const tab of tabs) {
+    const host = tab.url === undefined ? null : hostOf(tab.url);
+    if (host === null || typeof tab.lastAccessed !== 'number') {
+      continue;
+    }
+    usage[host] = Math.max(usage[host] ?? 0, tab.lastAccessed);
+  }
+  return usage;
+}
