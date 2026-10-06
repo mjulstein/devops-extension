@@ -105,7 +105,15 @@ describe('the # listing', () => {
   const recent = [item(101, 'Fix the login page'), item(222, 'Add a report')];
 
   it('offers everything recent for a bare #', () => {
-    const listing = buildFavoritesListing([], [], '#', undefined, [], undefined, recent);
+    const listing = buildFavoritesListing(
+      [],
+      [],
+      '#',
+      undefined,
+      [],
+      undefined,
+      recent
+    );
     expect(listing.sections.map((s) => s.label)).toEqual(['Recent work items']);
     expect(listing.rows.map(rowLabel)).toEqual([
       'Fix the login page',
@@ -114,23 +122,55 @@ describe('the # listing', () => {
   });
 
   it('leads with the number typed, even when it has never been visited', () => {
-    const listing = buildFavoritesListing([], [], '#999', undefined, [], undefined, recent);
+    const listing = buildFavoritesListing(
+      [],
+      [],
+      '#999',
+      undefined,
+      [],
+      undefined,
+      recent
+    );
     expect(rowLabel(listing.rows[0])).toBe('Work item 999');
     expect(rowDetail(listing.rows[0])).toBe('Open #999');
   });
 
   it('does not offer a typed number twice when it is also recent', () => {
-    const listing = buildFavoritesListing([], [], '#101', undefined, [], undefined, recent);
+    const listing = buildFavoritesListing(
+      [],
+      [],
+      '#101',
+      undefined,
+      [],
+      undefined,
+      recent
+    );
     expect(listing.rows.map(rowLabel)).toEqual(['Fix the login page']);
   });
 
   it('filters the list by what follows the #', () => {
-    const listing = buildFavoritesListing([], [], '# login', undefined, [], undefined, recent);
+    const listing = buildFavoritesListing(
+      [],
+      [],
+      '# login',
+      undefined,
+      [],
+      undefined,
+      recent
+    );
     expect(listing.rows.map(rowLabel)).toEqual(['Fix the login page']);
   });
 
   it('is empty, not broken, with nothing visited yet', () => {
-    const listing = buildFavoritesListing([], [], '#', undefined, [], undefined, []);
+    const listing = buildFavoritesListing(
+      [],
+      [],
+      '#',
+      undefined,
+      [],
+      undefined,
+      []
+    );
     expect(listing.rows).toEqual([]);
   });
 });
