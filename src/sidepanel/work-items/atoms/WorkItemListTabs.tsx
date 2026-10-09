@@ -1,6 +1,6 @@
 import { SectionTabs } from '@/sidepanel/atoms/SectionTabs';
 
-export type WorkItemListTab = 'todo' | 'authored' | 'prs' | 'quick';
+export type WorkItemListTab = 'todo' | 'authored' | 'prs' | 'quick' | 'orphans';
 
 interface WorkItemListTabsProps {
   activeTab: WorkItemListTab;
@@ -8,6 +8,7 @@ interface WorkItemListTabsProps {
   authoredCount: number | null;
   pullRequestCount: number | null;
   quickTaskCount: number | null;
+  orphanCount: number | null;
   onSelectTab: (tab: WorkItemListTab) => void;
 }
 
@@ -17,6 +18,7 @@ export function WorkItemListTabs({
   authoredCount,
   pullRequestCount,
   quickTaskCount,
+  orphanCount,
   onSelectTab
 }: WorkItemListTabsProps) {
   return (
@@ -28,7 +30,13 @@ export function WorkItemListTabs({
         { id: 'todo', label: 'TODO', count: todoCount },
         { id: 'authored', label: 'Authored', count: authoredCount },
         { id: 'prs', label: 'PRs', count: pullRequestCount },
-        { id: 'quick', label: 'Quick', count: quickTaskCount }
+        { id: 'quick', label: 'Quick', count: quickTaskCount },
+        {
+          id: 'orphans',
+          label: 'Orphans',
+          count: orphanCount,
+          title: 'Work items you raised that are not under anything'
+        }
       ]}
     />
   );

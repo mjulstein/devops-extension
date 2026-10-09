@@ -185,6 +185,13 @@ npm test
 8. Adjust the closed-date range inputs to refresh closed items for a specific window, or use **Reset to default** to restore the default today-to-7-days-ago range.
 9. Optionally enable **Show task parent details** to see the full hierarchy grouped instead, with each task under its parent.
 10. Use the per-day refetch button beside any closed-date heading to reload only that day.
+    The **Orphans** list shows work items you raised that are not under
+    anything. Tick any number of them, type the id of the work item to put them
+    under, and press **Parent**. The hierarchy is enforced — a Task goes under a
+    Bug, Product Backlog Item or Improvement, and those go under a Feature — so
+    a mixed selection moves what fits and tells you about the rest rather than
+    refusing the lot. The quick-task parent and its archive never appear: being
+    parentless is what they are for.
 11. **Close duplicate tabs** keeps the most recently active copy of each page.
     Right-click the same button to close tabs you have not looked at in 24 days
     — it asks first, naming how many and how old the oldest is. Pinned tabs, the

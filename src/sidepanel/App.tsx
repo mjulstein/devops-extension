@@ -125,6 +125,13 @@ export function App({ initialTab }: AppProps = {}) {
             controller.onToggleShowWorkItemParentDetails
           }
           activeListTab={controller.activeListTab}
+          orphans={controller.orphans}
+          isOrphansLoading={controller.isOrphansLoading}
+          orphansError={controller.orphansError}
+          orphansStatus={controller.orphansStatus}
+          onParentOrphans={(ids, parentId) => {
+            void controller.onParentOrphans(ids, parentId);
+          }}
           onSelectListTab={(tab) => {
             void controller.onSelectListTab(tab);
           }}

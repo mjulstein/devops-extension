@@ -46,6 +46,11 @@ function renderPane(overrides: Record<string, unknown> = {}) {
       onToggleShowWorkItemParentDetails={asyncNoop}
       isActionDisabled={false}
       linkExternal={true}
+      orphans={null}
+      isOrphansLoading={false}
+      orphansError={null}
+      orphansStatus={null}
+      onParentOrphans={() => undefined}
       activeListTab="quick"
       onSelectListTab={noop}
       authoredItems={null}
@@ -133,6 +138,11 @@ describe('WorkItemsPane TODO hierarchy', () => {
 
   function renderTodo(overrides: Record<string, unknown> = {}) {
     return renderPane({
+      orphans: null,
+      isOrphansLoading: false,
+      orphansError: null,
+      orphansStatus: null,
+      onParentOrphans: () => undefined,
       activeListTab: 'todo',
       result: {
         count: 2,

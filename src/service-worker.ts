@@ -31,6 +31,16 @@ import {
 } from './devops/recentWorkItems';
 import { getWorkItemIdFromUrl } from './devops/urlContext';
 import {
+  fetchOrphanCandidates,
+  parentWorkItems as parentWorkItemsInDevOps
+} from './devops/orphanWorkItemsApi';
+import {
+  checkBulkParent,
+  parentlessByDesign,
+  selectOrphans
+} from './devops/orphanWorkItems';
+import { getWorkItemDetails } from './devops/workItemDetails';
+import {
   carryPathAcrossEnvironments,
   isSamePage,
   usageFromTabs
@@ -853,6 +863,18 @@ type RuntimeMessage =
       payload: FetchWorkItemsRequest;
     }
   | {
+      type: 'FETCH_ORPHAN_WORK_ITEMS';
+      payload: { settings: Settings };
+    }
+  | {
+      type: 'PARENT_WORK_ITEMS';
+      payload: {
+        settings: Settings;
+        items: { id: number; workItemType: string }[];
+        parentId: number;
+      };
+    }
+  | {
       type: 'FETCH_PULL_REQUEST_ACTIVITY';
       payload: FetchWorkItemsRequest;
     }
@@ -1379,6 +1401,74 @@ chrome.runtime.onMessage.addListener(
         .then((context) => setAdoTheme(context.organization, theme))
         .then(() => reloadActiveAzureDevOpsTab())
         .then(() => sendResponse({ ok: true, result: theme }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'FETCH_ORPHAN_WORK_ITEMS') {
+      resolveWorkItemsContext(message.payload.settings)
+        .then((context) =>
+          fetchOrphanCandidates(context.organization, context.project)
+        )
+        .then((candidates) =>
+          sendResponse({
+            ok: true,
+            result: selectOrphans(
+              candidates,
+              parentlessByDesign(message.payload.settings)
+            )
+          })
+        )
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'PARENT_WORK_ITEMS') {
+      const { items, parentId } = message.payload;
+      resolveWorkItemsContext(message.payload.settings)
+        .then(async (context) => {
+          // The parent's type decides what may go under it, and only the
+          // service worker can read it: a Feature is not in the list the panel
+          // is showing. Checked before anything is written, and partially — the
+          // ones that fit are moved and the rest come back with a reason.
+          const parent = await getWorkItemDetails(
+            context.organization,
+            context.project,
+            parentId
+          );
+          const { allowed, refused } = checkBulkParent(
+            {
+              ids: items.map((item) => item.id),
+              candidates: items.map((item) => ({
+                id: item.id,
+                title: '',
+                workItemType: item.workItemType,
+                state: '',
+                parentId: null,
+                url: ''
+              }))
+            },
+            parentId,
+            parent.workItemType
+          );
+
+          const outcome =
+            allowed.length === 0
+              ? { parented: [], failed: [] }
+              : await parentWorkItemsInDevOps(
+                  context.organization,
+                  context.project,
+                  allowed,
+                  parentId
+                );
+
+          return { ...outcome, refused };
+        })
+        .then((result) => sendResponse({ ok: true, result }))
         .catch((error: Error) =>
           sendResponse({ ok: false, error: error.message })
         );

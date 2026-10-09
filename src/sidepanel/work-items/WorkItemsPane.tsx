@@ -10,6 +10,8 @@ import card from '@/sidepanel/atoms/Card.module.css';
 import { Button } from '@/sidepanel/atoms/Button';
 import { ClosedDateRangeControls } from './atoms/ClosedDateRangeControls';
 import { WorkItemsToolbar } from './atoms/WorkItemsToolbar';
+import { OrphansList } from './atoms/OrphansList';
+import type { OrphanCandidate } from '@/devops/orphanWorkItems';
 import {
   WorkItemListTabs,
   type WorkItemListTab
@@ -47,6 +49,11 @@ interface StatusCardProps {
   isActionDisabled: boolean;
   linkExternal: boolean;
   activeListTab: WorkItemListTab;
+  orphans: OrphanCandidate[] | null;
+  isOrphansLoading: boolean;
+  orphansError: string | null;
+  orphansStatus: string | null;
+  onParentOrphans: (ids: number[], parentId: number) => void;
   onSelectListTab: (tab: WorkItemListTab) => void;
   authoredItems: WorkItem[] | null;
   isAuthoredLoading: boolean;
@@ -93,6 +100,11 @@ export function WorkItemsPane({
   isActionDisabled,
   linkExternal,
   activeListTab,
+  orphans,
+  isOrphansLoading,
+  orphansError,
+  orphansStatus,
+  onParentOrphans,
   onSelectListTab,
   authoredItems,
   isAuthoredLoading,
@@ -157,6 +169,7 @@ export function WorkItemsPane({
       <section className={card.card}>
         <WorkItemListTabs
           activeTab={activeListTab}
+          orphanCount={orphans === null ? null : orphans.length}
           todoCount={result === null ? null : todoItems.length}
           authoredCount={authoredItems === null ? null : authoredItems.length}
           pullRequestCount={pullRequests?.length ?? null}
@@ -209,7 +222,16 @@ export function WorkItemsPane({
           </div>
         )}
 
-        {activeListTab === 'todo' ? (
+        {activeListTab === 'orphans' ? (
+          <OrphansList
+            items={orphans}
+            isLoading={isOrphansLoading}
+            error={orphansError}
+            status={orphansStatus}
+            onParent={onParentOrphans}
+            linkExternal={linkExternal}
+          />
+        ) : activeListTab === 'todo' ? (
           result === null ? (
             <p>Click TODO to load your work items.</p>
           ) : (

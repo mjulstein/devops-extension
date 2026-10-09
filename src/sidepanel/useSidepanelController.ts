@@ -53,6 +53,11 @@ import { navigateToWorkItem } from './navigateToWorkItem';
 import { deduplicateTabs } from './deduplicateTabs';
 import { closeStaleTabs, STALE_TAB_DAYS } from './staleTabs';
 import {
+  fetchOrphanWorkItems,
+  parentWorkItems
+} from './tabMessaging/fetchOrphanWorkItems';
+import type { OrphanCandidate } from '@/devops/orphanWorkItems';
+import {
   createChildTask,
   archiveQuickTask,
   createQuickTask,
@@ -189,6 +194,10 @@ export function useSidepanelController({
   const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
   // Which list the Work items tab is showing, plus the lazily-loaded Authored
   // data. `null` means "not fetched yet", which is distinct from an empty list.
+  const [orphans, setOrphans] = useState<OrphanCandidate[] | null>(null);
+  const [isOrphansLoading, setIsOrphansLoading] = useState(false);
+  const [orphansError, setOrphansError] = useState<string | null>(null);
+  const [orphansStatus, setOrphansStatus] = useState<string | null>(null);
   const [activeListTab, setActiveListTab] = useState<WorkItemListTab>('todo');
   const [authoredItems, setAuthoredItems] = useState<WorkItem[] | null>(null);
   const [isAuthoredLoading, setIsAuthoredLoading] = useState(false);
@@ -1396,6 +1405,95 @@ export function useSidepanelController({
     await savePinnedQuickTaskIds(next);
   }
 
+  /**
+   * Work items of yours that are under nothing.
+   *
+   * Refetched whenever the tab is selected, like the other lists: the whole
+   * point is to act on it, and a list that still shows what you just parented
+   * would be reporting a problem it has already helped you fix.
+   */
+  async function loadOrphans(force = false) {
+    if (
+      !needsReload({
+        data: orphans,
+        isLoading: isOrphansLoading,
+        isStale: true,
+        force
+      })
+    ) {
+      return;
+    }
+
+    setIsOrphansLoading(true);
+    setOrphansError(null);
+    try {
+      const response = await fetchOrphanWorkItems(settings);
+      if (response.ok) {
+        setOrphans(response.result);
+        pushDebugLog(
+          'success',
+          `Found ${response.result.length} work item(s) with no parent.`
+        );
+      } else {
+        setOrphansError(response.error);
+      }
+    } catch (error) {
+      setOrphansError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsOrphansLoading(false);
+    }
+  }
+
+  /**
+   * Puts the ticked work items under one parent.
+   *
+   * The types go with the request so the worker can check them against the
+   * parent's own type before writing anything — the parent is a Feature, which
+   * is not in this list, so the panel has no way to know what it is. The worker
+   * reports what it moved, what it refused and why.
+   */
+  async function onParentOrphans(ids: number[], parentId: number) {
+    const byId = new Map((orphans ?? []).map((item) => [item.id, item]));
+    const items = ids
+      .map((id) => byId.get(id))
+      .filter((item): item is OrphanCandidate => item !== undefined)
+      .map((item) => ({ id: item.id, workItemType: item.workItemType }));
+
+    if (items.length === 0) {
+      return;
+    }
+
+    setOrphansStatus(null);
+    setIsOrphansLoading(true);
+    try {
+      const response = await parentWorkItems({ settings, items, parentId });
+      if (!response.ok) {
+        setOrphansStatus(response.error);
+        return;
+      }
+
+      const { parented, failed, refused } = response.result;
+      setOrphansStatus(
+        [
+          parented.length > 0
+            ? `Parented ${parented.length} under #${parentId}.`
+            : 'Nothing was moved.',
+          failed.length > 0
+            ? `${failed.length} failed: ${failed.map((entry) => `#${entry.id} ${entry.reason}`).join('; ')}`
+            : '',
+          refused.length > 0
+            ? refused.map((entry) => `#${entry.id}: ${entry.reason}`).join(' ')
+            : ''
+        ]
+          .filter(Boolean)
+          .join(' ')
+      );
+      await loadOrphans(true);
+    } finally {
+      setIsOrphansLoading(false);
+    }
+  }
+
   async function loadPullRequests(force = false) {
     if (
       !needsReload({
@@ -1950,6 +2048,11 @@ export function useSidepanelController({
       return;
     }
 
+    if (tab === 'orphans') {
+      await loadOrphans(force);
+      return;
+    }
+
     if (tab === 'authored') {
       await loadAuthoredItems(force);
     }
@@ -2040,6 +2143,11 @@ export function useSidepanelController({
     closedRollupError,
     activeListTab,
     onSelectListTab,
+    orphans,
+    isOrphansLoading,
+    orphansError,
+    orphansStatus,
+    onParentOrphans,
     authoredItems,
     isAuthoredLoading,
     authoredError,

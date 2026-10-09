@@ -8,6 +8,7 @@ export { getAdoTheme, setAdoTheme } from './adoTheme';
 export { openFavoritesSearch } from './openFavoritesSearch';
 export { readAdoThemeColors } from './readAdoThemeColors';
 export { fetchPullRequestActivity } from './fetchPullRequestActivity';
+export { fetchOrphanWorkItems, parentWorkItems } from './fetchOrphanWorkItems';
 export { fetchQuickTasks } from './fetchQuickTasks';
 export { archiveQuickTask } from './archiveQuickTask';
 export { getActiveWorkItemContext } from './getActiveWorkItemContext';
