@@ -28,6 +28,12 @@ describe('describeParentMismatch', () => {
     }
   });
 
+  it('lets a task go under another task', () => {
+    // Breaking a task into smaller tasks is the process's business, not this
+    // view's.
+    expect(describeParentMismatch('Task', 'Task')).toBeNull();
+  });
+
   it('refuses a task under a feature', () => {
     expect(describeParentMismatch('Task', 'Feature')).toContain(
       'A Task goes under a Bug'
@@ -110,6 +116,12 @@ describe('checkBulkParent', () => {
     expect(result.refused).toHaveLength(1);
     expect(result.refused[0]).toMatchObject({ id: 2 });
     expect(result.refused[0].reason).toContain('#500');
+  });
+
+  it('parents a task under a task', () => {
+    const result = checkBulkParent({ ids: [2], candidates }, 500, 'Task');
+    expect(result.allowed).toEqual([2]);
+    expect(result.refused).toEqual([]);
   });
 
   it('parents tasks under a backlog item, and refuses the others', () => {

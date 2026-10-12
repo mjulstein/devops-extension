@@ -7,9 +7,10 @@
 // a time.
 //
 // What may go under what is the hierarchy's rule, not this view's: a Task goes
-// under a Bug, PBI or Improvement, and those go under a Feature. The rule lives
-// here and `parentAssignment.ts` uses it too, so the bulk action and the single
-// action can never disagree about what is legal.
+// under a Bug, PBI, Improvement or another Task, and those backlog types go
+// under a Feature. The rule lives here and `parentAssignment.ts` uses it too,
+// so the bulk action and the single action can never disagree about what is
+// legal.
 
 import { isSupportedParentType } from './workItemDetails';
 
@@ -41,9 +42,11 @@ export function describeParentMismatch(
   parentType: string
 ): string | null {
   if (isTaskType(childType)) {
-    return isSupportedParentType(parentType)
+    // A Task under another Task is allowed: breaking a task into smaller tasks
+    // is something the process permits, so the view does not get to forbid it.
+    return isSupportedParentType(parentType) || isTaskType(parentType)
       ? null
-      : `A Task goes under a Bug, Product Backlog Item or Improvement. #PARENT# is a ${parentType || 'work item of unknown type'}.`;
+      : `A Task goes under a Bug, Product Backlog Item, Improvement or another Task. #PARENT# is a ${parentType || 'work item of unknown type'}.`;
   }
 
   if (isSupportedParentType(childType)) {

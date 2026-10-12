@@ -188,7 +188,8 @@ npm test
     The **Orphans** list shows work items you raised that are not under
     anything. Tick any number of them, type the id of the work item to put them
     under, and press **Parent**. The hierarchy is enforced — a Task goes under a
-    Bug, Product Backlog Item or Improvement, and those go under a Feature — so
+    Bug, Product Backlog Item, Improvement or another Task, and those go under a
+    Feature — so
     a mixed selection moves what fits and tells you about the rest rather than
     refusing the lot. The quick-task parent and its archive never appear: being
     parentless is what they are for. The tab has a second view behind the
