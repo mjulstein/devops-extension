@@ -1,0 +1,196 @@
+// The favorites palette as a window of its own.
+//
+// The in-page overlay only reaches Azure DevOps pages, because that is where the
+// content script runs. A window reaches everywhere, and it takes focus by being
+// a window rather than by asking — which was the whole difficulty with putting
+// the search in the side panel.
+//
+// What it costs is immediacy: a window is perceptibly slower to appear than a
+// div, and it can only be centred on the browser window rather than on whatever
+// the eye was last resting on. That is the trade this surface exists to test.
+
+import './theme.css';
+import { openFavoritesPalette } from './favoritesPalette/favoritesPalette';
+import type { FaviconMap } from './favoritesPalette/faviconData';
+import type { WidenedSearchData } from './sidepanel/favoritesListing';
+import type { StarredPage } from './sidepanel/starredPages';
+import type { AppEntry } from './sidepanel/apps/appDns';
+import type { EnvContext } from './sidepanel/favoritesListing';
+import type { RecentWorkItem } from './devops/recentWorkItems';
+import { applyTheme, loadLastKnownTheme } from './sidepanel/theme';
+import { shouldIdleClose } from './favoritesPalette/idleClose';
+
+/**
+ * How long the window may sit untouched before it closes itself.
+ *
+ * The window can be left behind in a way the overlay could not: it survives
+ * switching to another application and comes back with it. Long enough to read
+ * a list of favorites, short enough that one is never found hours later.
+ */
+const IDLE_CLOSE_MS = 15_000;
+
+interface PaletteData {
+  favorites: StarredPage[];
+  quickTasks: StarredPage[];
+  tokens: Record<string, string>;
+  icons: FaviconMap;
+  apps: AppEntry[];
+  envContext: EnvContext;
+  recentWorkItems: RecentWorkItem[];
+}
+
+async function ask<T>(type: string, payload?: unknown): Promise<T | null> {
+  const response: { ok: boolean; result?: T } =
+    await chrome.runtime.sendMessage(
+      payload === undefined ? { type } : { type, payload }
+    );
+  return response.ok && response.result !== undefined ? response.result : null;
+}
+
+async function main(): Promise<void> {
+  applyTheme(await loadLastKnownTheme());
+
+  const data = (await ask<PaletteData>('GET_FAVORITES_PALETTE_DATA')) ?? {
+    favorites: [],
+    quickTasks: [],
+    tokens: {},
+    icons: {},
+    apps: [],
+    envContext: { usage: {}, currentHost: null },
+    recentWorkItems: []
+  };
+
+  // Fetched now so the click handler has it without awaiting: see the note on
+  // onOpenSidePanel below.
+  const browsingWindowId = await ask<number>('GET_BROWSING_WINDOW_ID');
+
+  let pinned = false;
+  let idleTimer: number | undefined;
+
+  function armIdleClose(): void {
+    window.clearTimeout(idleTimer);
+    if (!shouldIdleClose({ pinned, focused: document.hasFocus() })) {
+      return;
+    }
+    idleTimer = window.setTimeout(() => {
+      window.close();
+    }, IDLE_CLOSE_MS);
+  }
+
+  // Gaining focus stops the clock and losing it starts it, which is the whole
+  // rule: see shouldIdleClose.
+  window.addEventListener('focus', armIdleClose);
+  window.addEventListener('blur', armIdleClose);
+
+  // Any sign of life restarts the clock. Pointer movement counts: reading a
+  // list is not idleness, and the mouse moves while it happens.
+  //
+  // In the capture phase, because the palette stops key events at its own host
+  // so that the page underneath cannot act on them — a listener here in the
+  // bubble phase never saw a keystroke, which is how a window being typed into
+  // managed to close itself.
+  for (const type of [
+    'keydown',
+    'keypress',
+    'input',
+    'pointermove',
+    'pointerdown',
+    'wheel'
+  ]) {
+    window.addEventListener(type, armIdleClose, {
+      capture: true,
+      passive: true
+    });
+  }
+
+  openFavoritesPalette({
+    favorites: data.favorites,
+    quickTasks: data.quickTasks,
+    tokens: data.tokens,
+    icons: data.icons,
+    apps: data.apps,
+    envContext: data.envContext,
+    recentWorkItems: data.recentWorkItems,
+    onOpenWorkItem: (id, url) => {
+      void chrome.runtime.sendMessage({
+        type: 'OPEN_WORK_ITEM',
+        payload: { id, url }
+      });
+    },
+    onOpenAppTarget: (app, url) => {
+      void chrome.runtime.sendMessage({
+        type: 'OPEN_APP_TARGET',
+        payload: { app, url }
+      });
+    },
+    onRunCommand: (id, args) => {
+      void chrome.runtime.sendMessage({
+        type: 'RUN_QUICK_COMMAND',
+        payload: { id, args }
+      });
+    },
+    onAddAppEnvironment: (app, env, url) => {
+      void chrome.runtime.sendMessage({
+        type: 'ADD_APP_ENVIRONMENT',
+        payload: { app, env, url }
+      });
+    },
+    isPinned: pinned,
+    onTogglePin: (next) => {
+      pinned = next;
+      // The worker closes this window when another one takes focus, so it is
+      // the one that has to know.
+      void chrome.runtime.sendMessage({
+        type: 'SET_PALETTE_PINNED',
+        payload: { pinned: next }
+      });
+      armIdleClose();
+    },
+    searchAllBookmarks: async (term: string) =>
+      (await ask<WidenedSearchData & { icons: FaviconMap }>(
+        'SEARCH_BOOKMARKS',
+        { term }
+      )) ?? { bookmarks: [], folders: [], icons: {} },
+    onOpenSettings: () => {
+      void chrome.runtime.sendMessage({ type: 'OPEN_SETTINGS_WINDOW' });
+    },
+    onOpenSidePanel: async () => {
+      // Called here rather than in the worker because `sidePanel.open` needs a
+      // user gesture, and a runtime message does not carry this window's click
+      // into the worker — which is why routing it through the worker opened
+      // nothing at all. The window id was fetched when the palette loaded, so
+      // there is no await between the click and the call to spend the gesture.
+      try {
+        if (browsingWindowId !== null) {
+          await chrome.sidePanel.open({ windowId: browsingWindowId });
+          return true;
+        }
+      } catch {
+        // Falls through to asking the worker, which sometimes has a gesture of
+        // its own to spend.
+      }
+      const response: { ok: boolean } = await chrome.runtime.sendMessage({
+        type: 'OPEN_SIDE_PANEL'
+      });
+      return response.ok;
+    },
+    onOpenBookmarkManager: () => {
+      void chrome.runtime.sendMessage({ type: 'OPEN_BOOKMARK_MANAGER' });
+    },
+    onOpenPage: (url, newTab) => {
+      void chrome.runtime.sendMessage({
+        type: 'OPEN_STARRED_PAGE',
+        payload: { url, newTab }
+      });
+    },
+    // The palette is the only thing in this window, so dismissing it — by
+    // Escape, by the backdrop, or by opening a row — is dismissing the window.
+    onClose: () => {
+      window.close();
+    }
+  });
+
+  armIdleClose();
+}
+
+void main();

@@ -1,15 +1,32 @@
 import classes from './DeduplicateTabsButton.module.css';
 import { Button } from './Button';
+import { STALE_TAB_DAYS } from '../staleTabs';
 
 interface DeduplicateTabsButtonProps {
   onClick: () => void;
+  onCloseStale: () => void;
 }
 
-export function DeduplicateTabsButton({ onClick }: DeduplicateTabsButtonProps) {
+/**
+ * Two ways of tidying the tab strip, on one control.
+ *
+ * Right-click is a poor place to hide a feature, so the description says it is
+ * there — that is the only thing making it findable. It shares this button
+ * rather than taking one of its own because it is the same job: duplicates are
+ * the same page twice, stale tabs are the pages you meant to come back to.
+ */
+export function DeduplicateTabsButton({
+  onClick,
+  onCloseStale
+}: DeduplicateTabsButtonProps) {
   return (
     <Button
-      description="Close duplicate tabs (keeps most recently active)"
+      description={`Close duplicate tabs (keeps most recently active). Right-click to close tabs untouched for ${STALE_TAB_DAYS} days.`}
       onClick={onClick}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        onCloseStale();
+      }}
       icon={
         <svg
           viewBox="0 0 16 16"

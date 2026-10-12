@@ -41,6 +41,18 @@ favicon cache directly, but the palette renders inside Azure DevOps's page, wher
 an extension resource is not loadable — so the service worker reads the icons and
 passes them in as data URIs, keyed by origin and cached for its lifetime.
 
+## Pointer and keyboard are two selections
+
+Hover is a CSS effect and nothing more. An earlier version moved the keyboard
+highlight on `mouseenter`, which broke both halves at once: the re-render it
+triggered replaced the very button the pointer had pressed, so the mouseup
+landed on a node that no longer existed and no click was ever synthesized — a
+row could only be opened with Enter. It also meant Enter opened whatever the
+mouse happened to be resting over rather than what the arrow keys had chosen.
+`temp/cdp-click-palette-row.py` drives a real pointer press against the built
+page and guards both; a synthetic `element.click()` passes either way, which is
+why it does not use one.
+
 ## Keyboard
 
 Key events are stopped at the host element. Azure DevOps binds single letters as

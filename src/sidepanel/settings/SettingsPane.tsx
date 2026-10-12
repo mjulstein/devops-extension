@@ -264,7 +264,7 @@ export function SettingsPane({
       />
 
       {activeTab === 'connection' && (
-        <>
+        <div className={classes.regionBody}>
           <SettingsHelp summary="About organization and project">
             <p>
               Organization/project auto-fill from the last visited dev.azure.com
@@ -328,11 +328,11 @@ export function SettingsPane({
               section in addition to the default To Do/In Progress states.
             </span>
           </label>
-        </>
+        </div>
       )}
 
       {activeTab === 'quick' && (
-        <>
+        <div className={classes.regionBody}>
           <div className={classes.fieldRow}>
             <label className={classes.fieldLabel}>
               Quick-task parent id
@@ -385,11 +385,11 @@ export function SettingsPane({
               blank to disable that half.
             </p>
           </SettingsHelp>
-        </>
+        </div>
       )}
 
       {activeTab === 'favorites' && (
-        <>
+        <div className={classes.regionBody}>
           <label className={classes.fieldLabel}>
             Sync favorites with bookmarks folder
             <input
@@ -427,11 +427,11 @@ export function SettingsPane({
             </p>
           ) : null}
           <FavoritesEditor pages={starredPages} onSave={onSaveStarredPages} />
-        </>
+        </div>
       )}
 
       {activeTab === 'token' && (
-        <>
+        <div className={classes.regionBody}>
           <p className={classes.description}>
             The extension uses a Personal Access Token (PAT) for authenticated
             requests. It is created and rotated automatically — no manual setup
@@ -507,11 +507,11 @@ export function SettingsPane({
               {patActionMessage}
             </span>
           )}
-        </>
+        </div>
       )}
 
       {activeTab === 'theme' && (
-        <>
+        <div className={classes.regionBody}>
           <SettingsHelp summary="About theme colours">
             <p>
               The panel follows Azure DevOps&apos;s light/dark setting — the
@@ -527,11 +527,11 @@ export function SettingsPane({
             activeTheme={activeTheme}
             onChange={onChange}
           />
-        </>
+        </div>
       )}
 
       {activeTab === 'maintenance' && (
-        <>
+        <div className={classes.regionBody}>
           <SettingsHelp summary="About tab icons">
             <p>
               Re-scrape the Azure DevOps section icons from the live page and
@@ -571,7 +571,7 @@ export function SettingsPane({
               Reload extension
             </Button>
           </div>
-        </>
+        </div>
       )}
     </section>
   );

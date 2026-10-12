@@ -1,4 +1,8 @@
-import { initTabIcons, rescrapeTabIcons } from './devops/tabIcons';
+import {
+  initTabIcons,
+  rescrapeTabIcons,
+  teardownTabIcons
+} from './devops/tabIcons';
 import { resolveActiveWorkItemContext } from './devops/activeParentContext';
 import { fetchChildTasksForActiveParent } from './devops/childTasks';
 import { createChildTaskFromActivePage } from './devops/taskCreation';
@@ -7,6 +11,9 @@ import { detectActiveWorkItemId } from './devops/activeWorkItemDom';
 import { readAdoThemeColorsFromPage } from './devops/pageTheme';
 import { openFavoritesPalette } from './favoritesPalette/favoritesPalette';
 import type { StarredPage } from './sidepanel/starredPages';
+import type { AppEntry } from './sidepanel/apps/appDns';
+import type { EnvContext } from './sidepanel/favoritesListing';
+import type { RecentWorkItem } from './devops/recentWorkItems';
 import type { WidenedSearchData } from './sidepanel/favoritesListing';
 type RuntimeMessage =
   | {
@@ -49,8 +56,45 @@ type RuntimeMessage =
         quickTasks?: StarredPage[];
         tokens?: Record<string, string>;
         icons?: Record<string, string>;
+        apps?: AppEntry[];
+        envContext?: EnvContext;
+        recentWorkItems?: RecentWorkItem[];
       };
     };
+
+// ── Handover ────────────────────────────────────────────────────────────────
+//
+// Reloading the extension orphans the copy of this script already in the page.
+// It keeps running — a content script cannot be unloaded — but it can no longer
+// reach the extension, so it holds whatever favicon it last computed while the
+// fresh copy injected afterwards insists on its own. Both watch <head> and
+// repaint on seeing a favicon they did not write, so the two lock the tab into
+// repainting each other until it is killed.
+//
+// The fix is a handover rather than a second guard: the new copy announces
+// itself on a window event, and every earlier copy hears it and stands down.
+// The announcement goes out *before* this copy starts listening, so it does not
+// shut itself down on the way in.
+const SHUTDOWN_EVENT = 'devops-ext-content-script-shutdown';
+
+window.dispatchEvent(new Event(SHUTDOWN_EVENT));
+
+const scriptLifetime = new AbortController();
+
+window.addEventListener(
+  SHUTDOWN_EVENT,
+  () => {
+    scriptLifetime.abort();
+    teardownTabIcons();
+    try {
+      chrome.runtime.onMessage.removeListener(handleRuntimeMessage);
+    } catch {
+      // An orphaned script has no runtime left to remove a listener from, and
+      // its listener is already dead. The DOM teardown above is what mattered.
+    }
+  },
+  { once: true }
+);
 
 initTabIcons();
 
@@ -73,22 +117,30 @@ if (
 // Relay the main-world token-interceptor's fresh-Bearer signal to the service
 // worker, which has no access to the page's main world. The interceptor posts on
 // window; we forward as a runtime message (spec FR-008, plan Phase 4).
-window.addEventListener('message', (event) => {
-  if (event.source !== window) {
-    return;
-  }
-  const data = event.data as { source?: unknown; type?: unknown } | undefined;
-  if (
-    data?.source !== 'devops-ext-token-interceptor' ||
-    data.type !== 'bearer-captured'
-  ) {
-    return;
-  }
-  relayBearerCaptured();
-});
+window.addEventListener(
+  'message',
+  (event) => {
+    if (event.source !== window) {
+      return;
+    }
+    const data = event.data as { source?: unknown; type?: unknown } | undefined;
+    if (
+      data?.source !== 'devops-ext-token-interceptor' ||
+      data.type !== 'bearer-captured'
+    ) {
+      return;
+    }
+    relayBearerCaptured();
+  },
+  { signal: scriptLifetime.signal }
+);
 
-chrome.runtime.onMessage.addListener(
-  (message: RuntimeMessage, _sender, sendResponse) => {
+function handleRuntimeMessage(
+  message: RuntimeMessage,
+  _sender: chrome.runtime.MessageSender,
+  sendResponse: (response: unknown) => void
+): boolean | undefined {
+  {
     if (message.type === 'OPEN_FAVORITES_PALETTE') {
       // The palette is drawn here rather than in the side panel because this
       // document has focus, so its search field can simply take it.
@@ -97,6 +149,33 @@ chrome.runtime.onMessage.addListener(
         quickTasks: message.payload.quickTasks,
         tokens: message.payload.tokens,
         icons: message.payload.icons,
+        apps: message.payload.apps,
+        envContext: message.payload.envContext,
+        recentWorkItems: message.payload.recentWorkItems,
+        onOpenWorkItem: (id, url) => {
+          void chrome.runtime.sendMessage({
+            type: 'OPEN_WORK_ITEM',
+            payload: { id, url }
+          });
+        },
+        onOpenAppTarget: (app, url) => {
+          void chrome.runtime.sendMessage({
+            type: 'OPEN_APP_TARGET',
+            payload: { app, url }
+          });
+        },
+        onRunCommand: (id, args) => {
+          void chrome.runtime.sendMessage({
+            type: 'RUN_QUICK_COMMAND',
+            payload: { id, args }
+          });
+        },
+        onAddAppEnvironment: (app, env, url) => {
+          void chrome.runtime.sendMessage({
+            type: 'ADD_APP_ENVIRONMENT',
+            payload: { app, env, url }
+          });
+        },
         searchAllBookmarks: async (term: string) => {
           const response: {
             ok: boolean;
@@ -189,4 +268,7 @@ chrome.runtime.onMessage.addListener(
       return true;
     }
   }
-);
+  return undefined;
+}
+
+chrome.runtime.onMessage.addListener(handleRuntimeMessage);

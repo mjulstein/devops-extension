@@ -1,4 +1,5 @@
-import { getWorkItemDetails, isSupportedParentType } from './workItemDetails';
+import { getWorkItemDetails } from './workItemDetails';
+import { describeParentMismatch } from './orphanWorkItems';
 import { isObject } from './typeGuards';
 import {
   getOrganizationAndProjectFromUrl,
@@ -113,34 +114,24 @@ export async function setParentForActiveWorkItem(
   }
 }
 
+/**
+ * The hierarchy's rule, borrowed rather than restated.
+ *
+ * It lives in `orphanWorkItems.ts` because the bulk view needs it before it
+ * sends anything; keeping a second copy here is how the two would come to
+ * disagree about what is legal.
+ */
 function validateParentSelection(
   currentWorkItemType: string,
   selectedParentType: string
 ): void {
-  const currentType = currentWorkItemType.trim().toLowerCase();
-  const parentType = selectedParentType.trim().toLowerCase();
-
-  if (currentType === 'task') {
-    if (!isSupportedParentType(selectedParentType)) {
-      throw new Error(
-        `Task parent must be Bug, Product Backlog Item, PBI, or Improvement. Selected type is "${selectedParentType}".`
-      );
-    }
-    return;
-  }
-
-  if (isSupportedParentType(currentWorkItemType)) {
-    if (parentType !== 'feature') {
-      throw new Error(
-        `${currentWorkItemType} parent must be Feature. Selected type is "${selectedParentType}".`
-      );
-    }
-    return;
-  }
-
-  throw new Error(
-    `Parent assignment is only supported for Task, Bug, Product Backlog Item, PBI, and Improvement. Current type is "${currentWorkItemType}".`
+  const mismatch = describeParentMismatch(
+    currentWorkItemType,
+    selectedParentType
   );
+  if (mismatch !== null) {
+    throw new Error(mismatch.replace('#PARENT#', 'The selected parent'));
+  }
 }
 
 function findCurrentParentRelation(data: unknown): {

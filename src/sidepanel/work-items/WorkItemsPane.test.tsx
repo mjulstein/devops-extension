@@ -46,6 +46,17 @@ function renderPane(overrides: Record<string, unknown> = {}) {
       onToggleShowWorkItemParentDetails={asyncNoop}
       isActionDisabled={false}
       linkExternal={true}
+      orphans={null}
+      isOrphansLoading={false}
+      orphansError={null}
+      orphansStatus={null}
+      onParentOrphans={() => undefined}
+      orphansMode="orphans"
+      onSelectOrphansMode={() => undefined}
+      inProgressByMe={null}
+      inProgressState=""
+      onInProgressStateChange={() => undefined}
+      onRefreshInProgress={() => undefined}
       activeListTab="quick"
       onSelectListTab={noop}
       authoredItems={null}
@@ -133,6 +144,17 @@ describe('WorkItemsPane TODO hierarchy', () => {
 
   function renderTodo(overrides: Record<string, unknown> = {}) {
     return renderPane({
+      orphans: null,
+      isOrphansLoading: false,
+      orphansError: null,
+      orphansStatus: null,
+      onParentOrphans: () => undefined,
+      orphansMode: 'orphans' as const,
+      onSelectOrphansMode: () => undefined,
+      inProgressByMe: null,
+      inProgressState: '',
+      onInProgressStateChange: () => undefined,
+      onRefreshInProgress: () => undefined,
       activeListTab: 'todo',
       result: {
         count: 2,

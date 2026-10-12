@@ -7,6 +7,11 @@ export type ButtonSize = 'default' | 'compact';
 
 interface CommonButtonProps {
   onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  /**
+   * A second action on the same control. Given only where the two belong
+   * together — the alternative is a button nobody can find.
+   */
+  onContextMenu?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   variant?: ButtonVariant;
   size?: ButtonSize;
   disabled?: boolean;
@@ -46,6 +51,7 @@ export function Button({
   description,
   icon,
   onClick,
+  onContextMenu,
   variant = 'default',
   size = 'default',
   disabled = false,
@@ -71,6 +77,7 @@ export function Button({
         className
       )}
       onClick={onClick}
+      onContextMenu={onContextMenu}
       disabled={disabled}
       aria-pressed={isPressed}
       aria-expanded={isExpanded}

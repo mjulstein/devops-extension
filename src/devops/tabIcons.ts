@@ -1,55 +1,11 @@
-type DevOpsSection =
-  | 'overview'
-  | 'boards'
-  | 'repos'
-  | 'pipelines'
-  | 'testplans'
-  | 'artifacts'
-  | 'wiki'
-  | 'settings';
-
-const STORAGE_KEY = 'tabIconCache';
-
-// URL path fragments used by detectSection (always lower-cased before comparison)
-const SECTION_PATH_PATTERNS: Record<DevOpsSection, string[]> = {
-  overview: [],
-  boards: ['/_boards', '/_backlogs', '/_sprints', '/_queries', '/_workitems'],
-  repos: ['/_git/', '/_versioncontrol/'],
-  pipelines: ['/_build', '/_release', '/_pipelines'],
-  testplans: ['/_testplans', '/_testmanagement'],
-  artifacts: ['/_artifacts', '/_packaging'],
-  wiki: ['/_wiki'],
-  settings: ['/_settings']
-};
-
-// How each section's <a> is identified in the nav sidebar.
-// Prefer aria-label (stable) over href fragment (case-sensitive in CSS selectors).
-const SECTION_NAV_SELECTORS: Record<DevOpsSection, string> = {
-  overview: 'a[aria-label="Overview"]',
-  boards: 'a[aria-label="Boards"]',
-  repos: 'a[aria-label="Repos"]',
-  pipelines: 'a[aria-label="Pipelines"]',
-  testplans: 'a[aria-label="Test Plans"]',
-  artifacts: 'a[aria-label="Artifacts"]',
-  wiki: 'a[aria-label="Wiki"]',
-  settings: '' // uses an icon font, not scrape-able
-};
-
-const SCRAPABLE_SECTIONS = (
-  Object.keys(SECTION_NAV_SELECTORS) as DevOpsSection[]
-).filter((s) => SECTION_NAV_SELECTORS[s] !== '');
-
-// Minimal fallbacks shown before stored/scraped icons are available
-const FALLBACK_ICONS: Record<DevOpsSection, string> = {
-  overview: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="2" fill="#0078d4"/><path d="M8 2L14 7.5V14H10V10H6V14H2V7.5L8 2Z" fill="white"/></svg>`,
-  boards: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="2" fill="#0078d4"/><rect x="2.5" y="3" width="3" height="10" rx=".5" fill="white"/><rect x="6.5" y="3" width="3" height="6.5" rx=".5" fill="white"/><rect x="10.5" y="3" width="3" height="8" rx=".5" fill="white"/></svg>`,
-  repos: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="2" fill="#107c10"/><circle cx="5" cy="3.5" r="1.5" fill="white"/><circle cx="11" cy="6" r="1.5" fill="white"/><circle cx="5" cy="12.5" r="1.5" fill="white"/><path d="M5 5v6" stroke="white" stroke-width="1.3" stroke-linecap="round" fill="none"/><path d="M5 5.5c1.5-3.5 6-2.5 6 .5" stroke="white" stroke-width="1.3" stroke-linecap="round" fill="none"/></svg>`,
-  pipelines: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="2" fill="#0078d4"/><rect x="1.5" y="5.5" width="3.5" height="5" rx="1" fill="white"/><rect x="6.25" y="5.5" width="3.5" height="5" rx="1" fill="white"/><rect x="11" y="5.5" width="3.5" height="5" rx="1" fill="white"/><line x1="5" y1="8" x2="6.25" y2="8" stroke="white" stroke-width="1"/><line x1="9.75" y1="8" x2="11" y2="8" stroke="white" stroke-width="1"/></svg>`,
-  testplans: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="2" fill="#ca5010"/><path d="M5.5 2h5v5.5l3 5A1.5 1.5 0 0112.2 15H3.8a1.5 1.5 0 01-1.3-2.5l3-5V2z" fill="white"/><circle cx="8" cy="11.5" r="1.5" fill="#ca5010"/></svg>`,
-  artifacts: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="2" fill="#ea4300"/><path d="M8 2L14 5.5v5L8 14 2 10.5v-5L8 2z" fill="white"/><path d="M8 2v12M2 5.5l6 3M14 5.5l-6 3" stroke="#ea4300" stroke-width="1" fill="none"/></svg>`,
-  wiki: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="2" fill="#5c2d91"/><rect x="2" y="2.5" width="6" height="11" rx="1" fill="white"/><rect x="4" y="5" width="2.5" height="1" fill="#5c2d91"/><rect x="4" y="7" width="2.5" height="1" fill="#5c2d91"/><rect x="4" y="9" width="1.5" height="1" fill="#5c2d91"/><rect x="8.5" y="4" width="5.5" height="9.5" rx="1" fill="white" opacity=".65"/></svg>`,
-  settings: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="2" fill="#605e5c"/><circle cx="8" cy="8" r="2.2" fill="none" stroke="white" stroke-width="1.5"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4" stroke="white" stroke-width="1.3" stroke-linecap="round"/></svg>`
-};
+import {
+  FALLBACK_ICONS,
+  SCRAPABLE_SECTIONS,
+  SECTION_NAV_SELECTORS,
+  TAB_ICON_STORAGE_KEY as STORAGE_KEY,
+  detectSection,
+  type DevOpsSection
+} from './sectionIcons';
 
 // In-memory cache: section → CDN URL or data URI
 const iconCache = new Map<DevOpsSection, string>();
@@ -69,23 +25,6 @@ async function saveCachedIcons(): Promise<void> {
   const obj: Record<string, string> = {};
   for (const [section, url] of iconCache) obj[section] = url;
   await chrome.storage.local.set({ [STORAGE_KEY]: obj });
-}
-
-// ── Section detection ────────────────────────────────────────────────────────
-
-function detectSection(href: string): DevOpsSection {
-  try {
-    const path = new URL(href).pathname.toLowerCase();
-    for (const [section, patterns] of Object.entries(SECTION_PATH_PATTERNS) as [
-      DevOpsSection,
-      string[]
-    ][]) {
-      if (patterns.some((p) => path.includes(p))) return section;
-    }
-  } catch {
-    /* invalid URL */
-  }
-  return 'overview';
 }
 
 // ── DOM scraping ─────────────────────────────────────────────────────────────
@@ -133,6 +72,40 @@ function refreshIconCache(): void {
 let faviconGuard: MutationObserver | null = null;
 let currentIconUrl: string | null = null;
 
+/**
+ * A budget on how often the guard may repaint before it gives up.
+ *
+ * The guard reacts to a favicon it did not write by writing its own. Anything
+ * else on the page that does the same thing — another copy of this script left
+ * behind by an extension reload, or Azure DevOps itself — turns that into two
+ * observers repainting each other's work without pause, which locks the tab up
+ * and eventually kills it. A favicon is cosmetic and a hung tab is not, so past
+ * this budget the guard stops rather than wins.
+ */
+const GUARD_REPAINT_BUDGET = 40;
+const GUARD_WINDOW_MS = 2000;
+let repaintCount = 0;
+let repaintWindowStart = 0;
+
+/** True while the guard still has budget; disconnects it when it runs out. */
+function guardMayRepaint(): boolean {
+  const now = Date.now();
+  if (now - repaintWindowStart > GUARD_WINDOW_MS) {
+    repaintWindowStart = now;
+    repaintCount = 0;
+  }
+  repaintCount += 1;
+  if (repaintCount <= GUARD_REPAINT_BUDGET) {
+    return true;
+  }
+  faviconGuard?.disconnect();
+  faviconGuard = null;
+  console.warn(
+    '[devops-extension] favicon guard stood down: something else on the page keeps rewriting the favicon.'
+  );
+  return false;
+}
+
 function isFaviconLink(el: Element): el is HTMLLinkElement {
   if (!(el instanceof HTMLLinkElement)) return false;
   const rel = (el.getAttribute('rel') ?? '').toLowerCase();
@@ -170,6 +143,7 @@ function startFaviconGuard(): void {
     // Re-evaluate from the current URL so mid-navigation overrides immediately
     // show the correct section rather than the previous one.
     if (favicons.length !== 1 || favicons[0].href !== currentIconUrl) {
+      if (!guardMayRepaint()) return;
       applyFavicon();
     }
   });
@@ -186,7 +160,7 @@ function applyFavicon(): void {
 
 // ── Nav readiness ────────────────────────────────────────────────────────────
 
-function waitForNav(): Promise<void> {
+function waitForNav(signal: AbortSignal): Promise<void> {
   // Any of these aria-label anchors confirm the sidebar has rendered
   const probe = SCRAPABLE_SECTIONS.map((s) => SECTION_NAV_SELECTORS[s]).join(
     ', '
@@ -204,26 +178,57 @@ function waitForNav(): Promise<void> {
       }
     });
     obs.observe(document.body, { childList: true, subtree: true });
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       obs.disconnect();
       resolve();
     }, 8000);
+    signal.addEventListener('abort', () => {
+      clearTimeout(timer);
+      obs.disconnect();
+      resolve();
+    });
   });
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
+/**
+ * Everything this module attached to the page, so it can let go again.
+ *
+ * A content script cannot be unloaded, but it can be made inert — which is what
+ * an extension reload needs. The copy left behind by the reload keeps running
+ * its observers with no way to reach the extension any more, so it holds the
+ * favicon it last computed forever while the fresh copy insists on its own. The
+ * two then repaint each other until the tab dies. The fresh copy asks the old
+ * one to stand down instead, and this is what answers that.
+ */
+let teardown: (() => void) | null = null;
+
+export function teardownTabIcons(): void {
+  teardown?.();
+  teardown = null;
+}
+
 export function initTabIcons(): void {
+  // A second init in one page would be a second set of observers fighting the
+  // first, which is the failure this teardown exists to prevent.
+  teardownTabIcons();
+
+  const abort = new AbortController();
+  const { signal } = abort;
+
   startFaviconGuard();
   applyFavicon();
 
   void (async () => {
     await loadCachedIcons();
+    if (signal.aborted) return;
     applyFavicon();
 
     const missing = SCRAPABLE_SECTIONS.filter((s) => !iconCache.has(s));
     if (missing.length > 0) {
-      await waitForNav();
+      await waitForNav(signal);
+      if (signal.aborted) return;
       refreshIconCache();
       applyFavicon();
     }
@@ -245,15 +250,19 @@ export function initTabIcons(): void {
     origReplace.apply(this, args);
     applyFavicon();
   };
-  window.addEventListener('popstate', () => applyFavicon());
+  window.addEventListener('popstate', () => applyFavicon(), { signal });
 
   // Re-apply whenever the tab is switched back to — Azure DevOps may have
   // overwritten the favicon while the tab was in the background.
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      applyFavicon();
-    }
-  });
+  document.addEventListener(
+    'visibilitychange',
+    () => {
+      if (document.visibilityState === 'visible') {
+        applyFavicon();
+      }
+    },
+    { signal }
+  );
 
   // Azure DevOps updates <title> early in every SPA navigation — before
   // history.pushState and long before the React render settles.  Observing
@@ -274,6 +283,18 @@ export function initTabIcons(): void {
       subtree: true
     });
   }
+
+  teardown = () => {
+    abort.abort();
+    titleObserver.disconnect();
+    faviconGuard?.disconnect();
+    faviconGuard = null;
+    currentIconUrl = null;
+    // Restoring the patches matters as much as disconnecting: left in place they
+    // chain, so after three reloads one navigation repaints three times.
+    history.pushState = origPush;
+    history.replaceState = origReplace;
+  };
 }
 
 export async function rescrapeTabIcons(): Promise<void> {

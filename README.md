@@ -185,11 +185,35 @@ npm test
 8. Adjust the closed-date range inputs to refresh closed items for a specific window, or use **Reset to default** to restore the default today-to-7-days-ago range.
 9. Optionally enable **Show task parent details** to see the full hierarchy grouped instead, with each task under its parent.
 10. Use the per-day refetch button beside any closed-date heading to reload only that day.
-11. Star an Azure DevOps page with the toggle beside the favorites menu. The
+    The **Orphans** list shows work items you raised that are not under
+    anything. Tick any number of them, type the id of the work item to put them
+    under, and press **Parent**. The hierarchy is enforced — a Task goes under a
+    Bug, Product Backlog Item, Improvement or another Task, and those go under a
+    Feature — so
+    a mixed selection moves what fits and tells you about the rest rather than
+    refusing the lot. The quick-task parent and its archive never appear: being
+    parentless is what they are for. The tab has a second view behind the
+    **In progress by me** toggle, which answers a different question: what is in
+    a given state and assigned to you, and what you moved into that state but is
+    assigned to somebody else. Type the state name your process uses and press
+    **Find**.
+11. **Close duplicate tabs** keeps the most recently active copy of each page.
+    Right-click the same button to close tabs you have not looked at in 24 days
+    — it asks first, naming how many and how old the oldest is. Pinned tabs, the
+    tab you are on, and anything playing audio are left alone.
+12. The pop-out button beside **Close duplicate tabs** moves the panel into a
+    window of its own — useful on a second screen, since the browser's side
+    panel is fixed to one edge. Only one is ever open, and it remembers its
+    size and position.
+13. Star an Azure DevOps page with the toggle beside the favorites menu. The
     menu opens at the full width of the side panel, and each entry shows the
     page's icon taken from the browser's own favicon cache — the same icon the
     bookmarks menu draws, so favorites synced in from another machine are
-    recognisable too.
+    recognisable too. Azure DevOps favorites are the exception: all of Azure
+    DevOps is one site, so its favicon would make every entry look the same.
+    Those show the section icon instead — boards, repos, pipelines, wiki — taken
+    from Azure DevOps's own navigation where it has been seen, and from icons
+    built into the extension until then.
     A favorite opens in the current tab; hold **Ctrl** to open it in a new one.
     Quick tasks that are in progress are listed under the favorites behind a
     divider, and mirrored into a **Quick tasks** sub-folder of the bookmarks
@@ -197,11 +221,41 @@ npm test
     bookmarks disappear as the tasks are finished. Start the search with `.` to
     reach the browser's own bookmarks: on its own it lists your bookmark folders,
     and picking one — or typing its name — shows what is inside it. Rows carry
-    each site's icon. The palette also has a button to open the browser's own
-    bookmark manager.
-    **Ctrl+Period** opens a centred favorites palette over the Azure DevOps page
-    you are on, with its search already focused; on any other page it opens the
-    panel straight into the same search instead; Settings →
+    each site's icon. The **Bookmarks** button opens the extension's own
+    bookmark manager page (see below). Start the search with `>` for commands
+    instead of places: **add app** registers the app you are looking at, and
+    **add app env `<env>` `[url]`** files an address under it. Tab completes a
+    command to the nearest name. Apps themselves appear under their own divider:
+    one row each, with **Enter** opening the first environment, **Tab** stepping
+    to the next, and a typed second word naming one. Start the search with `#` for work
+    items: a number and **Enter** opens it in Azure DevOps straight away, `#` on
+    its own lists the ones you have looked at lately, and anything typed after
+    it narrows that list. Start the search with `-`
+    to walk into them instead: on its own it lists the apps, naming one shows
+    the bookmarks in its folder, and a further word filters those. Walking into an app
+    lists its environments with the one you were last in first and the one you
+    are looking at last, so two environments are a flip between them; Tab from
+    the search box walks those rows before reaching the buttons below. Switching
+    environment keeps your place: from `env1.my-app.com/some/path` you land on
+    `env2.my-app.com/some/path`, reusing a tab already showing it and opening a
+    new one otherwise.
+    **Ctrl+Period** opens the favorites palette in a small window of its own,
+    centred on the browser window and with its search already focused. It works
+    on any page, not only Azure DevOps, because a window does not depend on a
+    content script and takes focus by being a window. It closes itself when
+    another browser window takes focus, or after fifteen seconds untouched —
+    **📌 Pin** in its header stops both, and as with the other windows only one
+    is ever open. Its footer has two buttons: **▤** shows the side panel on the
+    window you are browsing in (the browser can refuse this — it wants a click
+    it recognises as yours, and the palette is a separate window; the button
+    says so rather than closing as if it had worked), and **⚙** opens Settings in a window of its own,
+    wide enough to put the fields in columns rather than in the single narrow
+    ribbon a side panel forces. Switching to another application does not close it, which
+    would otherwise make it unusable the moment you copied something from
+    somewhere else. Escape, the backdrop and opening a favorite all close it as
+    before. The in-page overlay it replaced is still in the code behind
+    `FAVORITES_SEARCH_SURFACE` in the service worker, while the window is being
+    lived with; Settings →
     **Tools** shows which keys the browser actually bound to it, and browsers
     silently leave the suggested combination unbound when it clashes with one of
     their own — assign your own at `edge://extensions/shortcuts` if it is blank. Name a
@@ -211,9 +265,73 @@ npm test
     bookmark sync. A favorite added, renamed or deleted on another machine is
     adopted here once the browser syncs it; the panel only overrides the folder
     for a favorite you just added.
-12. Open the **Active item** tab to create child tasks. The tab resolves context from the last visited Azure DevOps work-item view (or the pinned item if set), so it can continue working even when a non-DevOps tab is active.
+14. Open the **Active item** tab to create child tasks. The tab resolves context from the last visited Azure DevOps work-item view (or the pinned item if set), so it can continue working even when a non-DevOps tab is active.
 
 The extension queries Azure DevOps with its runtime-minted PAT (over HTTP Basic auth) and displays matching work items in the side panel.
+
+## Bookmark manager
+
+The **Bookmarks** button in the favorites palette opens the extension's own
+bookmark manager instead of the browser's. It opens in a window of its own — a
+popup, so there is no tab strip, bookmarks bar or navigation toolbar in the way
+— and there is never more than one: pressing the button again raises the window
+already open rather than starting a second view of the same tree. The window
+remembers where you left it and how big it was, which is the point on a wide
+screen. The browser's manager cannot tell you
+what is saved twice or what is now empty, which is most of the reason it gets
+opened in the first place.
+
+The page is three columns with a drag handle between each. The folder tree and
+the issue lists are sized by hand and remembered per browser; the contents in
+the middle take whatever is left, so widening the window feeds the list of
+bookmarks rather than the chrome around it. The handles work from the keyboard
+too — focus one and use the arrow keys. Below 1000px the columns stack and the
+handles go away. The defaults are the sizes the page has always had, so nothing
+moves until you drag something.
+
+The left of the page is for
+reorganising: the folder tree, the selected folder's contents beside it, and
+dragging a bookmark or a folder onto a folder files it there. A folder cannot be
+dropped into itself or into one of its own descendants. Each folder row carries
+the same pencil and trash can as a bookmark — rename in place, or delete, with a
+confirmation first when the folder is not empty, since deleting takes everything
+inside it. The **⇤** button flattens a folder: everything inside it moves up one level and
+the folder itself goes, so `path/to/flatten/that/has/nest` flattened at
+`flatten` becomes `path/to/that/has/nest`. Whatever nesting the contents carry
+comes along untouched. The **−** button collapses a folder's subfolders, **+**
+brings them back. The search box at the top
+spans every folder, which is what you want when you cannot remember where
+something was filed.
+
+The right column holds four lists, one tab at a time and each with its own filter:
+
+- **Duplicate name** — bookmarks sharing a title, wherever they live.
+- **Duplicate path** — the same address, ignoring search parameters and the
+  hash, filed in two different folders. Two copies inside one folder are left
+  out: they are already side by side in the organiser above.
+- **Duplicate folder** — folders sharing a name, which is how a bookmark ends up
+  in the wrong one. These rows rename and move but do not delete: a duplicated
+  folder may be full, and the fix is almost always the name.
+- **Empty folders** — folders holding nothing at all.
+
+Selecting a folder in the tree narrows all four lists to that subtree, so a
+duplicate you just created is visible where you are working instead of buried in
+a whole-tree list. **All** above the tree clears the selection.
+
+Clicking a row in one of these lists shows that bookmark's folder in the tree
+rather than following the link, opening whatever was collapsed above it — the
+question a duplicate raises is where it lives. Hold **Ctrl** to open the bookmark
+instead. The lists themselves stay as they were: narrowing them to the folder you
+just jumped to would drop the very copy you were comparing it with.
+
+Every row in both halves carries the same actions: a pencil to edit the title and
+address in place, a trash can to delete it, and a **Move to…** list to send it to
+another folder without leaving the list you found it in. The checkbox on the left
+of a row adds it to a selection that spans both halves of the page; while
+anything is selected a bar appears at the top to move all of it into one folder
+or delete it in one go. The page follows
+whatever change happens elsewhere — another window, the browser's own manager, or
+a sync from another machine — so it never shows a tree that no longer exists.
 
 ## License
 

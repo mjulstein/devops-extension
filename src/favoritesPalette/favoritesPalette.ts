@@ -19,17 +19,26 @@
 
 import { wantsNewTab, type StarredPage } from '@/sidepanel/starredPages';
 import {
+  appRowTarget,
   rowDetail,
   rowLabel,
   type WidenedSearchData
 } from '@/sidepanel/favoritesListing';
-import { originOf, type FaviconMap } from './faviconData';
+import { iconKeyFor, type FaviconMap } from './faviconData';
 import {
   buildPaletteView,
   resolvePaletteKey,
   type PaletteView
 } from './paletteModel';
-import { parseFavoritesQuery } from '@/sidepanel/favoritesQuery';
+import { APPS_PREFIX, parseFavoritesQuery } from '@/sidepanel/favoritesQuery';
+import {
+  completeCommand,
+  QUICK_COMMANDS,
+  readCommand
+} from '@/sidepanel/commands/quickCommands';
+import type { AppEntry } from '@/sidepanel/apps/appDns';
+import type { EnvContext } from '@/sidepanel/favoritesListing';
+import type { RecentWorkItem } from '@/devops/recentWorkItems';
 
 const HOST_ID = 'devops-ext-favorites-palette';
 
@@ -37,6 +46,19 @@ export interface PaletteOptions {
   favorites: StarredPage[];
   /** Quick tasks in progress, listed under the favorites behind a divider. */
   quickTasks?: StarredPage[];
+  /**
+   * Apps, each with its environments in the order their bookmarks sit in. One
+   * row each: the environment is chosen on the row with Tab or by typing its
+   * name, not by giving every environment a row of its own.
+   */
+  apps?: AppEntry[];
+  /**
+   * Which environment was last looked at, and which is on screen now, so the
+   * apps listing can offer the other one first.
+   */
+  envContext?: EnvContext;
+  /** Work items visited lately, offered by the `#` prefix. */
+  recentWorkItems?: RecentWorkItem[];
   /**
    * Site icons by origin. Passed in because an extension resource — which the
    * browser's favicon cache is — cannot be loaded from a page, so the service
@@ -52,8 +74,8 @@ export interface PaletteOptions {
     term: string
   ) => Promise<WidenedSearchData & { icons: FaviconMap }>;
   /**
-   * Opens the browser's own bookmark manager. A page cannot navigate to a
-   * browser page, so this too is the caller's job.
+   * Opens the extension's bookmark manager page. A page cannot open an
+   * extension page itself, so this too is the caller's job.
    */
   onOpenBookmarkManager?: () => void;
   /**
@@ -67,6 +89,53 @@ export interface PaletteOptions {
    * (Ctrl or Cmd). The palette closes first either way.
    */
   onOpenPage: (url: string, newTab: boolean) => void;
+  /**
+   * A pin toggle in the header, and its starting state. Given only by the
+   * window host: pinning means "do not close this on your own", which is a
+   * question that only arises for a palette that closes itself. Drawn over a
+   * page there is nothing to pin — the palette is dismissed by the same click
+   * that takes attention away from it.
+   */
+  onTogglePin?: (pinned: boolean) => void;
+  isPinned?: boolean;
+  /**
+   * Opens the settings window. A footer button rather than a header one: it
+   * leaves the palette rather than acting within it.
+   */
+  onOpenSettings?: () => void;
+  /**
+   * Stores an environment that was only suggested, when it is opened. Absent,
+   * a suggested address still opens — it just does not join the folder.
+   */
+  onAddAppEnvironment?: (app: string, env: string, url: string) => void;
+  /** Runs a command chosen from the `>` list. */
+  onRunCommand?: (id: string, args: string[]) => void;
+  /**
+   * Opens one of an app's environments. Separate from `onOpenPage` because it
+   * is a switch rather than a navigation: whatever page of the app you are on
+   * comes with you, and a tab already showing it is reused rather than a second
+   * one opened beside it.
+   */
+  onOpenAppTarget?: (app: string, url: string) => void;
+  /**
+   * Opens a work item by number. The address is passed when it is known — a
+   * recently visited item carries its own — and worked out from the
+   * organization and project otherwise.
+   */
+  onOpenWorkItem?: (id: number, url?: string) => void;
+  /**
+   * Shows the side panel on the window being browsed in. Resolves false when
+   * the browser refuses, which it does when it does not count the click as a
+   * user gesture — the palette then stays open and says so rather than
+   * vanishing with nothing to show for itself.
+   */
+  onOpenSidePanel?: () => Promise<boolean>;
+  /**
+   * Called once the palette has closed, for whatever reason: Escape, the
+   * backdrop, or a row being opened. The window host uses it to close the
+   * window the palette was the only content of.
+   */
+  onClose?: () => void;
   /** Where to attach. Defaults to the document body. */
   container?: HTMLElement;
 }
@@ -132,6 +201,34 @@ const STYLES = `
     border-color: var(--color-border-strong, #8b949e);
   }
   .list { overflow-y: auto; }
+  /* A footer rather than more buttons in the header: these open something
+     else, which is a different kind of act from searching, and the header is
+     already carrying the search. Right-aligned, where a dialog's own controls
+     sit. */
+  .footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-block-start: 1px solid var(--color-border, var(--palette-neutral-20, #d0d7de));
+  }
+  .iconButton {
+    font: inherit;
+    font-size: 14px;
+    line-height: 1;
+    flex: 0 0 auto;
+    padding: 5px 8px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+  .iconButton:hover {
+    border-color: var(--color-border, var(--palette-neutral-20, #d0d7de));
+    background: var(--color-surface-raised, transparent);
+  }
   .row {
     display: flex;
     align-items: center;
@@ -222,11 +319,23 @@ const STYLES = `
 export function openFavoritesPalette({
   favorites,
   quickTasks = [],
+  apps = [],
+  envContext,
+  recentWorkItems = [],
   icons = {},
   onOpenPage,
   searchAllBookmarks,
   onOpenBookmarkManager,
   tokens,
+  onTogglePin,
+  isPinned = false,
+  onOpenSettings,
+  onAddAppEnvironment,
+  onRunCommand,
+  onOpenAppTarget,
+  onOpenWorkItem,
+  onOpenSidePanel,
+  onClose,
   container = document.body
 }: PaletteOptions): PaletteHandle {
   closeFavoritesPalette(container);
@@ -265,6 +374,9 @@ export function openFavoritesPalette({
   header.className = 'header';
   header.append(search);
 
+  /** Controls that leave the palette; appended below the list, not above it. */
+  const footerControls: HTMLButtonElement[] = [];
+
   if (onOpenBookmarkManager) {
     // Where a bookmark gets renamed, moved or deleted — none of which belongs in
     // a search box, and all of which people come looking for once the widened
@@ -273,26 +385,119 @@ export function openFavoritesPalette({
     manage.type = 'button';
     manage.className = 'manage';
     manage.textContent = 'Bookmarks';
-    manage.title = "Open the browser's bookmark manager";
+    manage.title = 'Open the bookmark manager';
     manage.addEventListener('click', () => {
       close();
       onOpenBookmarkManager();
     });
-    header.append(manage);
+    footerControls.push(manage);
+  }
+
+  if (onTogglePin) {
+    const pin = document.createElement('button');
+    pin.type = 'button';
+    pin.className = 'manage';
+    let pinned = isPinned;
+    const paintPin = () => {
+      pin.textContent = pinned ? '📌 Pinned' : '📌 Pin';
+      pin.title = pinned
+        ? 'Pinned: this window stays open until you close it'
+        : 'Pin this window so it does not close on its own';
+      pin.setAttribute('aria-pressed', String(pinned));
+    };
+    paintPin();
+    pin.addEventListener('click', () => {
+      pinned = !pinned;
+      paintPin();
+      onTogglePin(pinned);
+      // The search is where typing belongs, and clicking the pin took the
+      // caret out of it.
+      search.focus();
+    });
+    footerControls.push(pin);
+  }
+
+  const footer = document.createElement('div');
+  footer.className = 'footer';
+  // Everything that leaves the palette sits below the list, so Tab from the
+  // search walks the rows first and only then reaches these. A list you have to
+  // tab past two buttons to get into is a list you use the mouse for.
+  for (const control of footerControls) {
+    footer.append(control);
+  }
+
+  if (onOpenSidePanel) {
+    const panelButton = document.createElement('button');
+    panelButton.type = 'button';
+    panelButton.className = 'iconButton';
+    panelButton.textContent = '▤';
+    panelButton.title = 'Show the side panel';
+    panelButton.setAttribute('aria-label', 'Show the side panel');
+    panelButton.addEventListener('click', () => {
+      // Not closed first: closing tears this page down, and the call below has
+      // to happen while the click is still the browser's idea of a gesture.
+      void onOpenSidePanel().then((opened) => {
+        if (opened) {
+          close();
+          return;
+        }
+        panelButton.textContent = '▤ refused';
+        panelButton.title =
+          'The browser would not open the side panel from here. Use the extension icon.';
+      });
+    });
+    footer.append(panelButton);
+  }
+
+  if (onOpenSettings) {
+    const settingsButton = document.createElement('button');
+    settingsButton.type = 'button';
+    settingsButton.className = 'iconButton';
+    settingsButton.textContent = '⚙';
+    settingsButton.title = 'Open settings';
+    settingsButton.setAttribute('aria-label', 'Open settings');
+    settingsButton.addEventListener('click', () => {
+      close();
+      onOpenSettings();
+    });
+    footer.append(settingsButton);
   }
 
   dialog.append(header, list);
+  if (footer.childElementCount > 0) {
+    dialog.append(footer);
+  }
   backdrop.append(dialog);
   shadow.append(style, backdrop);
   container.append(host);
 
+  // How many times Tab has been pressed on the highlighted app row: which
+  // environment that row points at, not a setting of its own, so it resets with
+  // the query and with the highlight.
+  let appStep = 0;
   let widened: WidenedSearchData = { bookmarks: [], folders: [] };
   let allIcons: FaviconMap = { ...icons };
-  let view: PaletteView = buildPaletteView(favorites, '', 0, quickTasks);
+  let view: PaletteView = buildPaletteView(
+    favorites,
+    '',
+    0,
+    quickTasks,
+    { bookmarks: [], folders: [] },
+    apps,
+    envContext,
+    recentWorkItems
+  );
+
+  let closed = false;
 
   function close() {
+    if (closed) {
+      return;
+    }
+    closed = true;
     host.remove();
     document.removeEventListener('keydown', onDocumentKeyDown, true);
+    onClose?.();
   }
 
   /**
@@ -312,6 +517,59 @@ export function openFavoritesPalette({
       rebuild();
       requestWidenedSearch();
       search.focus();
+      return;
+    }
+
+    if (target.kind === 'work-item') {
+      close();
+      onOpenWorkItem?.(target.id, target.item?.url);
+      return;
+    }
+
+    if (target.kind === 'app-env') {
+      close();
+      onOpenAppTarget?.(target.app.name, target.environment.url);
+      return;
+    }
+
+    if (target.kind === 'app-folder') {
+      // Walks into the app, the same way picking a bookmark folder walks into
+      // that folder: retype the search as its name and show what is inside.
+      search.value = `${APPS_PREFIX}${target.app.name} `;
+      rebuild();
+      requestWidenedSearch();
+      search.focus();
+      return;
+    }
+
+    if (target.kind === 'command') {
+      const invocation = readCommand([target.command], target.text);
+      if (invocation === null || !onRunCommand) {
+        return;
+      }
+      close();
+      onRunCommand(invocation.command.id, invocation.args);
+      return;
+    }
+
+    if (target.kind === 'app') {
+      const aimed = appRowTarget(target, appStep);
+      if (aimed === null) {
+        return;
+      }
+      close();
+      // A suggested address is stored as it is opened: visiting an environment
+      // is how it joins the app's folder, which is the whole way the list fills
+      // up. A wrong guess is corrected by adding it again from the address that
+      // worked, or in the bookmark manager.
+      if (aimed.isDerived) {
+        onAddAppEnvironment?.(
+          target.app.name,
+          aimed.environment.name,
+          aimed.environment.url
+        );
+      }
+      onOpenAppTarget?.(target.app.name, aimed.environment.url);
       return;
     }
 
@@ -367,13 +625,29 @@ export function openFavoritesPalette({
       ]
         .filter(Boolean)
         .join(' ');
-      row.title = rowDetail(entry);
+      const detail = rowDetail(entry, index === view.highlight ? appStep : 0);
+      row.title = detail;
 
       // The icon is a scanning aid, so a missing one leaves its space rather
       // than shifting every title. A folder shows a folder, not a site.
-      const origin = entry.kind === 'page' ? originOf(entry.page.url) : null;
-      const iconSrc = origin === null ? undefined : allIcons[origin];
-      if (entry.kind === 'folder') {
+      const iconKey =
+        entry.kind === 'page'
+          ? iconKeyFor(entry.page.url)
+          : entry.kind === 'app-env'
+            ? iconKeyFor(entry.environment.url)
+            : null;
+      const iconSrc = iconKey === null ? undefined : allIcons[iconKey];
+      if (entry.kind === 'work-item') {
+        const icon = document.createElement('span');
+        icon.className = 'icon folderIcon';
+        icon.textContent = '#';
+        row.append(icon);
+      } else if (entry.kind === 'app-folder') {
+        const icon = document.createElement('span');
+        icon.className = 'icon folderIcon';
+        icon.textContent = '▤';
+        row.append(icon);
+      } else if (entry.kind === 'folder') {
         const icon = document.createElement('span');
         icon.className = 'icon folderIcon';
         icon.textContent = '📁';
@@ -399,14 +673,18 @@ export function openFavoritesPalette({
       label.textContent = rowLabel(entry);
       const url = document.createElement('span');
       url.className = 'url';
-      url.textContent = rowDetail(entry);
+      url.textContent = detail;
 
       text.append(label, url);
       row.append(text);
-      row.addEventListener('mouseenter', () => {
-        view = { ...view, highlight: index };
-        render();
-      });
+      // Hover is left to CSS on purpose, and this is not a style preference.
+      // Moving the highlight on mouseenter re-rendered the list, which replaced
+      // the very button the pointer was pressing: the mouseup landed on a node
+      // that no longer existed, so no click was ever synthesized and a row could
+      // only be opened with Enter. It also tied the keyboard to the cursor,
+      // so Enter opened whatever the mouse happened to be resting over rather
+      // than what the arrow keys had chosen. The two are separate selections
+      // and stay separate.
       row.addEventListener('click', (event) => openRow(index, event));
       list.append(row);
     });
@@ -417,7 +695,17 @@ export function openFavoritesPalette({
   }
 
   function rebuild() {
-    view = buildPaletteView(favorites, search.value, 0, quickTasks, widened);
+    appStep = 0;
+    view = buildPaletteView(
+      favorites,
+      search.value,
+      0,
+      quickTasks,
+      widened,
+      apps,
+      envContext,
+      recentWorkItems
+    );
     render();
   }
 
@@ -446,7 +734,7 @@ export function openFavoritesPalette({
   // bare keys of its own, and Enter or Escape reaching the page underneath
   // would be worse than having no palette at all.
   function onDocumentKeyDown(event: KeyboardEvent) {
-    const action = resolvePaletteKey(event.key, view);
+    const action = resolvePaletteKey(event.key, view, event.shiftKey);
     if (action.kind === 'ignore') {
       return;
     }
@@ -460,6 +748,20 @@ export function openFavoritesPalette({
     }
     if (action.kind === 'move') {
       view = { ...view, highlight: action.highlight };
+      // A new row is a new question, so the environment starts from the top
+      // again rather than carrying the last row's position onto this one.
+      appStep = 0;
+      render();
+      return;
+    }
+    if (action.kind === 'complete-command') {
+      const parsed = parseFavoritesQuery(search.value);
+      search.value = `>${completeCommand(QUICK_COMMANDS, parsed.term)}`;
+      rebuild();
+      return;
+    }
+    if (action.kind === 'step-app') {
+      appStep += action.delta;
       render();
       return;
     }

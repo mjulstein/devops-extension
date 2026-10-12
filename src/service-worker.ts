@@ -17,11 +17,44 @@ import {
   loadStarredPages
 } from './sidepanel/chromeStorage';
 import { loadThemeTokens } from './sidepanel/theme';
+import { addAppEnvironment, loadApps } from './sidepanel/apps/appsFolder';
+import {
+  hostOf,
+  normalizeTypedUrl,
+  parseAppUrl
+} from './sidepanel/apps/appDns';
+import {
+  buildWorkItemUrl,
+  recordRecentWorkItem,
+  RECENT_WORK_ITEMS_KEY,
+  type RecentWorkItem
+} from './devops/recentWorkItems';
+import { getWorkItemIdFromUrl } from './devops/urlContext';
+import {
+  fetchOrphanCandidates,
+  parentWorkItems as parentWorkItemsInDevOps
+} from './devops/orphanWorkItemsApi';
+import {
+  checkBulkParent,
+  parentlessByDesign,
+  selectOrphans
+} from './devops/orphanWorkItems';
+import { getWorkItemDetails } from './devops/workItemDetails';
+import { fetchInProgressByMe } from './devops/inProgressByMeApi';
+import {
+  carryPathAcrossEnvironments,
+  isSamePage,
+  usageFromTabs
+} from './sidepanel/apps/envSwitch';
+import { findAppForUrl, suggestEnvName } from './sidepanel/apps/appMatch';
+import { shouldCloseOnFocusChange } from './favoritesPalette/idleClose';
+import { loadSettings } from './sidepanel/chromeStorage';
 import { searchAllBookmarks } from './sidepanel/bookmarkSync';
 import {
   blobToDataUrl,
   loadFaviconsForUrls
 } from './favoritesPalette/faviconData';
+import { TAB_ICON_STORAGE_KEY, sectionIconForUrl } from './devops/sectionIcons';
 import { fetchChildTasksForActiveParent } from './devops/childTasks';
 import { fetchPullRequestActivity } from './devops/pullRequestActivity';
 import { fetchAdoTheme, setAdoTheme, type AdoTheme } from './devops/theme';
@@ -79,11 +112,22 @@ void chrome.commands?.getAll().then((commands) => {
 // a wide search does not re-read the same pictures on every keystroke.
 const faviconCache = new Map<string, string>();
 
-function loadFavicons(urls: string[]) {
-  return loadFaviconsForUrls(urls, faviconCache, {
+async function loadFavicons(urls: string[]) {
+  // The section icons the content script scraped from Azure DevOps's own nav,
+  // or the built-in ones when it has not scraped yet. Without these every
+  // Azure DevOps favorite draws the same site logo, which tells you nothing
+  // about which of them is a board and which is a pipeline.
+  const stored = await chrome.storage.local.get(TAB_ICON_STORAGE_KEY);
+  const sectionIcons = (stored[TAB_ICON_STORAGE_KEY] ?? {}) as Record<
+    string,
+    string
+  >;
+
+  return await loadFaviconsForUrls(urls, faviconCache, {
     fetchFn: (input: RequestInfo | URL, init?: RequestInit) =>
       fetch(input, init),
-    toDataUrl: blobToDataUrl
+    toDataUrl: blobToDataUrl,
+    ownIconFor: (url) => sectionIconForUrl(url, sectionIcons)
   });
 }
 
@@ -100,7 +144,202 @@ chrome.commands?.onCommand.addListener((command) => {
  * one is in front, otherwise in the side panel. Shared by the keyboard command
  * and the panel's own trigger so both land on the same surface.
  */
-async function openFavoritesSearch(): Promise<'overlay' | 'panel'> {
+/**
+ * The address of the page being looked at.
+ *
+ * The commands are run from the palette, which is a window of its own, so "the
+ * current page" is the active tab of the window being browsed in rather than
+ * anything the palette can see for itself.
+ */
+async function browsingPageUrl(): Promise<string | null> {
+  const windowId = await browsingWindowId();
+  if (windowId === null) {
+    return null;
+  }
+  const [tab] = await chrome.tabs.query({ active: true, windowId });
+  return tab?.url ?? null;
+}
+
+/**
+ * Runs a command from the `>` list.
+ *
+ * Both commands work from the page you are on, which is the point: you are
+ * looking at an environment, so there is nothing to type. Which app it belongs
+ * to is answered by the app folders you already have — an address containing an
+ * app's name goes in that app's folder, punctuation ignored, because
+ * `myapp-dev.orgname.com` is the app you called `my-app` and refusing it over a
+ * hyphen would be correct and useless. Only when no folder matches is a name
+ * read out of the address instead.
+ *
+ * The whole address is stored, path and query included, and the bookmark is
+ * named after whatever the address says the environment is — a placeholder, one
+ * rename away in the bookmark manager. Nothing depends on that name, so nothing
+ * waits for it to be right.
+ */
+async function runQuickCommand(
+  id: string,
+  args: string[]
+): Promise<{ ok: true } | { error: string }> {
+  const settings = await loadSettings();
+  const folder = settings.bookmarkFolderName;
+  const apps = await loadApps(folder);
+
+  if (id === 'add-app') {
+    const [givenName] = args;
+    const url = await browsingPageUrl();
+    if (url === null) {
+      return { error: 'No page to add. Open the app in a tab first.' };
+    }
+
+    const appName =
+      givenName ?? findAppForUrl(apps, url)?.name ?? parseAppUrl(url)?.appName;
+    if (!appName) {
+      return { error: 'That address does not say what the app is called.' };
+    }
+
+    return await addAppEnvironment(folder, appName, suggestEnvName(url), url);
+  }
+
+  if (id === 'add-app-env') {
+    const [env, givenUrl] = args;
+    if (!env) {
+      return { error: 'Name the environment: add app env <env> [url]' };
+    }
+    // A host typed into the command is an address: see normalizeTypedUrl.
+    const url =
+      givenUrl === undefined
+        ? await browsingPageUrl()
+        : normalizeTypedUrl(givenUrl);
+    if (url == null) {
+      return { error: 'No address to add.' };
+    }
+
+    // The folder you already have beats a name read out of the address.
+    const appName =
+      findAppForUrl(apps, url)?.name ?? parseAppUrl(url, env)?.appName;
+    if (!appName) {
+      return { error: 'That address does not say what the app is called.' };
+    }
+
+    return await addAppEnvironment(folder, appName, env, url);
+  }
+
+  return { error: `No such command: ${id}` };
+}
+
+/**
+ * Opens one of an app's environments.
+ *
+ * Two things make this different from opening a favorite. The page you are on
+ * comes with you: picking another environment while looking at a record is a
+ * request for that record over there, not for the front page. And a tab already
+ * showing exactly that address is raised rather than a second one opened beside
+ * it — otherwise flipping between two environments leaves a row of duplicates
+ * behind. Anything not already open gets a new tab, so the page you came from
+ * is still there to go back to.
+ */
+async function openAppTarget(appName: string, url: string): Promise<void> {
+  const settings = await loadSettings();
+  const apps = await loadApps(settings.bookmarkFolderName);
+  const app = apps.find((entry) => entry.name === appName);
+
+  const target =
+    app === undefined
+      ? url
+      : carryPathAcrossEnvironments(app, url, await browsingPageUrl());
+
+  const tabs = await chrome.tabs.query({});
+  const open = tabs.find(
+    (tab) => tab.url !== undefined && isSamePage(tab.url, target)
+  );
+
+  if (open?.id != null) {
+    await chrome.tabs.update(open.id, { active: true });
+    if (open.windowId != null) {
+      await chrome.windows.update(open.windowId, { focused: true });
+    }
+    return;
+  }
+
+  const windowId = await browsingWindowId();
+  await chrome.tabs.create({
+    url: target,
+    ...(windowId === null ? {} : { windowId })
+  });
+  if (windowId !== null) {
+    await chrome.windows.update(windowId, { focused: true });
+  }
+}
+
+/** Everything the palette needs to draw itself, wherever it is drawn. */
+async function loadFavoritesPaletteData() {
+  const [favorites, quickTasks, tokens, apps] = await Promise.all([
+    loadStarredPages(),
+    loadQuickTaskLinks(),
+    loadThemeTokens(),
+    loadSettings().then((settings) => loadApps(settings.bookmarkFolderName))
+  ]);
+  const icons = await loadFavicons([
+    ...favorites.map((page) => page.url),
+    ...quickTasks.map((page) => page.url)
+  ]);
+
+  // Which environment you were last in, and which you are in now, so the apps
+  // listing can offer the other one first.
+  const tabs = await chrome.tabs.query({});
+  const currentUrl = await browsingPageUrl();
+  const envContext = {
+    usage: usageFromTabs(tabs),
+    currentHost: currentUrl === null ? null : hostOf(currentUrl)
+  };
+
+  const recentWorkItems = await loadRecentWorkItems();
+
+  return {
+    favorites,
+    quickTasks,
+    tokens,
+    icons,
+    apps,
+    envContext,
+    recentWorkItems
+  };
+}
+
+/**
+ * Which surface the shortcut opens.
+ *
+ * The window reaches every page, not only the ones a content script runs on,
+ * and takes focus by being a window rather than by asking. The overlay is
+ * faster and appears where the eye already is, but only on Azure DevOps. Both
+ * are kept while the window is being lived with; this is the switch.
+ */
+type FavoritesSearchSurface = 'window' | 'overlay';
+const FAVORITES_SEARCH_SURFACE: FavoritesSearchSurface = 'window';
+
+async function openFavoritesSearch(): Promise<'overlay' | 'panel' | 'window'> {
+  if (FAVORITES_SEARCH_SURFACE === 'window') {
+    try {
+      await openSingletonWindow('palette');
+      await recordShortcutRun({
+        opened: true,
+        delivered: true,
+        error: null,
+        surface: 'window'
+      });
+      return 'window';
+    } catch (windowError) {
+      // Falls through to the surfaces below rather than leaving the keypress
+      // with nothing to show for it.
+      await recordShortcutRun({
+        opened: false,
+        delivered: false,
+        error: describeError(windowError),
+        surface: 'window'
+      });
+    }
+  }
+
   return await (async () => {
     let opened = false;
     let delivered = false;
@@ -228,23 +467,299 @@ async function reloadActiveAzureDevOpsTab(): Promise<void> {
 }
 
 /**
- * Opens the browser's bookmark manager.
+ * The extension's own pages that open in a window of their own.
  *
- * Its address differs by browser and is not something to guess at from the user
- * agent, so the known ones are tried in turn until one opens.
+ * Both follow the same rule: exactly one at a time, in a window rather than a
+ * tab, remembering where it was left. A second copy of either would be a second
+ * view of the same state, free to disagree with the first on screen and to act
+ * on things the other has already changed.
+ */
+const SINGLETON_WINDOWS = {
+  bookmarks: {
+    page: 'bookmarks.html',
+    boundsKey: 'bookmarkManagerWindowBounds',
+    defaults: { width: 1280, height: 900 }
+  },
+  settings: {
+    page: 'settings.html',
+    boundsKey: 'settingsWindowBounds',
+    // Wide enough for the fields to sit in columns rather than in one ribbon.
+    defaults: { width: 960, height: 820 }
+  },
+  palette: {
+    page: 'palette.html',
+    boundsKey: 'paletteWindowBounds',
+    // Roughly the dialog's own size. It is a search box, not a workspace.
+    defaults: { width: 620, height: 520 }
+  },
+  panel: {
+    page: 'sidepanel.html',
+    boundsKey: 'panelWindowBounds',
+    // Narrow, because it is the side panel: the layout is built for that width
+    // and a wide window only stretches the rows.
+    defaults: { width: 460, height: 900 }
+  }
+} as const;
+
+type SingletonWindowName = keyof typeof SINGLETON_WINDOWS;
+
+interface WindowBounds {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+function isWindowBounds(value: unknown): value is WindowBounds {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const bounds = value as Record<string, unknown>;
+  return (['left', 'top', 'width', 'height'] as const).every(
+    (key) => typeof bounds[key] === 'number'
+  );
+}
+
+/** Every tab showing one of these pages, across every window. */
+async function findSingletonWindowTabs(
+  name: SingletonWindowName
+): Promise<chrome.tabs.Tab[]> {
+  const url = chrome.runtime.getURL(SINGLETON_WINDOWS[name].page);
+  const tabs = await chrome.tabs.query({});
+  // Matched by prefix rather than through the query's url filter: a tab still
+  // loading carries its address in pendingUrl, and one the page has since given
+  // a hash would not match the bare address exactly. The side panel's own
+  // instance is not a tab, so it is never caught here.
+  return tabs.filter((tab) =>
+    (tab.url ?? tab.pendingUrl ?? '').startsWith(url)
+  );
+}
+
+/**
+ * Opens one of these pages in its own window, or raises the one already open.
+ *
+ * Any extra copy that has appeared regardless is closed, so the rule holds even
+ * if a window was restored by the browser on startup.
+ */
+async function openSingletonWindow(name: SingletonWindowName): Promise<void> {
+  if (name === 'palette') {
+    await setPalettePinned(false);
+    await markPaletteOpened();
+  }
+  const { page, boundsKey, defaults } = SINGLETON_WINDOWS[name];
+  const url = chrome.runtime.getURL(page);
+  const [existing, ...extras] = await findSingletonWindowTabs(name);
+
+  if (existing?.id != null) {
+    // Closed before focusing, so the one being raised is the survivor.
+    const extraIds = extras
+      .map((tab) => tab.id)
+      .filter((id): id is number => id != null);
+    if (extraIds.length > 0) {
+      await chrome.tabs.remove(extraIds);
+    }
+    await chrome.tabs.update(existing.id, { active: true });
+    if (existing.windowId != null) {
+      // A minimized window takes focus without showing itself, so it is
+      // restored first.
+      await chrome.windows.update(existing.windowId, {
+        focused: true,
+        state: 'normal'
+      });
+    }
+    return;
+  }
+
+  const stored = await chrome.storage.local.get(boundsKey);
+  const bounds = stored[boundsKey];
+
+  await chrome.windows.create({
+    url,
+    type: 'popup',
+    // Said outright rather than left to the default: this window is opened to
+    // be typed into, and it is the one case where taking focus is the point.
+    focused: true,
+    ...(isWindowBounds(bounds)
+      ? bounds
+      : { ...defaults, ...(await centredOnCurrentWindow(defaults)) })
+  });
+}
+
+/**
+ * Where to put a window that has never been placed.
+ *
+ * Centred on the browser window in front rather than on the screen, since that
+ * is the monitor being worked on — an extension cannot ask which display that
+ * is without a permission that exists for a bigger purpose than this.
+ */
+async function centredOnCurrentWindow(size: {
+  width: number;
+  height: number;
+}): Promise<{ left: number; top: number } | Record<string, never>> {
+  try {
+    const current = await chrome.windows.getLastFocused();
+    if (
+      current.left == null ||
+      current.top == null ||
+      current.width == null ||
+      current.height == null
+    ) {
+      return {};
+    }
+    return {
+      left: Math.round(current.left + (current.width - size.width) / 2),
+      top: Math.round(current.top + (current.height - size.height) / 2)
+    };
+  } catch {
+    // Letting the browser place it is a worse position, not a failure.
+    return {};
+  }
+}
+
+/**
+ * Opens this extension's bookmark manager.
+ *
+ * It replaces the browser's own because the browser's cannot show what is
+ * duplicated or empty, which is most of what it gets opened for.
  */
 async function openBookmarkManager(): Promise<void> {
-  const candidates = ['chrome://bookmarks/', 'edge://favorites/'];
-  for (const url of candidates) {
-    try {
-      await chrome.tabs.create({ url });
-      return;
-    } catch {
-      // Try the next address.
-    }
-  }
-  throw new Error("Could not open the browser's bookmark manager.");
+  await openSingletonWindow('bookmarks');
 }
+
+const PALETTE_PINNED_KEY = 'palettePinned';
+const PALETTE_OPENED_AT_KEY = 'paletteOpenedAt';
+
+/**
+ * How long after opening the palette a focus change is not a dismissal.
+ *
+ * A popup does not take focus cleanly. The window the shortcut was pressed in
+ * can hold it, or take it back, while the new one is being put on screen — and
+ * the close-on-focus-change rule read that as the user clicking away and shut
+ * the palette the instant it appeared. Focus has to settle before it can mean
+ * anything. Short enough that deliberately clicking away a moment later still
+ * closes it, and Escape and the backdrop never wait for it at all.
+ */
+const PALETTE_FOCUS_GRACE_MS = 1200;
+
+async function markPaletteOpened(): Promise<void> {
+  await chrome.storage.session.set({ [PALETTE_OPENED_AT_KEY]: Date.now() });
+}
+
+/** Whether the palette has just opened and its focus has yet to settle. */
+async function isPaletteSettling(): Promise<boolean> {
+  const stored = await chrome.storage.session.get(PALETTE_OPENED_AT_KEY);
+  const openedAt = stored[PALETTE_OPENED_AT_KEY];
+  return (
+    typeof openedAt === 'number' &&
+    Date.now() - openedAt < PALETTE_FOCUS_GRACE_MS
+  );
+}
+
+/**
+ * Whether the palette window has been pinned open.
+ *
+ * In session storage rather than in a variable: this worker is unloaded after a
+ * short idle, and the focus change that would close the palette is exactly what
+ * wakes it again — so a pin held in memory was reliably forgotten before it was
+ * ever read, and the window closed anyway. Session storage is cleared when the
+ * browser restarts, which is the lifetime a pin should have.
+ */
+async function isPalettePinned(): Promise<boolean> {
+  const stored = await chrome.storage.session.get(PALETTE_PINNED_KEY);
+  return stored[PALETTE_PINNED_KEY] === true;
+}
+
+async function setPalettePinned(pinned: boolean): Promise<void> {
+  await chrome.storage.session.set({ [PALETTE_PINNED_KEY]: pinned });
+}
+
+/**
+ * Closes the palette window when another browser window takes focus.
+ *
+ * `WINDOW_ID_NONE` is deliberately ignored: it means the browser itself went to
+ * the background, which happens on every glance at another application, and
+ * closing then would make the palette unusable the moment anything is copied
+ * from somewhere else.
+ */
+chrome.windows.onFocusChanged.addListener((windowId) => {
+  if (windowId === chrome.windows.WINDOW_ID_NONE) {
+    return;
+  }
+  void (async () => {
+    const [pinned, settling] = await Promise.all([
+      isPalettePinned(),
+      isPaletteSettling()
+    ]);
+    const tabs = await findSingletonWindowTabs('palette');
+    for (const tab of tabs) {
+      if (
+        tab.windowId != null &&
+        shouldCloseOnFocusChange({
+          pinned,
+          settling,
+          focusedWindowId: windowId,
+          paletteWindowId: tab.windowId
+        })
+      ) {
+        await chrome.windows.remove(tab.windowId);
+      }
+    }
+  })();
+});
+
+/**
+ * Opens the side panel on the window being browsed in.
+ *
+ * Asked for from the palette, which is a popup of its own — a popup has no side
+ * panel, so opening it there would do nothing visible. The most recently focused
+ * ordinary window is the one the panel belongs to.
+ */
+/**
+ * The ordinary browser window the side panel belongs to.
+ *
+ * Fetched before it is needed, because `sidePanel.open` has to be called while
+ * a user gesture is still active and any await in between spends it.
+ */
+async function browsingWindowId(): Promise<number | null> {
+  const windows = await chrome.windows.getAll();
+  const target =
+    windows.find((window) => window.type === 'normal' && window.focused) ??
+    windows.find((window) => window.type === 'normal');
+  return target?.id ?? null;
+}
+
+async function openSidePanelForCurrentWindow(): Promise<void> {
+  const windowId = await browsingWindowId();
+  if (windowId === null) {
+    throw new Error('No browser window to open the side panel in.');
+  }
+  // Worth attempting even though the gesture that asked for this happened in
+  // another page: when the worker was woken by something the browser does count,
+  // it works, and when it is refused the caller has already tried the direct
+  // route itself.
+  await chrome.sidePanel.open({ windowId });
+}
+
+/** Remembers where one of these windows was left, for the next time it opens. */
+chrome.windows.onBoundsChanged.addListener((window) => {
+  void (async () => {
+    const { left, top, width, height } = window;
+    if (left == null || top == null || width == null || height == null) {
+      return;
+    }
+    for (const name of Object.keys(
+      SINGLETON_WINDOWS
+    ) as SingletonWindowName[]) {
+      const tabs = await findSingletonWindowTabs(name);
+      if (tabs.some((tab) => tab.windowId === window.id)) {
+        await chrome.storage.local.set({
+          [SINGLETON_WINDOWS[name].boundsKey]: { left, top, width, height }
+        });
+        return;
+      }
+    }
+  })();
+});
 
 /**
  * Navigates to a favorite: in place by default, in a new tab when asked.
@@ -286,6 +801,46 @@ type RuntimeMessage =
       };
     }
   | {
+      type: 'OPEN_PANEL_WINDOW';
+      payload?: undefined;
+    }
+  | {
+      type: 'GET_FAVORITES_PALETTE_DATA';
+      payload?: undefined;
+    }
+  | {
+      type: 'SET_PALETTE_PINNED';
+      payload: { pinned: boolean };
+    }
+  | {
+      type: 'OPEN_SETTINGS_WINDOW';
+      payload?: undefined;
+    }
+  | {
+      type: 'OPEN_SIDE_PANEL';
+      payload?: undefined;
+    }
+  | {
+      type: 'GET_BROWSING_WINDOW_ID';
+      payload?: undefined;
+    }
+  | {
+      type: 'ADD_APP_ENVIRONMENT';
+      payload: { app: string; env: string; url: string };
+    }
+  | {
+      type: 'RUN_QUICK_COMMAND';
+      payload: { id: string; args: string[] };
+    }
+  | {
+      type: 'OPEN_APP_TARGET';
+      payload: { app: string; url: string };
+    }
+  | {
+      type: 'OPEN_WORK_ITEM';
+      payload: { id: number; url?: string };
+    }
+  | {
       type: 'OPEN_BOOKMARK_MANAGER';
       payload?: undefined;
     }
@@ -307,6 +862,22 @@ type RuntimeMessage =
   | {
       type: 'FETCH_CLOSED_PARENT_ROLLUP';
       payload: FetchWorkItemsRequest;
+    }
+  | {
+      type: 'FETCH_ORPHAN_WORK_ITEMS';
+      payload: { settings: Settings };
+    }
+  | {
+      type: 'FETCH_IN_PROGRESS_BY_ME';
+      payload: { settings: Settings; state: string };
+    }
+  | {
+      type: 'PARENT_WORK_ITEMS';
+      payload: {
+        settings: Settings;
+        items: { id: number; workItemType: string }[];
+        parentId: number;
+      };
     }
   | {
       type: 'FETCH_PULL_REQUEST_ACTIVITY';
@@ -429,7 +1000,8 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
     .then((tab) =>
       Promise.all([
         recordLastVisitedDevOpsContext(tab.url),
-        recordLastVisitedWorkItemRef(tab.url)
+        recordLastVisitedWorkItemRef(tab.url),
+        recordRecentWorkItemVisit(tab.url, tab.title)
       ])
     )
     .catch(() => undefined);
@@ -439,6 +1011,7 @@ chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
   const candidateUrl = changeInfo.url ?? tab.url;
   void recordLastVisitedDevOpsContext(candidateUrl);
   void recordLastVisitedWorkItemRef(candidateUrl);
+  void recordRecentWorkItemVisit(candidateUrl, tab.title);
 });
 
 chrome.runtime.onMessage.addListener(
@@ -472,6 +1045,112 @@ chrome.runtime.onMessage.addListener(
         .then(({ result, icons }) =>
           sendResponse({ ok: true, result: { ...result, icons } })
         )
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'GET_FAVORITES_PALETTE_DATA') {
+      loadFavoritesPaletteData()
+        .then((result) => sendResponse({ ok: true, result }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'SET_PALETTE_PINNED') {
+      setPalettePinned(message.payload.pinned)
+        .then(() => sendResponse({ ok: true, result: null }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'OPEN_SETTINGS_WINDOW') {
+      openSingletonWindow('settings')
+        .then(() => sendResponse({ ok: true, result: null }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'OPEN_WORK_ITEM') {
+      openWorkItem(message.payload.id, message.payload.url)
+        .then(() => sendResponse({ ok: true, result: null }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'OPEN_APP_TARGET') {
+      openAppTarget(message.payload.app, message.payload.url)
+        .then(() => sendResponse({ ok: true, result: null }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'RUN_QUICK_COMMAND') {
+      runQuickCommand(message.payload.id, message.payload.args)
+        .then((result) =>
+          sendResponse(
+            'error' in result
+              ? { ok: false, error: result.error }
+              : { ok: true, result: null }
+          )
+        )
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'ADD_APP_ENVIRONMENT') {
+      const { app, env, url } = message.payload;
+      loadSettings()
+        .then((settings) =>
+          addAppEnvironment(settings.bookmarkFolderName, app, env, url)
+        )
+        .then((result) =>
+          sendResponse(
+            'error' in result
+              ? { ok: false, error: result.error }
+              : { ok: true, result: null }
+          )
+        )
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'GET_BROWSING_WINDOW_ID') {
+      browsingWindowId()
+        .then((result) => sendResponse({ ok: true, result }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'OPEN_SIDE_PANEL') {
+      openSidePanelForCurrentWindow()
+        .then(() => sendResponse({ ok: true, result: null }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'OPEN_PANEL_WINDOW') {
+      openSingletonWindow('panel')
+        .then(() => sendResponse({ ok: true, result: null }))
         .catch((error: Error) =>
           sendResponse({ ok: false, error: error.message })
         );
@@ -733,6 +1412,91 @@ chrome.runtime.onMessage.addListener(
       return true;
     }
 
+    if (message.type === 'FETCH_ORPHAN_WORK_ITEMS') {
+      resolveWorkItemsContext(message.payload.settings)
+        .then((context) =>
+          fetchOrphanCandidates(context.organization, context.project)
+        )
+        .then((candidates) =>
+          sendResponse({
+            ok: true,
+            result: selectOrphans(
+              candidates,
+              parentlessByDesign(message.payload.settings)
+            )
+          })
+        )
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'FETCH_IN_PROGRESS_BY_ME') {
+      resolveWorkItemsContext(message.payload.settings)
+        .then((context) =>
+          fetchInProgressByMe(
+            context.organization,
+            context.project,
+            message.payload.state,
+            message.payload.settings.assignedTo
+          )
+        )
+        .then((result) => sendResponse({ ok: true, result }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'PARENT_WORK_ITEMS') {
+      const { items, parentId } = message.payload;
+      resolveWorkItemsContext(message.payload.settings)
+        .then(async (context) => {
+          // The parent's type decides what may go under it, and only the
+          // service worker can read it: a Feature is not in the list the panel
+          // is showing. Checked before anything is written, and partially — the
+          // ones that fit are moved and the rest come back with a reason.
+          const parent = await getWorkItemDetails(
+            context.organization,
+            context.project,
+            parentId
+          );
+          const { allowed, refused } = checkBulkParent(
+            {
+              ids: items.map((item) => item.id),
+              candidates: items.map((item) => ({
+                id: item.id,
+                title: '',
+                workItemType: item.workItemType,
+                state: '',
+                parentId: null,
+                url: ''
+              }))
+            },
+            parentId,
+            parent.workItemType
+          );
+
+          const outcome =
+            allowed.length === 0
+              ? { parented: [], failed: [] }
+              : await parentWorkItemsInDevOps(
+                  context.organization,
+                  context.project,
+                  allowed,
+                  parentId
+                );
+
+          return { ...outcome, refused };
+        })
+        .then((result) => sendResponse({ ok: true, result }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
     if (message.type === 'FETCH_PULL_REQUEST_ACTIVITY') {
       resolveWorkItemsContext(message.payload.settings)
         .then((context) =>
@@ -829,6 +1593,105 @@ async function recordLastVisitedDevOpsContext(
   await chrome.storage.local.set({
     [LAST_VISITED_DEVOPS_CONTEXT_KEY]: context
   });
+}
+
+/**
+ * Keeps the recently visited work items, for the `#` list.
+ *
+ * The title comes from the tab, because that is the only readable thing about a
+ * work item available without fetching it — and the point of the list is to
+ * recognise one you have seen rather than to remember its number.
+ */
+async function recordRecentWorkItemVisit(
+  rawUrl: string | undefined,
+  title: string | undefined
+): Promise<void> {
+  if (!rawUrl) {
+    return;
+  }
+  const id = getWorkItemIdFromUrl(rawUrl);
+  if (!id) {
+    return;
+  }
+
+  const stored = await chrome.storage.local.get(RECENT_WORK_ITEMS_KEY);
+  const list = Array.isArray(stored[RECENT_WORK_ITEMS_KEY])
+    ? (stored[RECENT_WORK_ITEMS_KEY] as RecentWorkItem[])
+    : [];
+
+  await chrome.storage.local.set({
+    [RECENT_WORK_ITEMS_KEY]: recordRecentWorkItem(list, {
+      id: Number(id),
+      title: (title ?? '').trim(),
+      url: rawUrl,
+      at: Date.now()
+    })
+  });
+}
+
+async function loadRecentWorkItems(): Promise<RecentWorkItem[]> {
+  const stored = await chrome.storage.local.get(RECENT_WORK_ITEMS_KEY);
+  return Array.isArray(stored[RECENT_WORK_ITEMS_KEY])
+    ? (stored[RECENT_WORK_ITEMS_KEY] as RecentWorkItem[])
+    : [];
+}
+
+/**
+ * Opens a work item, reusing a tab already showing it.
+ *
+ * A recently visited item carries its own address. A number typed by hand does
+ * not, so it is built from the organization and project — the saved settings
+ * first, then the last Azure DevOps page visited, which is what makes typing a
+ * number work before anything has been configured.
+ */
+async function openWorkItem(id: number, url?: string): Promise<void> {
+  let target = url;
+
+  if (target === undefined) {
+    const settings = await loadSettings();
+    let organization = settings.organization;
+    let project = settings.project;
+
+    if (!organization.trim() || !project.trim()) {
+      const stored = await chrome.storage.local.get(
+        LAST_VISITED_DEVOPS_CONTEXT_KEY
+      );
+      const context = parseLastVisitedDevOpsContext(
+        stored[LAST_VISITED_DEVOPS_CONTEXT_KEY]
+      );
+      organization = organization.trim() || (context?.organization ?? '');
+      project = project.trim() || (context?.project ?? '');
+    }
+
+    target = buildWorkItemUrl(organization, project, id) ?? undefined;
+  }
+
+  if (target === undefined) {
+    throw new Error(
+      'No organization and project yet. Visit an Azure DevOps page or set them in Settings.'
+    );
+  }
+
+  const tabs = await chrome.tabs.query({});
+  const open = tabs.find(
+    (tab) => tab.url !== undefined && isSamePage(tab.url, target)
+  );
+  if (open?.id != null) {
+    await chrome.tabs.update(open.id, { active: true });
+    if (open.windowId != null) {
+      await chrome.windows.update(open.windowId, { focused: true });
+    }
+    return;
+  }
+
+  const windowId = await browsingWindowId();
+  await chrome.tabs.create({
+    url: target,
+    ...(windowId === null ? {} : { windowId })
+  });
+  if (windowId !== null) {
+    await chrome.windows.update(windowId, { focused: true });
+  }
 }
 
 async function recordLastVisitedWorkItemRef(

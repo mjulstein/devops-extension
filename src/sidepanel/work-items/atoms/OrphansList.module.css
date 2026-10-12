@@ -1,0 +1,92 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-block-end: 8px;
+}
+
+.selectAll {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.parentInput {
+  font: inherit;
+  font-size: 12px;
+  inline-size: 90px;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+ /* The checkbox, then the shared work-item row. The row owns its own columns,
+    so this only has to put the box beside it and keep the two aligned. */
+.row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding-block: 3px;
+}
+
+.link {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-inline-size: 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.meta {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.status {
+  font-size: 12px;
+  margin: 0 0 8px;
+  color: var(--color-text-secondary);
+}
+
+.error {
+  font-size: 12px;
+  color: var(--color-danger);
+}
+
+/* Dimmed while a refetch is in flight, so a stale list is visibly stale. */
+.refreshing {
+  opacity: 0.6;
+}
+
+.sectionHeading {
+  font-size: 12px;
+  font-weight: 700;
+  margin: 12px 0 4px;
+  color: var(--color-text-secondary);
+}
+
+/* The two readings of the tab. Kept apart so the second one can be lived with
+   before anything of it is folded into the first. */
+.modeRow {
+  display: flex;
+  gap: 4px;
+  margin-block-end: 8px;
+}
+
+/* The assignee sits under the row rather than inside it: the shared row has no
+   column for it, and in the second list it is the thing worth reading. */
+.inProgressRow {
+  padding-block: 3px;
+}

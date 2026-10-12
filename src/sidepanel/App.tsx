@@ -2,6 +2,7 @@ import { DebugConsolePane } from './DebugConsolePane';
 import { SettingsPane } from './settings';
 import { ActiveWorkItemBanner } from './atoms/ActiveWorkItemBanner';
 import { DeduplicateTabsButton } from './atoms/DeduplicateTabsButton';
+import { PopOutPanelButton } from './atoms/PopOutPanelButton';
 import { StarPageToggle } from './atoms/StarPageToggle';
 import { StarredPagesMenu } from './atoms/StarredPagesMenu';
 import { ReconnectBanner } from './atoms/ReconnectBanner';
@@ -9,11 +10,17 @@ import { ThemeSwitch } from './atoms/ThemeSwitch';
 import classes from './App.module.css';
 import { Tabs } from './Tabs';
 import { useSidepanelController } from './useSidepanelController';
+import type { SidepanelTabId } from './Tabs';
 import { WorkItemPane } from './work-item';
 import { WorkItemsPane } from './work-items';
 
-export function App() {
-  const controller = useSidepanelController();
+interface AppProps {
+  /** Opens on this tab; see `SidepanelControllerOptions`. */
+  initialTab?: SidepanelTabId;
+}
+
+export function App({ initialTab }: AppProps = {}) {
+  const controller = useSidepanelController({ initialTab });
 
   return (
     <div className={classes.wrap} data-panel-root="">
@@ -38,6 +45,14 @@ export function App() {
         <DeduplicateTabsButton
           onClick={() => {
             void controller.onDeduplicateTabs();
+          }}
+          onCloseStale={() => {
+            void controller.onCloseStaleTabs();
+          }}
+        />
+        <PopOutPanelButton
+          onClick={() => {
+            void controller.onPopOutPanel();
           }}
         />
         <ThemeSwitch
@@ -110,6 +125,21 @@ export function App() {
             controller.onToggleShowWorkItemParentDetails
           }
           activeListTab={controller.activeListTab}
+          orphans={controller.orphans}
+          isOrphansLoading={controller.isOrphansLoading}
+          orphansError={controller.orphansError}
+          orphansStatus={controller.orphansStatus}
+          onParentOrphans={(ids, parentId) => {
+            void controller.onParentOrphans(ids, parentId);
+          }}
+          orphansMode={controller.orphansMode}
+          onSelectOrphansMode={controller.onSelectOrphansMode}
+          inProgressByMe={controller.inProgressByMe}
+          inProgressState={controller.inProgressState}
+          onInProgressStateChange={controller.onInProgressStateChange}
+          onRefreshInProgress={() => {
+            void controller.onRefreshInProgress();
+          }}
           onSelectListTab={(tab) => {
             void controller.onSelectListTab(tab);
           }}

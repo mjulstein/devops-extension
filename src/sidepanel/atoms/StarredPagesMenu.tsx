@@ -9,11 +9,21 @@ import {
   rowLabel,
   type FavoritesListing,
   type FavoritesRow,
-  type WidenedSearchData
+  type WidenedSearchData,
+  appRowTarget
 } from '../favoritesListing';
-import { parseFavoritesQuery } from '../favoritesQuery';
+import { APPS_PREFIX, parseFavoritesQuery } from '../favoritesQuery';
 import { searchAllBookmarks } from '../bookmarkSync';
 import { getFavoriteIconUrl } from '../favoriteIcon';
+import { useSectionIcons } from '../useSectionIcons';
+import { useApps } from '../apps/useApps';
+import { useEnvContext } from '../apps/useEnvContext';
+import { useRecentWorkItems } from '../useRecentWorkItems';
+import {
+  completeCommand,
+  QUICK_COMMANDS,
+  readCommand
+} from '../commands/quickCommands';
 import { Button } from './Button';
 
 /**
@@ -87,7 +97,12 @@ export function StarredPagesMenu({
   onOpenStarredPage,
   onRequestFavoritesSearch
 }: StarredPagesMenuProps) {
+  const sectionIcons = useSectionIcons();
   const [isOpen, setIsOpen] = useState(false);
+  // How many times Tab has been pressed on the highlighted app row. Reset with
+  // the query and with the highlight, because it counts steps within one row
+  // rather than a setting of its own.
+  const [appStep, setAppStep] = useState(0);
   const [query, setQuery] = useState('');
   // Which row the keyboard is on. Reset whenever the result set changes, so it
   // can never point past the end of the list.
@@ -115,9 +130,21 @@ export function StarredPagesMenu({
   const idleTimerRef = useRef(0);
 
   // Title matches rank above address matches — see rankFavorites.
+  const apps = useApps();
+  const envContext = useEnvContext(isOpen);
+  const recentWorkItems = useRecentWorkItems();
   const listing = useMemo(
-    () => buildFavoritesListing(pages, quickTaskPages, query, widened),
-    [pages, quickTaskPages, query, widened]
+    () =>
+      buildFavoritesListing(
+        pages,
+        quickTaskPages,
+        query,
+        widened,
+        apps,
+        envContext,
+        recentWorkItems
+      ),
+    [apps, envContext, pages, quickTaskPages, query, recentWorkItems, widened]
   );
   const visible = listing.rows;
 
@@ -176,6 +203,50 @@ export function StarredPagesMenu({
       setQuery(`.${entry.folder.title}`);
       setHighlight(0);
       searchRef.current?.focus();
+      return;
+    }
+    if (entry.kind === 'work-item') {
+      close();
+      void chrome.runtime.sendMessage({
+        type: 'OPEN_WORK_ITEM',
+        payload: { id: entry.id, url: entry.item?.url }
+      });
+      return;
+    }
+    if (entry.kind === 'app-env') {
+      close();
+      void chrome.runtime.sendMessage({
+        type: 'OPEN_APP_TARGET',
+        payload: { app: entry.app.name, url: entry.environment.url }
+      });
+      return;
+    }
+    if (entry.kind === 'app-folder') {
+      setQuery(`${APPS_PREFIX}${entry.app.name} `);
+      setHighlight(0);
+      searchRef.current?.focus();
+      return;
+    }
+    if (entry.kind === 'command') {
+      const invocation = readCommand([entry.command], entry.text);
+      if (invocation !== null) {
+        close();
+        void chrome.runtime.sendMessage({
+          type: 'RUN_QUICK_COMMAND',
+          payload: { id: invocation.command.id, args: invocation.args }
+        });
+      }
+      return;
+    }
+    if (entry.kind === 'app') {
+      const target = appRowTarget(entry, appStep);
+      if (target !== null) {
+        close();
+        void chrome.runtime.sendMessage({
+          type: 'OPEN_APP_TARGET',
+          payload: { app: entry.app.name, url: target.environment.url }
+        });
+      }
       return;
     }
     await openPage(entry.page.url, event);
@@ -350,8 +421,24 @@ export function StarredPagesMenu({
       const delta = event.key === 'ArrowDown' ? 1 : -1;
       const next = (highlight + delta + visible.length) % visible.length;
       setHighlight(next);
+      // A new row is a new question, so the environment starts from the top
+      // again rather than carrying the last row's position onto this one.
+      setAppStep(0);
       // Keep the highlighted row in view in a short, scrollable menu.
       itemElementsRef.current[next]?.scrollIntoView({ block: 'nearest' });
+      return;
+    }
+    // Tab steps an app row through its environments, and is left to the
+    // browser's focus cycle on every other kind of row.
+    if (event.key === 'Tab' && visible[highlight]?.kind === 'command') {
+      event.preventDefault();
+      const parsed = parseFavoritesQuery(query);
+      setQuery(`>${completeCommand(QUICK_COMMANDS, parsed.term)}`);
+      return;
+    }
+    if (event.key === 'Tab' && visible[highlight]?.kind === 'app') {
+      event.preventDefault();
+      setAppStep((step) => step + (event.shiftKey ? -1 : 1));
       return;
     }
     if (event.key === 'Enter') {
@@ -414,6 +501,7 @@ export function StarredPagesMenu({
               aria-label="Search favorites"
               onChange={(event) => {
                 setQuery(event.target.value);
+                setAppStep(0);
                 setHighlight(0);
               }}
               onKeyDown={onNavigationKeyDown}
@@ -457,7 +545,10 @@ export function StarredPagesMenu({
                     index === highlight && classes.itemHighlighted
                   )}
                   title={rowDetail(entry)}
-                  onMouseEnter={() => setHighlight(index)}
+                  // Hover is left to CSS: moving the keyboard highlight with the
+                  // cursor means Enter opens whatever the mouse happens to be
+                  // resting over rather than what the arrow keys chose. They are
+                  // two separate selections and stay separate.
                   onKeyDown={onNavigationKeyDown}
                   onClick={(event) => {
                     void activateRow(entry, event);
@@ -467,12 +558,38 @@ export function StarredPagesMenu({
                     <span aria-hidden="true" className={classes.folderIcon}>
                       📁
                     </span>
+                  ) : entry.kind === 'work-item' ? (
+                    <span aria-hidden="true" className={classes.folderIcon}>
+                      #
+                    </span>
+                  ) : entry.kind === 'app-env' ? (
+                    <FavoriteIcon
+                      url={entry.environment.url}
+                      sectionIcons={sectionIcons}
+                    />
+                  ) : entry.kind === 'app-folder' ? (
+                    <span aria-hidden="true" className={classes.folderIcon}>
+                      ▤
+                    </span>
+                  ) : entry.kind === 'command' ? (
+                    <span aria-hidden="true" className={classes.folderIcon}>
+                      ›
+                    </span>
+                  ) : entry.kind === 'app' ? (
+                    <span aria-hidden="true" className={classes.folderIcon}>
+                      ▤
+                    </span>
                   ) : (
-                    <FavoriteIcon url={entry.page.url} />
+                    <FavoriteIcon
+                      url={entry.page.url}
+                      sectionIcons={sectionIcons}
+                    />
                   )}
                   <span className={classes.itemText}>
                     {rowLabel(entry)}
-                    <span className={classes.itemUrl}>{rowDetail(entry)}</span>
+                    <span className={classes.itemUrl}>
+                      {rowDetail(entry, index === highlight ? appStep : 0)}
+                    </span>
                   </span>
                 </button>
               </Fragment>
@@ -490,9 +607,18 @@ export function StarredPagesMenu({
  * Kept silent on failure: an icon is a scanning aid, and a broken-image glyph
  * beside a favorite would be worse than the blank space it replaces.
  */
-function FavoriteIcon({ url }: { url: string }) {
+function FavoriteIcon({
+  url,
+  sectionIcons
+}: {
+  url: string;
+  sectionIcons: Record<string, string>;
+}) {
   const [isBroken, setIsBroken] = useState(false);
-  const source = useMemo(() => getFavoriteIconUrl(url), [url]);
+  const source = useMemo(
+    () => getFavoriteIconUrl(url, sectionIcons),
+    [sectionIcons, url]
+  );
 
   if (source === null || isBroken) {
     return <span className={classes.iconPlaceholder} aria-hidden="true" />;

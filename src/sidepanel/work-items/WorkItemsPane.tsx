@@ -10,6 +10,11 @@ import card from '@/sidepanel/atoms/Card.module.css';
 import { Button } from '@/sidepanel/atoms/Button';
 import { ClosedDateRangeControls } from './atoms/ClosedDateRangeControls';
 import { WorkItemsToolbar } from './atoms/WorkItemsToolbar';
+import { OrphansList } from './atoms/OrphansList';
+import { InProgressByMeList } from './atoms/InProgressByMeList';
+import type { InProgressByMe } from '@/devops/inProgressByMe';
+import type { OrphansMode } from './atoms/orphansMode';
+import type { OrphanCandidate } from '@/devops/orphanWorkItems';
 import {
   WorkItemListTabs,
   type WorkItemListTab
@@ -47,6 +52,18 @@ interface StatusCardProps {
   isActionDisabled: boolean;
   linkExternal: boolean;
   activeListTab: WorkItemListTab;
+  orphans: OrphanCandidate[] | null;
+  isOrphansLoading: boolean;
+  orphansError: string | null;
+  orphansStatus: string | null;
+  onParentOrphans: (ids: number[], parentId: number) => void;
+  /** Which reading of the tab is showing; see `OrphansMode`. */
+  orphansMode: OrphansMode;
+  onSelectOrphansMode: (mode: OrphansMode) => void;
+  inProgressByMe: InProgressByMe | null;
+  inProgressState: string;
+  onInProgressStateChange: (state: string) => void;
+  onRefreshInProgress: () => void;
   onSelectListTab: (tab: WorkItemListTab) => void;
   authoredItems: WorkItem[] | null;
   isAuthoredLoading: boolean;
@@ -93,6 +110,17 @@ export function WorkItemsPane({
   isActionDisabled,
   linkExternal,
   activeListTab,
+  orphans,
+  isOrphansLoading,
+  orphansError,
+  orphansStatus,
+  onParentOrphans,
+  orphansMode,
+  onSelectOrphansMode,
+  inProgressByMe,
+  inProgressState,
+  onInProgressStateChange,
+  onRefreshInProgress,
   onSelectListTab,
   authoredItems,
   isAuthoredLoading,
@@ -157,6 +185,7 @@ export function WorkItemsPane({
       <section className={card.card}>
         <WorkItemListTabs
           activeTab={activeListTab}
+          orphanCount={orphans === null ? null : orphans.length}
           todoCount={result === null ? null : todoItems.length}
           authoredCount={authoredItems === null ? null : authoredItems.length}
           pullRequestCount={pullRequests?.length ?? null}
@@ -209,7 +238,56 @@ export function WorkItemsPane({
           </div>
         )}
 
-        {activeListTab === 'todo' ? (
+        {activeListTab === 'orphans' ? (
+          <>
+            {/* Two readings of this tab, kept apart deliberately: the second
+                was described separately and is being lived with before any of
+                it is folded into the first. */}
+            <div className={classes.modeRow}>
+              <Button
+                size="compact"
+                variant={orphansMode === 'orphans' ? 'primary' : 'default'}
+                isPressed={orphansMode === 'orphans'}
+                onClick={() => {
+                  onSelectOrphansMode('orphans');
+                }}
+              >
+                No parent
+              </Button>
+              <Button
+                size="compact"
+                variant={orphansMode === 'in-progress' ? 'primary' : 'default'}
+                isPressed={orphansMode === 'in-progress'}
+                onClick={() => {
+                  onSelectOrphansMode('in-progress');
+                }}
+              >
+                In progress by me
+              </Button>
+            </div>
+
+            {orphansMode === 'in-progress' ? (
+              <InProgressByMeList
+                data={inProgressByMe}
+                isLoading={isOrphansLoading}
+                error={orphansError}
+                state={inProgressState}
+                onStateChange={onInProgressStateChange}
+                onRefresh={onRefreshInProgress}
+                linkExternal={linkExternal}
+              />
+            ) : (
+              <OrphansList
+                items={orphans}
+                isLoading={isOrphansLoading}
+                error={orphansError}
+                status={orphansStatus}
+                onParent={onParentOrphans}
+                linkExternal={linkExternal}
+              />
+            )}
+          </>
+        ) : activeListTab === 'todo' ? (
           result === null ? (
             <p>Click TODO to load your work items.</p>
           ) : (

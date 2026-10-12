@@ -51,6 +51,15 @@ import {
 } from './workItemsDateRange';
 import { navigateToWorkItem } from './navigateToWorkItem';
 import { deduplicateTabs } from './deduplicateTabs';
+import { closeStaleTabs, STALE_TAB_DAYS } from './staleTabs';
+import {
+  fetchOrphanWorkItems,
+  parentWorkItems
+} from './tabMessaging/fetchOrphanWorkItems';
+import { fetchInProgressByMe } from './tabMessaging/fetchInProgressByMe';
+import type { InProgressByMe } from '@/devops/inProgressByMe';
+import type { OrphansMode } from './work-items/atoms/orphansMode';
+import type { OrphanCandidate } from '@/devops/orphanWorkItems';
 import {
   createChildTask,
   archiveQuickTask,
@@ -151,8 +160,21 @@ const MAX_DEBUG_LOG_ENTRIES = 120;
  */
 const BOOKMARK_EVENT_DEBOUNCE_MS = 400;
 
-export function useSidepanelController() {
-  const [activeTab, setActiveTab] = useState<SidepanelTabId>('work-items');
+export interface SidepanelControllerOptions {
+  /**
+   * Opens on this tab instead of the one last used. Given by a window that
+   * exists to show one thing — the settings window — where restoring the
+   * remembered tab would show the wrong thing and lose the reason it opened.
+   */
+  initialTab?: SidepanelTabId;
+}
+
+export function useSidepanelController({
+  initialTab
+}: SidepanelControllerOptions = {}) {
+  const [activeTab, setActiveTab] = useState<SidepanelTabId>(
+    initialTab ?? 'work-items'
+  );
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   // What is actually persisted, so the Settings tab can tell a draft from a
   // saved value and only offer Save when something differs.
@@ -175,6 +197,15 @@ export function useSidepanelController() {
   const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
   // Which list the Work items tab is showing, plus the lazily-loaded Authored
   // data. `null` means "not fetched yet", which is distinct from an empty list.
+  const [orphans, setOrphans] = useState<OrphanCandidate[] | null>(null);
+  const [isOrphansLoading, setIsOrphansLoading] = useState(false);
+  const [orphansError, setOrphansError] = useState<string | null>(null);
+  const [orphansStatus, setOrphansStatus] = useState<string | null>(null);
+  const [orphansMode, setOrphansMode] = useState<OrphansMode>('orphans');
+  const [inProgressByMe, setInProgressByMe] = useState<InProgressByMe | null>(
+    null
+  );
+  const [inProgressState, setInProgressState] = useState('');
   const [activeListTab, setActiveListTab] = useState<WorkItemListTab>('todo');
   const [authoredItems, setAuthoredItems] = useState<WorkItem[] | null>(null);
   const [isAuthoredLoading, setIsAuthoredLoading] = useState(false);
@@ -387,7 +418,9 @@ export function useSidepanelController() {
           .catch(() => undefined);
       }
 
-      setActiveTab(storedActiveTab);
+      // A window opened on a given tab keeps it: the stored tab is the side
+      // panel's memory, not this window's.
+      setActiveTab(initialTab ?? storedActiveTab);
       setHiddenTaskStates(storedHiddenStates);
       setPinnedQuickTaskIds(storedPinnedQuickTaskIds);
       setStarredPages(storedStarredPages);
@@ -1380,6 +1413,127 @@ export function useSidepanelController() {
     await savePinnedQuickTaskIds(next);
   }
 
+  /**
+   * Work items of yours that are under nothing.
+   *
+   * Refetched whenever the tab is selected, like the other lists: the whole
+   * point is to act on it, and a list that still shows what you just parented
+   * would be reporting a problem it has already helped you fix.
+   */
+  async function loadOrphans(force = false) {
+    if (
+      !needsReload({
+        data: orphans,
+        isLoading: isOrphansLoading,
+        isStale: true,
+        force
+      })
+    ) {
+      return;
+    }
+
+    setIsOrphansLoading(true);
+    setOrphansError(null);
+    try {
+      const response = await fetchOrphanWorkItems(settings);
+      if (response.ok) {
+        setOrphans(response.result);
+        pushDebugLog(
+          'success',
+          `Found ${response.result.length} work item(s) with no parent.`
+        );
+      } else {
+        setOrphansError(response.error);
+      }
+    } catch (error) {
+      setOrphansError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsOrphansLoading(false);
+    }
+  }
+
+  /**
+   * Puts the ticked work items under one parent.
+   *
+   * The types go with the request so the worker can check them against the
+   * parent's own type before writing anything — the parent is a Feature, which
+   * is not in this list, so the panel has no way to know what it is. The worker
+   * reports what it moved, what it refused and why.
+   */
+  async function onParentOrphans(ids: number[], parentId: number) {
+    const byId = new Map((orphans ?? []).map((item) => [item.id, item]));
+    const items = ids
+      .map((id) => byId.get(id))
+      .filter((item): item is OrphanCandidate => item !== undefined)
+      .map((item) => ({ id: item.id, workItemType: item.workItemType }));
+
+    if (items.length === 0) {
+      return;
+    }
+
+    setOrphansStatus(null);
+    setIsOrphansLoading(true);
+    try {
+      const response = await parentWorkItems({ settings, items, parentId });
+      if (!response.ok) {
+        setOrphansStatus(response.error);
+        return;
+      }
+
+      const { parented, failed, refused } = response.result;
+      setOrphansStatus(
+        [
+          parented.length > 0
+            ? `Parented ${parented.length} under #${parentId}.`
+            : 'Nothing was moved.',
+          failed.length > 0
+            ? `${failed.length} failed: ${failed.map((entry) => `#${entry.id} ${entry.reason}`).join('; ')}`
+            : '',
+          refused.length > 0
+            ? refused.map((entry) => `#${entry.id}: ${entry.reason}`).join(' ')
+            : ''
+        ]
+          .filter(Boolean)
+          .join(' ')
+      );
+      await loadOrphans(true);
+    } finally {
+      setIsOrphansLoading(false);
+    }
+  }
+
+  /**
+   * The other reading of the Orphans tab.
+   *
+   * Asked for by hand rather than on tab selection: it needs a state name, and
+   * it confirms each candidate against that work item's own history, which is
+   * one call apiece. Neither is something to spend on simply opening a tab.
+   */
+  async function onRefreshInProgress() {
+    if (inProgressState.trim() === '') {
+      return;
+    }
+
+    setIsOrphansLoading(true);
+    setOrphansError(null);
+    try {
+      const response = await fetchInProgressByMe(settings, inProgressState);
+      if (response.ok) {
+        setInProgressByMe(response.result);
+        pushDebugLog(
+          'success',
+          `In progress by me: ${response.result.assigned.length} assigned, ${response.result.startedForOthers.length} started for others.`
+        );
+      } else {
+        setOrphansError(response.error);
+      }
+    } catch (error) {
+      setOrphansError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsOrphansLoading(false);
+    }
+  }
+
   async function loadPullRequests(force = false) {
     if (
       !needsReload({
@@ -1862,6 +2016,39 @@ export function useSidepanelController() {
     );
   }
 
+  /**
+   * Moves the panel into a window of its own.
+   *
+   * The service worker owns the window, not this panel: the panel instance that
+   * asked may be the one the browser closes on the way, and the single-window
+   * rule has to hold across every panel that could ask.
+   */
+  async function onPopOutPanel() {
+    await chrome.runtime.sendMessage({ type: 'OPEN_PANEL_WINDOW' });
+  }
+
+  /**
+   * Closes tabs nobody has looked at in a long time.
+   *
+   * It asks first, naming the count and the oldest: this is the one tidying
+   * action that can take something you wanted, and an undo for it would be a
+   * list of addresses nobody reads.
+   */
+  async function onCloseStaleTabs() {
+    const closed = await closeStaleTabs((message) => window.confirm(message));
+    setCreateTaskStatusMessage(
+      closed > 0
+        ? {
+            kind: 'success',
+            text: `Closed ${closed} tab${closed === 1 ? '' : 's'} untouched for ${STALE_TAB_DAYS} days.`
+          }
+        : {
+            kind: 'info',
+            text: `No tabs closed.`
+          }
+    );
+  }
+
   async function onToggleRecentFeaturesCollapsed() {
     const nextValue = !isRecentFeaturesCollapsed;
     setIsRecentFeaturesCollapsed(nextValue);
@@ -1898,6 +2085,11 @@ export function useSidepanelController() {
 
     if (tab === 'quick') {
       await loadQuickTasks(force);
+      return;
+    }
+
+    if (tab === 'orphans') {
+      await loadOrphans(force);
       return;
     }
 
@@ -1991,6 +2183,17 @@ export function useSidepanelController() {
     closedRollupError,
     activeListTab,
     onSelectListTab,
+    orphans,
+    isOrphansLoading,
+    orphansError,
+    orphansStatus,
+    onParentOrphans,
+    orphansMode,
+    onSelectOrphansMode: setOrphansMode,
+    inProgressByMe,
+    inProgressState,
+    onInProgressStateChange: setInProgressState,
+    onRefreshInProgress,
     authoredItems,
     isAuthoredLoading,
     authoredError,
@@ -2030,6 +2233,8 @@ export function useSidepanelController() {
     visibleChildTasks,
     onActiveItemBannerClick,
     onDeduplicateTabs,
+    onCloseStaleTabs,
+    onPopOutPanel,
     onChangeDebugLogs: setDebugLogs,
     onChangeSettings: onChangeSettings,
     savedSettings,

@@ -13,10 +13,12 @@ Keep this document shallow: describe the files that live directly in `src/` and 
 - `service-worker.ts` — background entry point that handles runtime messages, performs range-aware work-item fetches, and records last visited Azure DevOps context in `chrome.storage.local`.
 - `sidepanel.html` — HTML shell for the side panel bundle; styling is emitted from the side panel entry's imported CSS modules.
 - `sidepanel.tsx` — React entry point that renders `sidepanel/App.tsx` into `#app`.
+- `bookmarks.html` + `bookmarks.tsx` — entry point for the bookmark manager page, rendering `bookmarks/BookmarksApp.tsx` into `#app`.
 
 ## Subdirectories
 
 - [`devops`](./devops/README.md) — Azure DevOps-specific DOM detection, URL/context parsing, REST calls, and work-item operations.
+- [`bookmarks`](./bookmarks/README.md) — the extension's own bookmark manager page: a drag-and-drop organiser plus duplicate and empty-folder lists.
 - [`favoritesPalette`](./favoritesPalette/README.md) — the centred favorites dialog the content script draws over an Azure DevOps page, inheriting that page's theme variables.
 - [`sidepanel`](./sidepanel/README.md) — side panel state, storage helpers, navigation chrome, and runtime messaging helpers.
 

@@ -1,0 +1,26 @@
+/* Four pixels wide to look like a seam, with a wider invisible grab area, since
+   a four-pixel target is a test of aim rather than a control. */
+.splitter {
+  flex: 0 0 auto;
+  inline-size: 4px;
+  align-self: stretch;
+  min-block-size: 120px;
+  border-radius: 2px;
+  background: var(--color-border);
+  cursor: col-resize;
+  position: relative;
+  touch-action: none;
+}
+
+.splitter::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline: -5px;
+}
+
+.splitter:hover,
+.splitter:focus-visible {
+  background: var(--color-accent-strong);
+  outline: none;
+}
