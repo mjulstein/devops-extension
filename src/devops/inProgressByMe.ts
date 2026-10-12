@@ -14,6 +14,8 @@
 // The state is not named here. "In progress" is called different things in
 // different processes, so it is given by the caller and never assumed.
 
+import type { WorkItem } from '@/types';
+
 export interface InProgressItem {
   id: number;
   title: string;
@@ -123,13 +125,24 @@ export function wasMovedToStateBy(
   });
 }
 
-/** One line of the list: the number links, the rest reads. */
-export function describeInProgressItem(
-  item: InProgressItem,
-  withAssignee: boolean
-): string {
-  const head = `${item.workItemType}: ${item.title}`;
-  return withAssignee && item.assignedTo.trim() !== ''
-    ? `${head} (assigned to ${item.assignedTo})`
-    : head;
+/**
+ * An item as the shared row renders it.
+ *
+ * Drawn with the same `WorkItemRow` as every other list so a work item looks
+ * like a work item wherever it turns up. The assignee is carried through, since
+ * in the second list it is the thing worth reading.
+ */
+export function toWorkItem(item: InProgressItem): WorkItem {
+  return {
+    id: item.id,
+    workItemType: item.workItemType,
+    title: item.title,
+    state: '',
+    assignedTo: item.assignedTo,
+    parentId: null,
+    parent: null,
+    closedDate: null,
+    lastChangedDate: null,
+    url: item.url
+  };
 }

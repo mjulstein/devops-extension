@@ -1,7 +1,8 @@
 import clsx from 'clsx';
 import { Button } from '@/sidepanel/atoms/Button';
+import { WorkItemRow } from './WorkItemRow';
 import {
-  describeInProgressItem,
+  toWorkItem,
   type InProgressByMe,
   type InProgressItem
 } from '@/devops/inProgressByMe';
@@ -105,25 +106,24 @@ function Section({
       {items.length === 0 ? (
         <p className={classes.status}>Nothing here.</p>
       ) : (
-        <ul className={classes.list}>
+        <div className={classes.list} role="list">
           {items.map((item) => (
-            <li key={item.id} className={classes.row}>
-              <a
-                className={classes.link}
-                href={item.url}
-                target={linkExternal ? '_blank' : undefined}
-                rel={linkExternal ? 'noreferrer' : undefined}
-              >
-                <span className={classes.title}>
-                  {describeInProgressItem(item, withAssignee)}
-                </span>
+            <div key={item.id} className={classes.inProgressRow}>
+              {/* The same row every other list draws. */}
+              <WorkItemRow
+                item={toWorkItem(item)}
+                showState={false}
+                showParentDetails={false}
+                linkExternal={linkExternal}
+              />
+              {withAssignee && item.assignedTo.trim() !== '' && (
                 <span className={classes.meta}>
-                  #{item.id} · {item.project}
+                  assigned to {item.assignedTo}
                 </span>
-              </a>
-            </li>
+              )}
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </section>
   );

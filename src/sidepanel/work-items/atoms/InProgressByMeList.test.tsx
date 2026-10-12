@@ -56,8 +56,8 @@ describe('InProgressByMeList', () => {
   it('names the assignee only where it tells you something', () => {
     const markup = render();
     // Every row of the first list has the same answer, so it is left off.
-    expect(markup).not.toContain('(assigned to me@example.test)');
-    expect(markup).toContain('(assigned to other@example.test)');
+    expect(markup).not.toContain('assigned to me@example.test');
+    expect(markup).toContain('assigned to other@example.test');
   });
 
   it('links each row to its own project', () => {

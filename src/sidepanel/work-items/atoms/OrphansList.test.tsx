@@ -45,10 +45,11 @@ describe('OrphansList', () => {
     expect(render({ items: [] })).toContain('Nothing of yours is missing');
   });
 
-  it('shows each item with its number, type and state', () => {
+  it('shows each item in the same row every other list uses', () => {
+    // Bare id as a link, then type, title and state — the shared WorkItemRow.
     const markup = render();
     expect(markup).toContain('A loose bug');
-    expect(markup).toContain('#11');
+    expect(markup).toContain('>11</a>');
     expect(markup).toContain('Bug');
     expect(markup).toContain('Active');
   });
@@ -63,6 +64,22 @@ describe('OrphansList', () => {
   it('keeps the parent button out of reach until there is something to do', () => {
     // Nothing ticked and no id typed: pressing it could only fail.
     expect(render()).toContain('disabled');
+  });
+
+  it('links each row to its work item', () => {
+    // Through the panel's Link, which reuses a tab already showing it rather
+    // than navigating the side panel itself.
+    const markup = render();
+    expect(markup).toContain(
+      'href="https://dev.azure.test/o/p/_workitems/edit/11"'
+    );
+    expect(markup).toContain(
+      'href="https://dev.azure.test/o/p/_workitems/edit/12"'
+    );
+  });
+
+  it('opens in a new tab when the panel is set to', () => {
+    expect(render({ linkExternal: true })).toContain('target="_blank"');
   });
 
   it('reports what the last attempt did', () => {

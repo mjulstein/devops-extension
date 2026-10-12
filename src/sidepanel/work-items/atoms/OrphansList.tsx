@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import clsx from 'clsx';
 import { Button } from '@/sidepanel/atoms/Button';
-import type { OrphanCandidate } from '@/devops/orphanWorkItems';
+import { WorkItemRow } from './WorkItemRow';
+import { toWorkItem, type OrphanCandidate } from '@/devops/orphanWorkItems';
 import classes from './OrphansList.module.css';
 
 interface OrphansListProps {
@@ -112,9 +113,9 @@ export function OrphansList({
             </Button>
           </div>
 
-          <ul className={classes.list}>
+          <div className={classes.list} role="list">
             {items.map((item) => (
-              <li key={item.id} className={classes.row}>
+              <div key={item.id} className={classes.row}>
                 <input
                   type="checkbox"
                   checked={selected.has(item.id)}
@@ -123,20 +124,17 @@ export function OrphansList({
                     toggle(item.id);
                   }}
                 />
-                <a
-                  className={classes.link}
-                  href={item.url}
-                  target={linkExternal ? '_blank' : undefined}
-                  rel={linkExternal ? 'noreferrer' : undefined}
-                >
-                  <span className={classes.title}>{item.title}</span>
-                  <span className={classes.meta}>
-                    #{item.id} · {item.workItemType} · {item.state}
-                  </span>
-                </a>
-              </li>
+                {/* The same row every other list draws, so a work item looks
+                    like a work item wherever it turns up. */}
+                <WorkItemRow
+                  item={toWorkItem(item)}
+                  showState
+                  showParentDetails={false}
+                  linkExternal={linkExternal}
+                />
+              </div>
             ))}
-          </ul>
+          </div>
         </>
       )}
     </div>

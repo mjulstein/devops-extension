@@ -12,6 +12,7 @@
 // so the bulk action and the single action can never disagree about what is
 // legal.
 
+import type { WorkItem } from '@/types';
 import { isSupportedParentType } from './workItemDetails';
 
 /** The types this view lists. Anything else is somebody else's hierarchy. */
@@ -66,6 +67,29 @@ export interface OrphanCandidate {
   /** The parent it already has, if any. */
   parentId: number | null;
   url: string;
+}
+
+/**
+ * An orphan as the shared row renders it.
+ *
+ * The Orphans list draws its rows with the same `WorkItemRow` as every other
+ * list, so a work item looks like a work item wherever it turns up. What this
+ * view knows is a subset of a `WorkItem`, and the rest is honestly empty rather
+ * than invented.
+ */
+export function toWorkItem(candidate: OrphanCandidate): WorkItem {
+  return {
+    id: candidate.id,
+    workItemType: candidate.workItemType,
+    title: candidate.title,
+    state: candidate.state,
+    assignedTo: '',
+    parentId: null,
+    parent: null,
+    closedDate: null,
+    lastChangedDate: null,
+    url: candidate.url
+  };
 }
 
 export interface OrphanSelection {

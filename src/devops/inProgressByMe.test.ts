@@ -1,10 +1,8 @@
 import {
   buildAssignedWiql,
   buildStartedForOthersWiql,
-  describeInProgressItem,
   identityClause,
-  wasMovedToStateBy,
-  type InProgressItem
+  wasMovedToStateBy
 } from './inProgressByMe';
 
 describe('identityClause', () => {
@@ -115,32 +113,5 @@ describe('wasMovedToStateBy', () => {
     expect(
       wasMovedToStateBy([null, 42], 'In Progress', 'me@example.test')
     ).toBe(false);
-  });
-});
-
-describe('describeInProgressItem', () => {
-  const item: InProgressItem = {
-    id: 5,
-    title: 'Do the thing',
-    workItemType: 'Task',
-    project: 'Proj',
-    assignedTo: 'other@example.test',
-    url: 'https://dev.azure.test/o/Proj/_workitems/edit/5'
-  };
-
-  it('names the assignee in the second list, where it is the point', () => {
-    expect(describeInProgressItem(item, true)).toBe(
-      'Task: Do the thing (assigned to other@example.test)'
-    );
-  });
-
-  it('leaves it off where every row has the same answer', () => {
-    expect(describeInProgressItem(item, false)).toBe('Task: Do the thing');
-  });
-
-  it('says nothing about an assignee there is not one of', () => {
-    expect(describeInProgressItem({ ...item, assignedTo: '' }, true)).toBe(
-      'Task: Do the thing'
-    );
   });
 });

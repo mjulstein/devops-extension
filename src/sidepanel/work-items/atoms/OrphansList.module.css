@@ -30,11 +30,14 @@
   padding: 0;
 }
 
+ /* The checkbox, then the shared work-item row. The row owns its own columns,
+    so this only has to put the box beside it and keep the two aligned. */
 .row {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
   gap: 8px;
-  padding-block: 4px;
+  padding-block: 3px;
 }
 
 .link {
@@ -44,10 +47,6 @@
   min-inline-size: 0;
   text-decoration: none;
   color: inherit;
-}
-
-.title {
-  font-size: 13px;
 }
 
 .meta {
@@ -84,4 +83,10 @@
   display: flex;
   gap: 4px;
   margin-block-end: 8px;
+}
+
+/* The assignee sits under the row rather than inside it: the shared row has no
+   column for it, and in the second list it is the thing worth reading. */
+.inProgressRow {
+  padding-block: 3px;
 }
