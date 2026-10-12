@@ -11,6 +11,9 @@ import { Button } from '@/sidepanel/atoms/Button';
 import { ClosedDateRangeControls } from './atoms/ClosedDateRangeControls';
 import { WorkItemsToolbar } from './atoms/WorkItemsToolbar';
 import { OrphansList } from './atoms/OrphansList';
+import { InProgressByMeList } from './atoms/InProgressByMeList';
+import type { InProgressByMe } from '@/devops/inProgressByMe';
+import type { OrphansMode } from './atoms/orphansMode';
 import type { OrphanCandidate } from '@/devops/orphanWorkItems';
 import {
   WorkItemListTabs,
@@ -54,6 +57,13 @@ interface StatusCardProps {
   orphansError: string | null;
   orphansStatus: string | null;
   onParentOrphans: (ids: number[], parentId: number) => void;
+  /** Which reading of the tab is showing; see `OrphansMode`. */
+  orphansMode: OrphansMode;
+  onSelectOrphansMode: (mode: OrphansMode) => void;
+  inProgressByMe: InProgressByMe | null;
+  inProgressState: string;
+  onInProgressStateChange: (state: string) => void;
+  onRefreshInProgress: () => void;
   onSelectListTab: (tab: WorkItemListTab) => void;
   authoredItems: WorkItem[] | null;
   isAuthoredLoading: boolean;
@@ -105,6 +115,12 @@ export function WorkItemsPane({
   orphansError,
   orphansStatus,
   onParentOrphans,
+  orphansMode,
+  onSelectOrphansMode,
+  inProgressByMe,
+  inProgressState,
+  onInProgressStateChange,
+  onRefreshInProgress,
   onSelectListTab,
   authoredItems,
   isAuthoredLoading,
@@ -223,14 +239,54 @@ export function WorkItemsPane({
         )}
 
         {activeListTab === 'orphans' ? (
-          <OrphansList
-            items={orphans}
-            isLoading={isOrphansLoading}
-            error={orphansError}
-            status={orphansStatus}
-            onParent={onParentOrphans}
-            linkExternal={linkExternal}
-          />
+          <>
+            {/* Two readings of this tab, kept apart deliberately: the second
+                was described separately and is being lived with before any of
+                it is folded into the first. */}
+            <div className={classes.modeRow}>
+              <Button
+                size="compact"
+                variant={orphansMode === 'orphans' ? 'primary' : 'default'}
+                isPressed={orphansMode === 'orphans'}
+                onClick={() => {
+                  onSelectOrphansMode('orphans');
+                }}
+              >
+                No parent
+              </Button>
+              <Button
+                size="compact"
+                variant={orphansMode === 'in-progress' ? 'primary' : 'default'}
+                isPressed={orphansMode === 'in-progress'}
+                onClick={() => {
+                  onSelectOrphansMode('in-progress');
+                }}
+              >
+                In progress by me
+              </Button>
+            </div>
+
+            {orphansMode === 'in-progress' ? (
+              <InProgressByMeList
+                data={inProgressByMe}
+                isLoading={isOrphansLoading}
+                error={orphansError}
+                state={inProgressState}
+                onStateChange={onInProgressStateChange}
+                onRefresh={onRefreshInProgress}
+                linkExternal={linkExternal}
+              />
+            ) : (
+              <OrphansList
+                items={orphans}
+                isLoading={isOrphansLoading}
+                error={orphansError}
+                status={orphansStatus}
+                onParent={onParentOrphans}
+                linkExternal={linkExternal}
+              />
+            )}
+          </>
         ) : activeListTab === 'todo' ? (
           result === null ? (
             <p>Click TODO to load your work items.</p>

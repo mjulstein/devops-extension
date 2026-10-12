@@ -70,3 +70,18 @@
 .refreshing {
   opacity: 0.6;
 }
+
+.sectionHeading {
+  font-size: 12px;
+  font-weight: 700;
+  margin: 12px 0 4px;
+  color: var(--color-text-secondary);
+}
+
+/* The two readings of the tab. Kept apart so the second one can be lived with
+   before anything of it is folded into the first. */
+.modeRow {
+  display: flex;
+  gap: 4px;
+  margin-block-end: 8px;
+}

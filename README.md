@@ -191,7 +191,11 @@ npm test
     Bug, Product Backlog Item or Improvement, and those go under a Feature — so
     a mixed selection moves what fits and tells you about the rest rather than
     refusing the lot. The quick-task parent and its archive never appear: being
-    parentless is what they are for.
+    parentless is what they are for. The tab has a second view behind the
+    **In progress by me** toggle, which answers a different question: what is in
+    a given state and assigned to you, and what you moved into that state but is
+    assigned to somebody else. Type the state name your process uses and press
+    **Find**.
 11. **Close duplicate tabs** keeps the most recently active copy of each page.
     Right-click the same button to close tabs you have not looked at in 24 days
     — it asks first, naming how many and how old the oldest is. Pinned tabs, the

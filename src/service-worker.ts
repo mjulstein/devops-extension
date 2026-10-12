@@ -40,6 +40,7 @@ import {
   selectOrphans
 } from './devops/orphanWorkItems';
 import { getWorkItemDetails } from './devops/workItemDetails';
+import { fetchInProgressByMe } from './devops/inProgressByMeApi';
 import {
   carryPathAcrossEnvironments,
   isSamePage,
@@ -867,6 +868,10 @@ type RuntimeMessage =
       payload: { settings: Settings };
     }
   | {
+      type: 'FETCH_IN_PROGRESS_BY_ME';
+      payload: { settings: Settings; state: string };
+    }
+  | {
       type: 'PARENT_WORK_ITEMS';
       payload: {
         settings: Settings;
@@ -1421,6 +1426,23 @@ chrome.runtime.onMessage.addListener(
             )
           })
         )
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'FETCH_IN_PROGRESS_BY_ME') {
+      resolveWorkItemsContext(message.payload.settings)
+        .then((context) =>
+          fetchInProgressByMe(
+            context.organization,
+            context.project,
+            message.payload.state,
+            message.payload.settings.assignedTo
+          )
+        )
+        .then((result) => sendResponse({ ok: true, result }))
         .catch((error: Error) =>
           sendResponse({ ok: false, error: error.message })
         );

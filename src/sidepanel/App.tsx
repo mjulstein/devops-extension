@@ -132,6 +132,14 @@ export function App({ initialTab }: AppProps = {}) {
           onParentOrphans={(ids, parentId) => {
             void controller.onParentOrphans(ids, parentId);
           }}
+          orphansMode={controller.orphansMode}
+          onSelectOrphansMode={controller.onSelectOrphansMode}
+          inProgressByMe={controller.inProgressByMe}
+          inProgressState={controller.inProgressState}
+          onInProgressStateChange={controller.onInProgressStateChange}
+          onRefreshInProgress={() => {
+            void controller.onRefreshInProgress();
+          }}
           onSelectListTab={(tab) => {
             void controller.onSelectListTab(tab);
           }}

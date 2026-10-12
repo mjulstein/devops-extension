@@ -56,6 +56,9 @@ import {
   fetchOrphanWorkItems,
   parentWorkItems
 } from './tabMessaging/fetchOrphanWorkItems';
+import { fetchInProgressByMe } from './tabMessaging/fetchInProgressByMe';
+import type { InProgressByMe } from '@/devops/inProgressByMe';
+import type { OrphansMode } from './work-items/atoms/orphansMode';
 import type { OrphanCandidate } from '@/devops/orphanWorkItems';
 import {
   createChildTask,
@@ -198,6 +201,11 @@ export function useSidepanelController({
   const [isOrphansLoading, setIsOrphansLoading] = useState(false);
   const [orphansError, setOrphansError] = useState<string | null>(null);
   const [orphansStatus, setOrphansStatus] = useState<string | null>(null);
+  const [orphansMode, setOrphansMode] = useState<OrphansMode>('orphans');
+  const [inProgressByMe, setInProgressByMe] = useState<InProgressByMe | null>(
+    null
+  );
+  const [inProgressState, setInProgressState] = useState('');
   const [activeListTab, setActiveListTab] = useState<WorkItemListTab>('todo');
   const [authoredItems, setAuthoredItems] = useState<WorkItem[] | null>(null);
   const [isAuthoredLoading, setIsAuthoredLoading] = useState(false);
@@ -1494,6 +1502,38 @@ export function useSidepanelController({
     }
   }
 
+  /**
+   * The other reading of the Orphans tab.
+   *
+   * Asked for by hand rather than on tab selection: it needs a state name, and
+   * it confirms each candidate against that work item's own history, which is
+   * one call apiece. Neither is something to spend on simply opening a tab.
+   */
+  async function onRefreshInProgress() {
+    if (inProgressState.trim() === '') {
+      return;
+    }
+
+    setIsOrphansLoading(true);
+    setOrphansError(null);
+    try {
+      const response = await fetchInProgressByMe(settings, inProgressState);
+      if (response.ok) {
+        setInProgressByMe(response.result);
+        pushDebugLog(
+          'success',
+          `In progress by me: ${response.result.assigned.length} assigned, ${response.result.startedForOthers.length} started for others.`
+        );
+      } else {
+        setOrphansError(response.error);
+      }
+    } catch (error) {
+      setOrphansError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsOrphansLoading(false);
+    }
+  }
+
   async function loadPullRequests(force = false) {
     if (
       !needsReload({
@@ -2148,6 +2188,12 @@ export function useSidepanelController({
     orphansError,
     orphansStatus,
     onParentOrphans,
+    orphansMode,
+    onSelectOrphansMode: setOrphansMode,
+    inProgressByMe,
+    inProgressState,
+    onInProgressStateChange: setInProgressState,
+    onRefreshInProgress,
     authoredItems,
     isAuthoredLoading,
     authoredError,
