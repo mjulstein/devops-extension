@@ -23,6 +23,8 @@ import classes from './SettingsCard.module.css';
 import card from '../atoms/Card.module.css';
 import { FavoritesEditor } from './FavoritesEditor';
 import { SettingsHelp } from './SettingsHelp';
+import { AdoTabsList } from './AdoTabsList';
+import { useAdoTabs } from '@/sidepanel/useAdoTabs';
 import {
   DEFAULT_STALE_TAB_DAYS,
   resolveStaleTabDays
@@ -63,6 +65,17 @@ export function SettingsPane({
   const [todoStatesText, setTodoStatesText] = useState(() =>
     settings.todoStates.join(', ')
   );
+  const { groups: adoTabGroups } = useAdoTabs();
+
+  /** Raises a tab, and its window with it: a tab in a window behind the one in
+   *  front is activated without being seen otherwise. */
+  async function switchToTab(id: number, windowId: number | null) {
+    await chrome.tabs.update(id, { active: true });
+    if (windowId !== null) {
+      await chrome.windows.update(windowId, { focused: true });
+    }
+  }
+
   const [refreshingIcons, setRefreshingIcons] = useState(false);
   const [iconRefreshStatus, setIconRefreshStatus] = useState<string | null>(
     null
@@ -564,6 +577,27 @@ export function SettingsPane({
               In force now: {resolveStaleTabDays(settings.staleTabDays)} days.
             </span>
           </label>
+
+          <hr className={classes.separator} />
+
+          <h3 className={classes.sectionHeading}>Open Azure DevOps tabs</h3>
+          <SettingsHelp summary="About this list">
+            <p>
+              Every Azure DevOps tab you have open, grouped by the part of it
+              they belong to and oldest first. The <strong>✕</strong> closes a
+              tab; the name switches to it.
+            </p>
+          </SettingsHelp>
+
+          <AdoTabsList
+            groups={adoTabGroups}
+            onClose={(id) => {
+              void chrome.tabs.remove(id);
+            }}
+            onSwitchTo={(id, windowId) => {
+              void switchToTab(id, windowId);
+            }}
+          />
 
           <hr className={classes.separator} />
 

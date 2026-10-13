@@ -1,0 +1,74 @@
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  margin: 0 0 2px;
+  color: var(--color-text-secondary);
+}
+
+.count {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* The close first, then the name: closing is what the list is mostly for. */
+.row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+}
+
+.name {
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-inline-size: 0;
+  text-align: start;
+  padding: 3px 4px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.name:hover {
+  background: var(--color-surface-hover);
+}
+
+.title,
+.meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.title {
+  font-size: 12px;
+}
+
+.meta {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.empty {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: 0;
+}
