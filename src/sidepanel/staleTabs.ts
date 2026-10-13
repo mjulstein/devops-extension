@@ -36,7 +36,11 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 export interface StaleTabCandidate {
   id?: number;
-  lastAccessed?: number;
+  /**
+   * Null as well as absent, because a grouped tab spells "the browser did not
+   * say" that way. Both are unknown, and the rule below keeps an unknown age.
+   */
+  lastAccessed?: number | null;
   pinned?: boolean;
   active?: boolean;
   audible?: boolean;

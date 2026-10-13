@@ -1,9 +1,21 @@
+import { useCallback, useEffect, useState } from 'react';
+import { Button } from '@/sidepanel/atoms/Button';
+import {
+  allTabsIn,
+  sortTabGroups,
+  type TabGroupNode,
+  type TabOrder
+} from '@/sidepanel/tabGroups';
+import { resolveStaleTabDays, selectStaleTabs } from '@/sidepanel/staleTabs';
 import { TabGroupList } from './TabGroupList';
-import type { TabGroupNode } from '@/sidepanel/tabGroups';
 import classes from './TabGroupList.module.css';
+
+const ORDER_KEY = 'tabGroupOrder';
 
 interface TabsPaneProps {
   groups: TabGroupNode[];
+  /** The saved threshold, which each group's days box starts from. */
+  staleTabDays: number;
 }
 
 /**
@@ -13,11 +25,69 @@ interface TabsPaneProps {
  * the same level, because by the time you are looking at this you are asking
  * "what have I got open", not "what kind of thing is it".
  */
-export function TabsPane({ groups }: TabsPaneProps) {
+export function TabsPane({ groups, staleTabDays }: TabsPaneProps) {
+  const [order, setOrder] = useTabOrder();
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+  // Per group, and only while the panel is open: it is a number you reach for
+  // when tidying one section, not a preference about it.
+  const [days, setDays] = useState<Record<string, string>>({});
+
+  const daysFor = useCallback(
+    (key: string) => resolveStaleTabDays(days[key] ?? String(staleTabDays)),
+    [days, staleTabDays]
+  );
+
+  const cleanGroup = useCallback((group: TabGroupNode, forDays: number) => {
+    const ids = selectStaleTabs(allTabsIn(group), Date.now(), forDays);
+    if (ids.length === 0) {
+      window.alert(
+        `Nothing in ${group.label} has gone ${forDays} days untouched.`
+      );
+      return;
+    }
+    if (
+      window.confirm(
+        `Close ${ids.length} ${group.label} tab${ids.length === 1 ? '' : 's'} untouched for ${forDays} days or more?`
+      )
+    ) {
+      void chrome.tabs.remove(ids);
+    }
+  }, []);
+
+  const toggleCollapsed = useCallback((key: string) => {
+    setCollapsed((current) => {
+      const next = new Set(current);
+      if (!next.delete(key)) {
+        next.add(key);
+      }
+      return next;
+    });
+  }, []);
+
   return (
     <div className={classes.pane}>
+      <div className={classes.orderRow}>
+        <Button
+          size="compact"
+          variant="quiet"
+          icon={order === 'oldest' ? '↓' : '↑'}
+          onClick={() => {
+            setOrder(order === 'oldest' ? 'newest' : 'oldest');
+          }}
+        >
+          {order === 'oldest' ? 'Oldest first' : 'Newest first'}
+        </Button>
+      </div>
+
       <TabGroupList
-        groups={groups}
+        groups={sortTabGroups(groups, order)}
+        collapsed={collapsed}
+        onToggleCollapsed={toggleCollapsed}
+        onCleanGroup={cleanGroup}
+        daysFor={daysFor}
+        onDaysChange={(key, value) => {
+          setDays((current) => ({ ...current, [key]: value }));
+        }}
         onClose={(id) => {
           void chrome.tabs.remove(id);
         }}
@@ -27,6 +97,37 @@ export function TabsPane({ groups }: TabsPaneProps) {
       />
     </div>
   );
+}
+
+/**
+ * Which way round the lists are ordered, remembered browser-locally.
+ *
+ * A view preference, not a setting: it belongs to this machine's panel and
+ * syncing it would say nothing useful on another one. Remembered because one
+ * that reset every time the panel opened would have to be set every time.
+ */
+function useTabOrder(): [TabOrder, (order: TabOrder) => void] {
+  const [order, setOrder] = useState<TabOrder>('oldest');
+
+  useEffect(() => {
+    void chrome.storage?.local
+      ?.get(ORDER_KEY)
+      .then((stored) => {
+        if (stored[ORDER_KEY] === 'newest' || stored[ORDER_KEY] === 'oldest') {
+          setOrder(stored[ORDER_KEY]);
+        }
+      })
+      .catch(() => undefined);
+  }, []);
+
+  const chooseOrder = useCallback((next: TabOrder) => {
+    setOrder(next);
+    void chrome.storage?.local
+      ?.set({ [ORDER_KEY]: next })
+      .catch(() => undefined);
+  }, []);
+
+  return [order, chooseOrder];
 }
 
 /**

@@ -89,7 +89,10 @@ export function App({ initialTab }: AppProps = {}) {
       ) : null}
 
       {controller.activeTab === 'tabs' ? (
-        <TabsPane groups={controller.tabGroups} />
+        <TabsPane
+          groups={controller.tabGroups}
+          staleTabDays={controller.staleTabDays}
+        />
       ) : null}
 
       {controller.activeTab === 'settings' ? (

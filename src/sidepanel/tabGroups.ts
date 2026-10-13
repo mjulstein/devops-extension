@@ -10,7 +10,12 @@
 // lands in it, which is why adding a domain takes no rules at all.
 
 import type { TabGroupRule, TabGroupSetting } from '@/types';
-import { compareTabsByAgeThenPath, readTabPath, type OpenTab } from './adoTabs';
+import {
+  compareTabsByAgeThenPath,
+  readFavIconUrl,
+  readTabPath,
+  type OpenTab
+} from './adoTabs';
 
 // A rule's `match` is tested against the address's host and path together, so
 // one field covers both a sub-domain (`wiki.example.com`) and a path
@@ -25,6 +30,10 @@ export interface GroupedTab {
   path: string;
   lastAccessed: number | null;
   windowId: number | null;
+  favIconUrl: string | null;
+  pinned: boolean;
+  active: boolean;
+  audible: boolean;
 }
 
 export interface TabGroupNode {
@@ -63,7 +72,11 @@ function toGroupedTab(tab: OpenTab): GroupedTab | null {
     path: readTabPath(tab.url),
     lastAccessed:
       typeof tab.lastAccessed === 'number' ? tab.lastAccessed : null,
-    windowId: typeof tab.windowId === 'number' ? tab.windowId : null
+    windowId: typeof tab.windowId === 'number' ? tab.windowId : null,
+    favIconUrl: readFavIconUrl(tab),
+    pinned: tab.pinned === true,
+    active: tab.active === true,
+    audible: tab.audible === true
   };
 }
 
@@ -141,6 +154,65 @@ export function buildTabGroups(
       };
     })
     .filter((group) => group.tabs.length > 0 || group.children.length > 0);
+}
+
+export type TabOrder = 'oldest' | 'newest';
+
+/**
+ * Every tab in a group, including the ones in its sub-groups.
+ *
+ * The icon and the count both want the whole group rather than the rows
+ * directly under it, which for a narrowed group is nothing at all.
+ */
+export function allTabsIn(group: TabGroupNode): GroupedTab[] {
+  return [...group.tabs, ...group.children.flatMap(allTabsIn)];
+}
+
+/**
+ * The icon for a group: the one from its newest tab.
+ *
+ * The newest rather than the first, because the first changes with the sort
+ * order and an icon that flips when you reverse the list is telling you about
+ * the sort rather than about the group. A tab with no icon is skipped rather
+ * than counted as the answer.
+ */
+export function groupFavIconUrl(group: TabGroupNode): string | null {
+  let best: GroupedTab | null = null;
+
+  for (const tab of allTabsIn(group)) {
+    if (tab.favIconUrl === null) {
+      continue;
+    }
+    if (
+      best === null ||
+      (tab.lastAccessed ?? -Infinity) > (best.lastAccessed ?? -Infinity)
+    ) {
+      best = tab;
+    }
+  }
+
+  return best?.favIconUrl ?? null;
+}
+
+/**
+ * The same tree, ordered the other way round when asked.
+ *
+ * The builders always produce oldest-first, which is the order the list is for;
+ * reversing is a view preference and is applied over the top rather than
+ * threaded through every builder as a parameter nobody else needs.
+ */
+export function sortTabGroups(
+  groups: TabGroupNode[],
+  order: TabOrder
+): TabGroupNode[] {
+  if (order === 'oldest') {
+    return groups;
+  }
+  return groups.map((group) => ({
+    ...group,
+    tabs: [...group.tabs].reverse(),
+    children: sortTabGroups(group.children, order)
+  }));
 }
 
 /** A new group for a domain, before anyone has narrowed it. */

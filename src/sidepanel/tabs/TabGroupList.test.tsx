@@ -16,6 +16,7 @@ const groups = toTabGroupNodes(
         id: 1,
         url: 'https://dev.azure.com/o/p/_git/repo',
         title: 'repo - Repos',
+        favIconUrl: 'https://dev.azure.com/repo.png',
         lastAccessed: now - 3 * DAY
       },
       {
@@ -34,6 +35,11 @@ function render(props: Partial<Parameters<typeof TabGroupList>[0]> = {}) {
       groups={groups}
       onClose={() => undefined}
       onSwitchTo={() => undefined}
+      collapsed={new Set()}
+      onToggleCollapsed={() => undefined}
+      onCleanGroup={() => undefined}
+      daysFor={() => 24}
+      onDaysChange={() => undefined}
       {...props}
     />
   );
@@ -68,5 +74,41 @@ describe('TabGroupList', () => {
 
   it('makes the name the control that switches', () => {
     expect(render()).toContain('<button type="button"');
+  });
+
+  it('folds each group into a details, open by default', () => {
+    const markup = render();
+    expect(markup).toContain('<details');
+    expect(markup).toContain('open=""');
+    expect(markup).toContain('<summary');
+  });
+
+  it('draws a group folded when its key is collapsed', () => {
+    // Every key, children included: Repos is sectioned per repository, so its
+    // sub-groups have keys of their own.
+    const keys = (nodes: typeof groups): string[] =>
+      nodes.flatMap((node) => [node.key, ...keys(node.children)]);
+    const markup = render({ collapsed: new Set(keys(groups)) });
+    expect(markup).not.toContain('open=""');
+  });
+
+  it('sections the repos group per repository', () => {
+    const markup = render();
+    expect(markup).toContain('>repo<');
+  });
+
+  it('gives each group a days box and a cleanup button', () => {
+    const markup = render();
+    expect(markup).toContain('Days untouched before closing a Repos tab');
+    expect(markup).toContain('Close Repos tabs untouched for 24 days');
+  });
+
+  it('gives the sub-groups their own, so one repo can be cleaned alone', () => {
+    expect(render()).toContain('Days untouched before closing a repo tab');
+  });
+
+  it('shows the icon of the group newest tab', () => {
+    // Repos' newest is tab 1 here, so its icon is the one drawn.
+    expect(render()).toContain('repo.png');
   });
 });

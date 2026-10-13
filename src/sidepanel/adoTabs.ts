@@ -23,6 +23,10 @@ export interface OpenTab {
   url?: string;
   lastAccessed?: number;
   windowId?: number;
+  favIconUrl?: string;
+  pinned?: boolean;
+  active?: boolean;
+  audible?: boolean;
 }
 
 export interface AdoTab {
@@ -34,6 +38,19 @@ export interface AdoTab {
   section: DevOpsSection;
   lastAccessed: number | null;
   windowId: number | null;
+  /**
+   * The tab's own icon. On Azure DevOps this is the section icon, because the
+   * content script is what put it there — so a group's icon says which part of
+   * Azure DevOps it is without this having to look one up.
+   */
+  favIconUrl: string | null;
+  /**
+   * Carried so a cleanup scoped to one section keeps the protections the
+   * stale-tab list has: a pinned, active or audible tab is in use.
+   */
+  pinned: boolean;
+  active: boolean;
+  audible: boolean;
 }
 
 export interface AdoTabGroup {
@@ -50,12 +67,85 @@ export interface AdoTabGroup {
  * the parts.
  */
 export function toTabGroupNodes(groups: AdoTabGroup[]): TabGroupNode[] {
-  return groups.map((group) => ({
-    key: `ado:${group.section}`,
-    label: group.label,
-    tabs: group.tabs,
-    children: []
-  }));
+  return groups.map((group) => {
+    const key = `ado:${group.section}`;
+
+    // Repos is the one section where the part you care about is in the address
+    // rather than in the section: five tabs across three repositories is three
+    // things, not five. Every other section is a list of pages of one kind.
+    if (group.section !== 'repos') {
+      return { key, label: group.label, tabs: group.tabs, children: [] };
+    }
+
+    const byRepo = new Map<string, AdoTab[]>();
+    const loose: AdoTab[] = [];
+
+    for (const tab of group.tabs) {
+      const repo = repoNameOf(tab.url);
+      if (repo === null) {
+        loose.push(tab);
+        continue;
+      }
+      byRepo.set(repo, [...(byRepo.get(repo) ?? []), tab]);
+    }
+
+    const children: TabGroupNode[] = [...byRepo]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([repo, tabs]) => ({
+        key: `${key}:${repo}`,
+        label: repo,
+        tabs,
+        children: []
+      }));
+
+    if (loose.length > 0) {
+      children.push({
+        key: `${key}:other`,
+        label: 'Other',
+        tabs: loose,
+        children: []
+      });
+    }
+
+    return { key, label: group.label, tabs: [], children };
+  });
+}
+
+/**
+ * The repository an address belongs to: the segment after `_git`.
+ *
+ * Null for anything that does not name one — the repos landing page, and the
+ * legacy `_versioncontrol` paths, which have no repository in them to find.
+ */
+export function repoNameOf(url: string): string | null {
+  let path: string;
+  try {
+    path = new URL(url).pathname;
+  } catch {
+    return null;
+  }
+
+  const segments = path.split('/').filter(Boolean);
+  const at = segments.findIndex((segment) => segment.toLowerCase() === '_git');
+  if (at < 0 || at + 1 >= segments.length) {
+    return null;
+  }
+  try {
+    return decodeURIComponent(segments[at + 1]);
+  } catch {
+    return segments[at + 1];
+  }
+}
+
+/**
+ * A tab's icon, if it has one worth drawing.
+ *
+ * A blank or non-http address is treated as none: an <img> pointed at nothing
+ * draws a broken-image glyph, which is worse than the space it would fill.
+ */
+export function readFavIconUrl(tab: { favIconUrl?: string }): string | null {
+  const url = (tab.favIconUrl ?? '').trim();
+  return url !== '' && /^(https?|data):/i.test(url) ? url : null;
 }
 
 /** The path and query of an address, which is what tells two tabs apart. */
@@ -88,7 +178,11 @@ export function readAdoTabs(tabs: OpenTab[]): AdoTab[] {
       section,
       lastAccessed:
         typeof tab.lastAccessed === 'number' ? tab.lastAccessed : null,
-      windowId: typeof tab.windowId === 'number' ? tab.windowId : null
+      windowId: typeof tab.windowId === 'number' ? tab.windowId : null,
+      favIconUrl: readFavIconUrl(tab),
+      pinned: tab.pinned === true,
+      active: tab.active === true,
+      audible: tab.audible === true
     });
   }
 

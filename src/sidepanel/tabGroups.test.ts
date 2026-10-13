@@ -1,8 +1,10 @@
 import {
   buildTabGroups,
   createTabGroup,
+  groupFavIconUrl,
   hostMatchesDomain,
   matchTarget,
+  sortTabGroups,
   type TabGroupSetting
 } from './tabGroups';
 import type { OpenTab } from './adoTabs';
@@ -141,5 +143,106 @@ describe('buildTabGroups', () => {
     ]);
     expect(group.children).toEqual([]);
     expect(group.tabs).toHaveLength(3);
+  });
+});
+
+describe('groupFavIconUrl', () => {
+  const group = {
+    key: 'g',
+    label: 'G',
+    tabs: [
+      {
+        id: 1,
+        title: 'old',
+        url: 'https://a.test/',
+        path: '/',
+        lastAccessed: 10,
+        windowId: null,
+        favIconUrl: 'https://a.test/old.png',
+        pinned: false,
+        active: false,
+        audible: false
+      },
+      {
+        id: 2,
+        title: 'new',
+        url: 'https://a.test/b',
+        path: '/b',
+        lastAccessed: 99,
+        windowId: null,
+        favIconUrl: 'https://a.test/new.png',
+        pinned: false,
+        active: false,
+        audible: false
+      }
+    ],
+    children: []
+  };
+
+  it('takes the icon from the newest tab, whatever the display order', () => {
+    // The first row changes when the order flips; the newest does not.
+    expect(groupFavIconUrl(group)).toBe('https://a.test/new.png');
+    expect(groupFavIconUrl(sortTabGroups([group], 'newest')[0])).toBe(
+      'https://a.test/new.png'
+    );
+  });
+
+  it('skips a tab with no icon rather than answering with none', () => {
+    expect(
+      groupFavIconUrl({
+        ...group,
+        tabs: [{ ...group.tabs[1], favIconUrl: null }, group.tabs[0]]
+      })
+    ).toBe('https://a.test/old.png');
+  });
+
+  it('looks inside the sub-groups of a narrowed group', () => {
+    expect(
+      groupFavIconUrl({ key: 'p', label: 'P', tabs: [], children: [group] })
+    ).toBe('https://a.test/new.png');
+  });
+
+  it('is null when nothing in the group has one', () => {
+    expect(
+      groupFavIconUrl({ key: 'e', label: 'E', tabs: [], children: [] })
+    ).toBeNull();
+  });
+});
+
+describe('sortTabGroups', () => {
+  const groups = buildTabGroups(
+    [tab(1, 'https://example.com/a', 5), tab(2, 'https://example.com/b', 1)],
+    [createTabGroup('example.com')]
+  );
+
+  it('leaves the oldest-first order alone', () => {
+    expect(sortTabGroups(groups, 'oldest')[0].tabs.map((t) => t.id)).toEqual([
+      1, 2
+    ]);
+  });
+
+  it('turns it round for newest first', () => {
+    expect(sortTabGroups(groups, 'newest')[0].tabs.map((t) => t.id)).toEqual([
+      2, 1
+    ]);
+  });
+
+  it('turns the sub-groups round too', () => {
+    const narrowed = buildTabGroups(
+      [
+        tab(1, 'https://example.com/spaces/a', 5),
+        tab(2, 'https://example.com/spaces/b', 1)
+      ],
+      [
+        {
+          domain: 'example.com',
+          label: 'Example',
+          rules: [{ label: 'Spaces', match: '/spaces/' }]
+        }
+      ]
+    );
+    expect(
+      sortTabGroups(narrowed, 'newest')[0].children[0].tabs.map((t) => t.id)
+    ).toEqual([2, 1]);
   });
 });

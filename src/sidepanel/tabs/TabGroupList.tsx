@@ -1,12 +1,23 @@
 import { Button } from '@/sidepanel/atoms/Button';
 import { describeTabAge } from '@/sidepanel/adoTabs';
-import type { TabGroupNode } from '@/sidepanel/tabGroups';
+import {
+  groupFavIconUrl as favIconOf,
+  type TabGroupNode
+} from '@/sidepanel/tabGroups';
 import classes from './TabGroupList.module.css';
 
 interface TabGroupListProps {
   groups: TabGroupNode[];
   onClose: (id: number) => void;
   onSwitchTo: (id: number, windowId: number | null) => void;
+  /** Keys of the groups folded away. */
+  collapsed: Set<string>;
+  onToggleCollapsed: (key: string) => void;
+  /** Closes this group's tabs untouched for that many days. */
+  onCleanGroup: (group: TabGroupNode, days: number) => void;
+  /** The days typed for each group, falling back to the saved threshold. */
+  daysFor: (key: string) => number;
+  onDaysChange: (key: string, days: string) => void;
   /** How deep this list is drawn, for the indent. */
   depth?: number;
 }
@@ -21,11 +32,21 @@ interface TabGroupListProps {
  *
  * It draws its own children, so a group narrowed into sub-groups and one that
  * was never narrowed are the same component with the same rows.
+ *
+ * Each group is a `<details>`, so the heading is the control that folds it and
+ * the browser handles the disclosure itself. Open or closed is held by the page
+ * rather than left to the DOM: the list re-renders on every tab event, and a
+ * group that sprang open each time a tab moved would be unusable.
  */
 export function TabGroupList({
   groups,
   onClose,
   onSwitchTo,
+  collapsed,
+  onToggleCollapsed,
+  onCleanGroup,
+  daysFor,
+  onDaysChange,
   depth = 0
 }: TabGroupListProps) {
   if (groups.length === 0) {
@@ -35,11 +56,62 @@ export function TabGroupList({
   return (
     <div className={classes.groups}>
       {groups.map((group) => (
-        <section key={group.key} style={{ paddingInlineStart: depth * 10 }}>
-          <h4 className={classes.heading}>
+        <details
+          key={group.key}
+          className={classes.group}
+          style={{ paddingInlineStart: depth * 10 }}
+          open={!collapsed.has(group.key)}
+          onToggle={(event) => {
+            const isOpen = event.currentTarget.open;
+            if (isOpen === collapsed.has(group.key)) {
+              onToggleCollapsed(group.key);
+            }
+          }}
+        >
+          <summary className={classes.heading}>
+            {favIconOf(group) === null ? (
+              <span className={classes.icon} aria-hidden="true" />
+            ) : (
+              <img
+                className={classes.icon}
+                src={favIconOf(group) ?? ''}
+                alt=""
+              />
+            )}
             {group.label}
             <span className={classes.count}>{countTabs(group)}</span>
-          </h4>
+
+            {/* The controls live in the summary so they are beside the group
+                they act on, and stop the click there: pressing them should not
+                also fold the group away under the hand. */}
+            <span
+              className={classes.groupActions}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+            >
+              <input
+                type="number"
+                min={1}
+                className={classes.days}
+                value={String(daysFor(group.key))}
+                aria-label={`Days untouched before closing a ${group.label} tab`}
+                onChange={(event) => {
+                  onDaysChange(group.key, event.target.value);
+                }}
+              />
+              <Button
+                size="compact"
+                variant="quiet"
+                icon="🧹"
+                description={`Close ${group.label} tabs untouched for ${daysFor(group.key)} days`}
+                onClick={() => {
+                  onCleanGroup(group, daysFor(group.key));
+                }}
+              />
+            </span>
+          </summary>
 
           {group.tabs.length > 0 && (
             <ul className={classes.list}>
@@ -77,10 +149,15 @@ export function TabGroupList({
               groups={group.children}
               onClose={onClose}
               onSwitchTo={onSwitchTo}
+              collapsed={collapsed}
+              onToggleCollapsed={onToggleCollapsed}
+              onCleanGroup={onCleanGroup}
+              daysFor={daysFor}
+              onDaysChange={onDaysChange}
               depth={depth + 1}
             />
           )}
-        </section>
+        </details>
       ))}
     </div>
   );

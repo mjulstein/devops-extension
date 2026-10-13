@@ -2,6 +2,8 @@ import {
   describeTabAge,
   groupAdoTabs,
   readAdoTabs,
+  repoNameOf,
+  toTabGroupNodes,
   type OpenTab
 } from './adoTabs';
 
@@ -134,5 +136,72 @@ describe('describeTabAge', () => {
   it('says plainly when the browser does not know', () => {
     const [unknown] = readAdoTabs([tab(9, 'https://dev.azure.com/o/p/_git/z')]);
     expect(describeTabAge(unknown, now)).toBe('never opened in this session');
+  });
+});
+
+describe('repoNameOf', () => {
+  it('reads the repository out of the address', () => {
+    expect(repoNameOf('https://dev.azure.com/o/p/_git/my-repo')).toBe(
+      'my-repo'
+    );
+    expect(
+      repoNameOf('https://dev.azure.com/o/p/_git/my-repo/pullrequest/4')
+    ).toBe('my-repo');
+  });
+
+  it('decodes a name that had to be escaped', () => {
+    expect(repoNameOf('https://dev.azure.com/o/p/_git/my%20repo')).toBe(
+      'my repo'
+    );
+  });
+
+  it('is null where the address names no repository', () => {
+    expect(repoNameOf('https://dev.azure.com/o/p/_git')).toBeNull();
+    expect(
+      repoNameOf('https://dev.azure.com/o/p/_versioncontrol/x')
+    ).toBeNull();
+    expect(repoNameOf('not a url')).toBeNull();
+  });
+});
+
+describe('toTabGroupNodes', () => {
+  function nodesFor(urls: string[]) {
+    return toTabGroupNodes(
+      groupAdoTabs(
+        readAdoTabs(urls.map((url, index) => tab(index + 1, url, 1)))
+      )
+    );
+  }
+
+  it('sections the repos group per repository, named and in order', () => {
+    const [repos] = nodesFor([
+      'https://dev.azure.com/o/p/_git/zebra',
+      'https://dev.azure.com/o/p/_git/alpha/pullrequest/1',
+      'https://dev.azure.com/o/p/_git/alpha'
+    ]);
+    expect(repos.label).toBe('Repos');
+    expect(repos.tabs).toEqual([]);
+    expect(repos.children.map((child) => child.label)).toEqual([
+      'alpha',
+      'zebra'
+    ]);
+    expect(repos.children[0].tabs).toHaveLength(2);
+  });
+
+  it('keeps an address with no repository in Other', () => {
+    const [repos] = nodesFor([
+      'https://dev.azure.com/o/p/_git/alpha',
+      'https://dev.azure.com/o/p/_versioncontrol/x'
+    ]);
+    expect(repos.children.map((child) => child.label)).toEqual([
+      'alpha',
+      'Other'
+    ]);
+  });
+
+  it('leaves every other section as a flat list', () => {
+    const [boards] = nodesFor(['https://dev.azure.com/o/p/_boards/board']);
+    expect(boards.children).toEqual([]);
+    expect(boards.tabs).toHaveLength(1);
   });
 });

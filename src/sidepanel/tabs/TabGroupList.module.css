@@ -76,3 +76,55 @@
 .pane {
   padding-block: 4px;
 }
+
+.group {
+  margin-block-end: 2px;
+}
+
+/* The heading is the disclosure control, so it has to look pressable. */
+.heading {
+  cursor: pointer;
+  list-style: none;
+}
+
+.heading::-webkit-details-marker {
+  display: none;
+}
+
+.heading:hover {
+  color: var(--color-text);
+}
+
+/* Holds the column open when a group's newest tab has no icon, so headings
+   line up whether or not there is one to draw. */
+.icon {
+  flex: 0 0 auto;
+  inline-size: 14px;
+  block-size: 14px;
+  border-radius: 3px;
+}
+
+.orderRow {
+  display: flex;
+  justify-content: end;
+  margin-block-end: 6px;
+}
+
+/* Pushed to the end of the heading, so the group's name and count read first
+   and the controls are where the eye lands last. */
+.groupActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-inline-start: auto;
+}
+
+.days {
+  font: inherit;
+  font-size: 11px;
+  inline-size: 46px;
+  box-sizing: border-box;
+  padding: 1px 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
