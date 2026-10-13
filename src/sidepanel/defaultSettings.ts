@@ -8,6 +8,7 @@ export const defaultSettings: Settings = {
   quickTaskParentId: '',
   quickTaskArchiveId: '',
   staleTabDays: '',
+  tabGroups: [],
   bookmarkFolderName: '',
   themeOverrides: { light: {}, dark: {} }
 };

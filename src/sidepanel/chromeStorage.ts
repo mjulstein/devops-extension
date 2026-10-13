@@ -436,7 +436,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isPersistedSidepanelTabId(
   value: unknown
 ): value is PersistedSidepanelTabId {
-  return value === 'work-items' || value === 'work-item';
+  return value === 'work-items' || value === 'work-item' || value === 'tabs';
 }
 
 function normalizePersistedSidepanelTabId(

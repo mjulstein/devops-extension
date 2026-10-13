@@ -52,6 +52,7 @@ import {
 import { navigateToWorkItem } from './navigateToWorkItem';
 import { deduplicateTabs } from './deduplicateTabs';
 import { closeStaleTabs, resolveStaleTabDays } from './staleTabs';
+import { useTabGroups } from './useTabGroups';
 import {
   fetchOrphanWorkItems,
   parentWorkItems
@@ -201,6 +202,7 @@ export function useSidepanelController({
   const [isOrphansLoading, setIsOrphansLoading] = useState(false);
   const [orphansError, setOrphansError] = useState<string | null>(null);
   const [orphansStatus, setOrphansStatus] = useState<string | null>(null);
+  const { groups: tabGroups } = useTabGroups(savedSettings.tabGroups);
   const [orphansMode, setOrphansMode] = useState<OrphansMode>('orphans');
   const [inProgressByMe, setInProgressByMe] = useState<InProgressByMe | null>(
     null
@@ -2239,6 +2241,7 @@ export function useSidepanelController({
     onDeduplicateTabs,
     onCloseStaleTabs,
     staleTabDays: resolveStaleTabDays(savedSettings.staleTabDays),
+    tabGroups,
     onPopOutPanel,
     onChangeDebugLogs: setDebugLogs,
     onChangeSettings: onChangeSettings,
@@ -2275,6 +2278,7 @@ function getTrimmedSettingsFromState(settings: Settings): Settings {
     quickTaskParentId: settings.quickTaskParentId.trim(),
     quickTaskArchiveId: settings.quickTaskArchiveId.trim(),
     staleTabDays: settings.staleTabDays.trim(),
+    tabGroups: settings.tabGroups,
     bookmarkFolderName: settings.bookmarkFolderName.trim(),
     // Not text, so there is nothing to trim — carried through as it is, or
     // saving would wipe every colour the user set.

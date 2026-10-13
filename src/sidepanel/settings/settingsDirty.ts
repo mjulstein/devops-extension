@@ -28,7 +28,7 @@ const FIELDS_BY_TAB: Record<SavableSettingsTab, (keyof Settings)[]> = {
   quick: ['quickTaskParentId', 'quickTaskArchiveId'],
   favorites: ['bookmarkFolderName'],
   theme: ['themeOverrides'],
-  maintenance: ['staleTabDays']
+  maintenance: ['staleTabDays', 'tabGroups']
 };
 
 export const SETTINGS_TAB_LABELS: Record<SettingsTab, string> = {

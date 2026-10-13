@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import classes from './Tabs.module.css';
 
-export type SidepanelTabId = 'settings' | 'work-items' | 'work-item';
+export type SidepanelTabId = 'settings' | 'work-items' | 'work-item' | 'tabs';
 
 interface TabsProps {
   activeTab: SidepanelTabId;
@@ -30,6 +30,19 @@ export function Tabs({
         onClick={() => onSelectTab('work-items')}
       >
         Work items
+      </button>
+
+      <button
+        type="button"
+        className={clsx(
+          classes.tabHandle,
+          activeTab === 'tabs' && classes.active
+        )}
+        aria-pressed={activeTab === 'tabs'}
+        title="Open tabs, grouped"
+        onClick={() => onSelectTab('tabs')}
+      >
+        Tabs
       </button>
 
       <div className={classes.tabHandleGroup}>

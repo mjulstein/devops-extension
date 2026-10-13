@@ -1,30 +1,36 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { AdoTabsList } from './AdoTabsList';
-import { groupAdoTabs, readAdoTabs } from '@/sidepanel/adoTabs';
+import { TabGroupList } from './TabGroupList';
+import {
+  groupAdoTabs,
+  readAdoTabs,
+  toTabGroupNodes
+} from '@/sidepanel/adoTabs';
 
 const DAY = 24 * 60 * 60 * 1000;
 const now = Date.now();
 
-const groups = groupAdoTabs(
-  readAdoTabs([
-    {
-      id: 1,
-      url: 'https://dev.azure.com/o/p/_git/repo',
-      title: 'repo - Repos',
-      lastAccessed: now - 3 * DAY
-    },
-    {
-      id: 2,
-      url: 'https://dev.azure.com/o/p/_boards/board',
-      title: 'Board',
-      lastAccessed: now - DAY
-    }
-  ])
+const groups = toTabGroupNodes(
+  groupAdoTabs(
+    readAdoTabs([
+      {
+        id: 1,
+        url: 'https://dev.azure.com/o/p/_git/repo',
+        title: 'repo - Repos',
+        lastAccessed: now - 3 * DAY
+      },
+      {
+        id: 2,
+        url: 'https://dev.azure.com/o/p/_boards/board',
+        title: 'Board',
+        lastAccessed: now - DAY
+      }
+    ])
+  )
 );
 
-function render(props: Partial<Parameters<typeof AdoTabsList>[0]> = {}) {
+function render(props: Partial<Parameters<typeof TabGroupList>[0]> = {}) {
   return renderToStaticMarkup(
-    <AdoTabsList
+    <TabGroupList
       groups={groups}
       onClose={() => undefined}
       onSwitchTo={() => undefined}
@@ -33,9 +39,11 @@ function render(props: Partial<Parameters<typeof AdoTabsList>[0]> = {}) {
   );
 }
 
-describe('AdoTabsList', () => {
+describe('TabGroupList', () => {
   it('says so plainly when nothing is open', () => {
-    expect(render({ groups: [] })).toContain('No Azure DevOps tabs are open.');
+    expect(render({ groups: [] })).toContain(
+      'No tabs in these groups are open.'
+    );
   });
 
   it('heads each section and counts it', () => {

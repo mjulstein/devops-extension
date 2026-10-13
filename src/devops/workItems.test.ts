@@ -75,6 +75,7 @@ describe('workItems.ts', () => {
         quickTaskParentId: '',
         quickTaskArchiveId: '',
         staleTabDays: '',
+        tabGroups: [],
         bookmarkFolderName: '',
         themeOverrides: { light: {}, dark: {} }
       },
@@ -178,6 +179,7 @@ describe('workItems.ts', () => {
         quickTaskParentId: '',
         quickTaskArchiveId: '',
         staleTabDays: '',
+        tabGroups: [],
         bookmarkFolderName: '',
         themeOverrides: { light: {}, dark: {} }
       },
@@ -283,6 +285,7 @@ describe('workItems.ts', () => {
         quickTaskParentId: '',
         quickTaskArchiveId: '',
         staleTabDays: '',
+        tabGroups: [],
         bookmarkFolderName: '',
         themeOverrides: { light: {}, dark: {} }
       },
@@ -364,6 +367,7 @@ describe('workItems.ts', () => {
         quickTaskParentId: '',
         quickTaskArchiveId: '',
         staleTabDays: '',
+        tabGroups: [],
         bookmarkFolderName: '',
         themeOverrides: { light: {}, dark: {} }
       },
@@ -406,6 +410,7 @@ describe('workItems.ts', () => {
         quickTaskParentId: '',
         quickTaskArchiveId: '',
         staleTabDays: '',
+        tabGroups: [],
         bookmarkFolderName: '',
         themeOverrides: { light: {}, dark: {} }
       },
@@ -477,6 +482,7 @@ describe('workItems.ts', () => {
         quickTaskParentId: '',
         quickTaskArchiveId: '',
         staleTabDays: '',
+        tabGroups: [],
         bookmarkFolderName: '',
         themeOverrides: { light: {}, dark: {} }
       },

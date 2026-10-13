@@ -10,6 +10,7 @@
 // decision; within the same age, by address, so the same repo's tabs sit
 // together rather than wherever the browser happened to put them.
 
+import type { TabGroupNode } from './tabGroups';
 import {
   adoSectionOf,
   SECTION_LABELS,
@@ -41,7 +42,24 @@ export interface AdoTabGroup {
   tabs: AdoTab[];
 }
 
-function pathOf(url: string): string {
+/**
+ * The Azure DevOps sections as the shared group shape.
+ *
+ * Its sections sit at the top level beside the configured domains rather than
+ * under a heading of their own: Azure DevOps is not one group with parts, it is
+ * the parts.
+ */
+export function toTabGroupNodes(groups: AdoTabGroup[]): TabGroupNode[] {
+  return groups.map((group) => ({
+    key: `ado:${group.section}`,
+    label: group.label,
+    tabs: group.tabs,
+    children: []
+  }));
+}
+
+/** The path and query of an address, which is what tells two tabs apart. */
+export function readTabPath(url: string): string {
   try {
     const parsed = new URL(url);
     return `${parsed.pathname}${parsed.search}`;
@@ -66,7 +84,7 @@ export function readAdoTabs(tabs: OpenTab[]): AdoTab[] {
       id: tab.id,
       title: (tab.title ?? '').trim() || tab.url,
       url: tab.url,
-      path: pathOf(tab.url),
+      path: readTabPath(tab.url),
       section,
       lastAccessed:
         typeof tab.lastAccessed === 'number' ? tab.lastAccessed : null,
@@ -94,12 +112,21 @@ export function groupAdoTabs(tabs: AdoTab[]): AdoTabGroup[] {
       label: SECTION_LABELS[section],
       tabs: tabs
         .filter((tab) => tab.section === section)
-        .sort(compareByAgeThenPath)
+        .sort(compareTabsByAgeThenPath)
     }))
     .filter((group) => group.tabs.length > 0);
 }
 
-function compareByAgeThenPath(a: AdoTab, b: AdoTab): number {
+/**
+ * Oldest first, then by address.
+ *
+ * Shared with the configured groups so every tab list in the panel is ordered
+ * the same way, including the rule that an unknown age sorts last.
+ */
+export function compareTabsByAgeThenPath(
+  a: { lastAccessed: number | null; path: string },
+  b: { lastAccessed: number | null; path: string }
+): number {
   if (a.lastAccessed !== b.lastAccessed) {
     if (a.lastAccessed === null) {
       return 1;
@@ -113,7 +140,10 @@ function compareByAgeThenPath(a: AdoTab, b: AdoTab): number {
 }
 
 /** How long ago a tab was looked at, for the row to say. */
-export function describeTabAge(tab: AdoTab, now: number = Date.now()): string {
+export function describeTabAge(
+  tab: { lastAccessed: number | null },
+  now: number = Date.now()
+): string {
   if (tab.lastAccessed === null) {
     return 'never opened in this session';
   }

@@ -1,5 +1,6 @@
 import { DebugConsolePane } from './DebugConsolePane';
 import { SettingsPane } from './settings';
+import { TabsPane } from './tabs/TabsPane';
 import { ActiveWorkItemBanner } from './atoms/ActiveWorkItemBanner';
 import { DeduplicateTabsButton } from './atoms/DeduplicateTabsButton';
 import { PopOutPanelButton } from './atoms/PopOutPanelButton';
@@ -85,6 +86,10 @@ export function App({ initialTab }: AppProps = {}) {
             void controller.onRetryConnection();
           }}
         />
+      ) : null}
+
+      {controller.activeTab === 'tabs' ? (
+        <TabsPane groups={controller.tabGroups} />
       ) : null}
 
       {controller.activeTab === 'settings' ? (

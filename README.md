@@ -200,7 +200,12 @@ npm test
 11. **Close duplicate tabs** keeps the most recently active copy of each page.
     Right-click the same button to close tabs you have not looked at in a while
     — it asks first, naming how many and how old the oldest is. The threshold is
-    on Settings → **Tools**; leave it empty for the default of 24 days. Pinned tabs, the
+    on Settings → **Tools**; leave it empty for the default of 24 days.
+    The **Tabs** tab groups every open tab: Azure DevOps by its own sections,
+    and anywhere else by domains you add on Settings → **Tools**. Add just the
+    domain to start, then narrow it into sub-domains or paths once you have seen
+    what lands in it. Oldest first, with **✕** to close a tab and the name to
+    switch to it. Pinned tabs, the
     tab you are on, and anything playing audio are left alone.
 12. The pop-out button beside **Close duplicate tabs** moves the panel into a
     window of its own — useful on a second screen, since the browser's side

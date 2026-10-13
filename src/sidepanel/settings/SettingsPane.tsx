@@ -23,8 +23,7 @@ import classes from './SettingsCard.module.css';
 import card from '../atoms/Card.module.css';
 import { FavoritesEditor } from './FavoritesEditor';
 import { SettingsHelp } from './SettingsHelp';
-import { AdoTabsList } from './AdoTabsList';
-import { useAdoTabs } from '@/sidepanel/useAdoTabs';
+import { TabGroupsEditor } from './TabGroupsEditor';
 import {
   DEFAULT_STALE_TAB_DAYS,
   resolveStaleTabDays
@@ -65,16 +64,6 @@ export function SettingsPane({
   const [todoStatesText, setTodoStatesText] = useState(() =>
     settings.todoStates.join(', ')
   );
-  const { groups: adoTabGroups } = useAdoTabs();
-
-  /** Raises a tab, and its window with it: a tab in a window behind the one in
-   *  front is activated without being seen otherwise. */
-  async function switchToTab(id: number, windowId: number | null) {
-    await chrome.tabs.update(id, { active: true });
-    if (windowId !== null) {
-      await chrome.windows.update(windowId, { focused: true });
-    }
-  }
 
   const [refreshingIcons, setRefreshingIcons] = useState(false);
   const [iconRefreshStatus, setIconRefreshStatus] = useState<string | null>(
@@ -254,6 +243,7 @@ export function SettingsPane({
       quickTaskParentId: settings.quickTaskParentId.trim(),
       quickTaskArchiveId: settings.quickTaskArchiveId.trim(),
       staleTabDays: settings.staleTabDays.trim(),
+      tabGroups: settings.tabGroups,
       bookmarkFolderName: settings.bookmarkFolderName.trim(),
       themeOverrides: settings.themeOverrides
     },
@@ -580,22 +570,20 @@ export function SettingsPane({
 
           <hr className={classes.separator} />
 
-          <h3 className={classes.sectionHeading}>Open Azure DevOps tabs</h3>
-          <SettingsHelp summary="About this list">
+          <h3 className={classes.sectionHeading}>Tab groups</h3>
+          <SettingsHelp summary="About tab groups">
             <p>
-              Every Azure DevOps tab you have open, grouped by the part of it
-              they belong to and oldest first. The <strong>✕</strong> closes a
-              tab; the name switches to it.
+              The <strong>Tabs</strong> tab groups your open tabs. Azure DevOps
+              is grouped by its own sections already; add a domain here to give
+              anywhere else a group too. Start with just the domain — narrow it
+              into sub-domains or paths once you have seen what lands in it.
             </p>
           </SettingsHelp>
 
-          <AdoTabsList
-            groups={adoTabGroups}
-            onClose={(id) => {
-              void chrome.tabs.remove(id);
-            }}
-            onSwitchTo={(id, windowId) => {
-              void switchToTab(id, windowId);
+          <TabGroupsEditor
+            groups={settings.tabGroups}
+            onChange={(tabGroups) => {
+              onChange({ ...settings, tabGroups });
             }}
           />
 

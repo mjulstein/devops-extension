@@ -72,3 +72,7 @@
   color: var(--color-text-muted);
   margin: 0;
 }
+
+.pane {
+  padding-block: 4px;
+}
