@@ -51,7 +51,7 @@ import {
 } from './workItemsDateRange';
 import { navigateToWorkItem } from './navigateToWorkItem';
 import { deduplicateTabs } from './deduplicateTabs';
-import { closeStaleTabs, STALE_TAB_DAYS } from './staleTabs';
+import { closeStaleTabs, resolveStaleTabDays } from './staleTabs';
 import {
   fetchOrphanWorkItems,
   parentWorkItems
@@ -2035,12 +2035,16 @@ export function useSidepanelController({
    * list of addresses nobody reads.
    */
   async function onCloseStaleTabs() {
-    const closed = await closeStaleTabs((message) => window.confirm(message));
+    const days = resolveStaleTabDays(savedSettings.staleTabDays);
+    const closed = await closeStaleTabs(
+      (message) => window.confirm(message),
+      days
+    );
     setCreateTaskStatusMessage(
       closed > 0
         ? {
             kind: 'success',
-            text: `Closed ${closed} tab${closed === 1 ? '' : 's'} untouched for ${STALE_TAB_DAYS} days.`
+            text: `Closed ${closed} tab${closed === 1 ? '' : 's'} untouched for ${days} days.`
           }
         : {
             kind: 'info',
@@ -2234,6 +2238,7 @@ export function useSidepanelController({
     onActiveItemBannerClick,
     onDeduplicateTabs,
     onCloseStaleTabs,
+    staleTabDays: resolveStaleTabDays(savedSettings.staleTabDays),
     onPopOutPanel,
     onChangeDebugLogs: setDebugLogs,
     onChangeSettings: onChangeSettings,
@@ -2269,6 +2274,7 @@ function getTrimmedSettingsFromState(settings: Settings): Settings {
     todoStates: normalizeTodoStates(settings.todoStates),
     quickTaskParentId: settings.quickTaskParentId.trim(),
     quickTaskArchiveId: settings.quickTaskArchiveId.trim(),
+    staleTabDays: settings.staleTabDays.trim(),
     bookmarkFolderName: settings.bookmarkFolderName.trim(),
     // Not text, so there is nothing to trim — carried through as it is, or
     // saving would wipe every colour the user set.

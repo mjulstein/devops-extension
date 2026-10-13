@@ -1,10 +1,11 @@
 import classes from './DeduplicateTabsButton.module.css';
 import { Button } from './Button';
-import { STALE_TAB_DAYS } from '../staleTabs';
 
 interface DeduplicateTabsButtonProps {
   onClick: () => void;
   onCloseStale: () => void;
+  /** The threshold in force, so the tooltip names the number it will use. */
+  staleTabDays: number;
 }
 
 /**
@@ -17,11 +18,12 @@ interface DeduplicateTabsButtonProps {
  */
 export function DeduplicateTabsButton({
   onClick,
-  onCloseStale
+  onCloseStale,
+  staleTabDays
 }: DeduplicateTabsButtonProps) {
   return (
     <Button
-      description={`Close duplicate tabs (keeps most recently active). Right-click to close tabs untouched for ${STALE_TAB_DAYS} days.`}
+      description={`Close duplicate tabs (keeps most recently active). Right-click to close tabs untouched for ${staleTabDays} days.`}
       onClick={onClick}
       onContextMenu={(event) => {
         event.preventDefault();

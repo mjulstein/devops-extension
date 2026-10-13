@@ -9,8 +9,28 @@
 // it is still in use is left alone, and a tab whose age cannot be established
 // is never closed on a guess.
 
-/** How long a tab goes untouched before it is offered up. */
-export const STALE_TAB_DAYS = 24;
+/**
+ * How long a tab goes untouched before it is offered up, when nothing is set.
+ *
+ * A default rather than a constant now: how long a tab is allowed to sit before
+ * it stops being a tab you are coming back to is a judgement about how somebody
+ * works, not a fact, so it is a setting with this as the starting point.
+ */
+export const DEFAULT_STALE_TAB_DAYS = 24;
+
+/**
+ * The threshold in force.
+ *
+ * Stored as text so the field can be cleared, which is how the default is asked
+ * for. Anything unreadable, zero or negative falls back too: a threshold of no
+ * days would offer up every tab the moment it was opened.
+ */
+export function resolveStaleTabDays(value: string | undefined): number {
+  const days = Number((value ?? '').trim());
+  return Number.isFinite(days) && days >= 1
+    ? Math.floor(days)
+    : DEFAULT_STALE_TAB_DAYS;
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -34,7 +54,7 @@ export interface StaleTabCandidate {
 export function selectStaleTabs(
   tabs: StaleTabCandidate[],
   now: number,
-  maxAgeDays: number = STALE_TAB_DAYS
+  maxAgeDays: number = DEFAULT_STALE_TAB_DAYS
 ): number[] {
   const cutoff = now - maxAgeDays * DAY_MS;
 
@@ -56,10 +76,11 @@ export function selectStaleTabs(
 export function describeStaleTabs(
   tabs: StaleTabCandidate[],
   ids: number[],
-  now: number
+  now: number,
+  maxAgeDays: number = DEFAULT_STALE_TAB_DAYS
 ): string {
   if (ids.length === 0) {
-    return `No tabs have gone ${STALE_TAB_DAYS} days untouched.`;
+    return `No tabs have gone ${maxAgeDays} days untouched.`;
   }
   const oldest = tabs
     .filter((tab) => typeof tab.id === 'number' && ids.includes(tab.id))
@@ -68,17 +89,21 @@ export function describeStaleTabs(
       now
     );
   const days = Math.floor((now - oldest) / DAY_MS);
-  return `Close ${ids.length} tab${ids.length === 1 ? '' : 's'} untouched for ${STALE_TAB_DAYS} days or more? The oldest is ${days} days old.`;
+  return `Close ${ids.length} tab${ids.length === 1 ? '' : 's'} untouched for ${maxAgeDays} days or more? The oldest is ${days} days old.`;
 }
 
 /** Finds and closes them, returning how many went. */
 export async function closeStaleTabs(
   confirm: (message: string) => boolean,
+  maxAgeDays: number = DEFAULT_STALE_TAB_DAYS,
   now: number = Date.now()
 ): Promise<number> {
   const tabs = await chrome.tabs.query({});
-  const ids = selectStaleTabs(tabs, now);
-  if (ids.length === 0 || !confirm(describeStaleTabs(tabs, ids, now))) {
+  const ids = selectStaleTabs(tabs, now, maxAgeDays);
+  if (
+    ids.length === 0 ||
+    !confirm(describeStaleTabs(tabs, ids, now, maxAgeDays))
+  ) {
     return 0;
   }
   await chrome.tabs.remove(ids);

@@ -15,6 +15,12 @@ export interface Settings {
    */
   quickTaskArchiveId: string;
   /**
+   * How many days a tab may go untouched before the deduplicate button's
+   * right-click offers to close it. Stored as text so the field can be cleared,
+   * which is how the default is asked for.
+   */
+  staleTabDays: string;
+  /**
    * Bookmarks folder that favorites are mirrored into, so they also appear in
    * omnibox autocomplete. Empty disables the mirror — the name is the user's to
    * choose and is never assumed.

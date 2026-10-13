@@ -49,6 +49,7 @@ export function App({ initialTab }: AppProps = {}) {
           onCloseStale={() => {
             void controller.onCloseStaleTabs();
           }}
+          staleTabDays={controller.staleTabDays}
         />
         <PopOutPanelButton
           onClick={() => {

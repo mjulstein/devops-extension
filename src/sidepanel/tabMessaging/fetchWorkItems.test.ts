@@ -27,6 +27,7 @@ describe('fetchWorkItems.test.ts', () => {
         todoStates: [],
         quickTaskParentId: '',
         quickTaskArchiveId: '',
+        staleTabDays: '',
         bookmarkFolderName: '',
         themeOverrides: { light: {}, dark: {} }
       },
@@ -74,6 +75,7 @@ describe('fetchWorkItems.test.ts', () => {
           todoStates: [],
           quickTaskParentId: '',
           quickTaskArchiveId: '',
+          staleTabDays: '',
           bookmarkFolderName: '',
           themeOverrides: { light: {}, dark: {} }
         },
@@ -100,6 +102,7 @@ describe('fetchWorkItems.test.ts', () => {
         todoStates: [],
         quickTaskParentId: '',
         quickTaskArchiveId: '',
+        staleTabDays: '',
         bookmarkFolderName: '',
         themeOverrides: { light: {}, dark: {} }
       },

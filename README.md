@@ -198,8 +198,9 @@ npm test
     assigned to somebody else. Type the state name your process uses and press
     **Find**.
 11. **Close duplicate tabs** keeps the most recently active copy of each page.
-    Right-click the same button to close tabs you have not looked at in 24 days
-    — it asks first, naming how many and how old the oldest is. Pinned tabs, the
+    Right-click the same button to close tabs you have not looked at in a while
+    — it asks first, naming how many and how old the oldest is. The threshold is
+    on Settings → **Tools**; leave it empty for the default of 24 days. Pinned tabs, the
     tab you are on, and anything playing audio are left alone.
 12. The pop-out button beside **Close duplicate tabs** moves the panel into a
     window of its own — useful on a second screen, since the browser's side

@@ -1,7 +1,8 @@
 import {
   describeStaleTabs,
+  resolveStaleTabDays,
   selectStaleTabs,
-  STALE_TAB_DAYS,
+  DEFAULT_STALE_TAB_DAYS,
   type StaleTabCandidate
 } from './staleTabs';
 
@@ -24,8 +25,10 @@ describe('selectStaleTabs', () => {
   });
 
   it('leaves a tab exactly at the boundary alone', () => {
-    expect(selectStaleTabs([tab(1, STALE_TAB_DAYS)], now)).toEqual([]);
-    expect(selectStaleTabs([tab(1, STALE_TAB_DAYS + 1)], now)).toEqual([1]);
+    expect(selectStaleTabs([tab(1, DEFAULT_STALE_TAB_DAYS)], now)).toEqual([]);
+    expect(selectStaleTabs([tab(1, DEFAULT_STALE_TAB_DAYS + 1)], now)).toEqual([
+      1
+    ]);
   });
 
   it('keeps a pinned tab, because pinning says keep this', () => {
@@ -61,13 +64,55 @@ describe('describeStaleTabs', () => {
   it('says how many and how old the oldest is', () => {
     const tabs = [tab(1, 30), tab(2, 40)];
     expect(describeStaleTabs(tabs, [1, 2], now)).toBe(
-      `Close 2 tabs untouched for ${STALE_TAB_DAYS} days or more? The oldest is 40 days old.`
+      `Close 2 tabs untouched for ${DEFAULT_STALE_TAB_DAYS} days or more? The oldest is 40 days old.`
     );
   });
 
   it('says plainly when there is nothing to close', () => {
     expect(describeStaleTabs([], [], now)).toBe(
-      `No tabs have gone ${STALE_TAB_DAYS} days untouched.`
+      `No tabs have gone ${DEFAULT_STALE_TAB_DAYS} days untouched.`
+    );
+  });
+});
+
+describe('resolveStaleTabDays', () => {
+  it('uses the default when the field is empty', () => {
+    // Clearing the box is how the default is asked for.
+    expect(resolveStaleTabDays('')).toBe(DEFAULT_STALE_TAB_DAYS);
+    expect(resolveStaleTabDays('   ')).toBe(DEFAULT_STALE_TAB_DAYS);
+    expect(resolveStaleTabDays(undefined)).toBe(DEFAULT_STALE_TAB_DAYS);
+  });
+
+  it('takes a number that was typed', () => {
+    expect(resolveStaleTabDays('7')).toBe(7);
+    expect(resolveStaleTabDays(' 90 ')).toBe(90);
+  });
+
+  it('falls back rather than offering up every tab', () => {
+    // Zero or less would make every tab stale the moment it opened.
+    expect(resolveStaleTabDays('0')).toBe(DEFAULT_STALE_TAB_DAYS);
+    expect(resolveStaleTabDays('-5')).toBe(DEFAULT_STALE_TAB_DAYS);
+    expect(resolveStaleTabDays('soon')).toBe(DEFAULT_STALE_TAB_DAYS);
+  });
+
+  it('ignores a fraction of a day', () => {
+    expect(resolveStaleTabDays('7.9')).toBe(7);
+  });
+});
+
+describe('the threshold reaching the rest', () => {
+  it('selects against the days it is given, not the default', () => {
+    expect(
+      selectStaleTabs([tab(1, 10)], now, resolveStaleTabDays('7'))
+    ).toEqual([1]);
+    expect(selectStaleTabs([tab(1, 10)], now, resolveStaleTabDays(''))).toEqual(
+      []
+    );
+  });
+
+  it('names those days when it asks', () => {
+    expect(describeStaleTabs([tab(1, 10)], [1], now, 7)).toContain(
+      'untouched for 7 days or more'
     );
   });
 });
