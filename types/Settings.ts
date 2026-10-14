@@ -15,6 +15,18 @@ export interface Settings {
    */
   quickTaskArchiveId: string;
   /**
+   * How many days a tab may go untouched before the deduplicate button's
+   * right-click offers to close it. Stored as text so the field can be cleared,
+   * which is how the default is asked for.
+   */
+  staleTabDays: string;
+  /**
+   * Domains whose open tabs get a group of their own on the Tabs tab, each
+   * optionally narrowed into sub-domains or paths. Azure DevOps is grouped by
+   * its own sections and needs no entry here.
+   */
+  tabGroups: TabGroupSetting[];
+  /**
    * Bookmarks folder that favorites are mirrored into, so they also appear in
    * omnibox autocomplete. Empty disables the mirror — the name is the user's to
    * choose and is never assumed.
@@ -27,6 +39,17 @@ export interface Settings {
    * than a full copy of the palette that would silently freeze against it.
    */
   themeOverrides: ThemeOverrides;
+}
+
+export interface TabGroupRule {
+  label: string;
+  match: string;
+}
+
+export interface TabGroupSetting {
+  domain: string;
+  label: string;
+  rules: TabGroupRule[];
 }
 
 export interface ThemeOverrides {

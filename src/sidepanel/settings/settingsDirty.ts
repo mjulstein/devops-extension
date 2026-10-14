@@ -17,7 +17,8 @@ export const SAVABLE_SETTINGS_TABS = [
   'connection',
   'quick',
   'favorites',
-  'theme'
+  'theme',
+  'maintenance'
 ] as const satisfies readonly SettingsTab[];
 
 export type SavableSettingsTab = (typeof SAVABLE_SETTINGS_TABS)[number];
@@ -26,7 +27,8 @@ const FIELDS_BY_TAB: Record<SavableSettingsTab, (keyof Settings)[]> = {
   connection: ['organization', 'project', 'assignedTo', 'todoStates'],
   quick: ['quickTaskParentId', 'quickTaskArchiveId'],
   favorites: ['bookmarkFolderName'],
-  theme: ['themeOverrides']
+  theme: ['themeOverrides'],
+  maintenance: ['staleTabDays', 'tabGroups']
 };
 
 export const SETTINGS_TAB_LABELS: Record<SettingsTab, string> = {

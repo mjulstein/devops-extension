@@ -23,6 +23,23 @@ export type DevOpsSection =
 
 export const TAB_ICON_STORAGE_KEY = 'tabIconCache';
 
+/**
+ * What each section is called, in the order Azure DevOps's own nav lists them.
+ *
+ * One map rather than a label invented at each call site, and its key order is
+ * the order anything grouping by section should group in.
+ */
+export const SECTION_LABELS: Record<DevOpsSection, string> = {
+  overview: 'Overview',
+  boards: 'Boards',
+  repos: 'Repos',
+  pipelines: 'Pipelines',
+  testplans: 'Test Plans',
+  artifacts: 'Artifacts',
+  wiki: 'Wiki',
+  settings: 'Settings'
+};
+
 // URL path fragments used by detectSection (always lower-cased before comparison)
 export const SECTION_PATH_PATTERNS: Record<DevOpsSection, string[]> = {
   overview: [],

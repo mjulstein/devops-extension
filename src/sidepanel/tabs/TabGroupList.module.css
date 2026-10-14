@@ -1,0 +1,130 @@
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  margin: 0 0 2px;
+  color: var(--color-text-secondary);
+}
+
+.count {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* The close first, then the name: closing is what the list is mostly for. */
+.row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+}
+
+.name {
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-inline-size: 0;
+  text-align: start;
+  padding: 3px 4px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.name:hover {
+  background: var(--color-surface-hover);
+}
+
+.title,
+.meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.title {
+  font-size: 12px;
+}
+
+.meta {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.empty {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.pane {
+  padding-block: 4px;
+}
+
+.group {
+  margin-block-end: 2px;
+}
+
+/* The heading is the disclosure control, so it has to look pressable. */
+.heading {
+  cursor: pointer;
+  list-style: none;
+}
+
+.heading::-webkit-details-marker {
+  display: none;
+}
+
+.heading:hover {
+  color: var(--color-text);
+}
+
+/* Holds the column open when a group's newest tab has no icon, so headings
+   line up whether or not there is one to draw. */
+.icon {
+  flex: 0 0 auto;
+  inline-size: 14px;
+  block-size: 14px;
+  border-radius: 3px;
+}
+
+.orderRow {
+  display: flex;
+  justify-content: end;
+  margin-block-end: 6px;
+}
+
+/* Pushed to the end of the heading, so the group's name and count read first
+   and the controls are where the eye lands last. */
+.groupActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-inline-start: auto;
+}
+
+.days {
+  font: inherit;
+  font-size: 11px;
+  inline-size: 46px;
+  box-sizing: border-box;
+  padding: 1px 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}

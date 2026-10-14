@@ -23,6 +23,11 @@ import classes from './SettingsCard.module.css';
 import card from '../atoms/Card.module.css';
 import { FavoritesEditor } from './FavoritesEditor';
 import { SettingsHelp } from './SettingsHelp';
+import { TabGroupsEditor } from './TabGroupsEditor';
+import {
+  DEFAULT_STALE_TAB_DAYS,
+  resolveStaleTabDays
+} from '@/sidepanel/staleTabs';
 import { ShortcutStatus } from './ShortcutStatus';
 import { ThemeEditor } from './ThemeEditor';
 import { Button } from '../atoms/Button';
@@ -59,6 +64,7 @@ export function SettingsPane({
   const [todoStatesText, setTodoStatesText] = useState(() =>
     settings.todoStates.join(', ')
   );
+
   const [refreshingIcons, setRefreshingIcons] = useState(false);
   const [iconRefreshStatus, setIconRefreshStatus] = useState<string | null>(
     null
@@ -236,6 +242,8 @@ export function SettingsPane({
       todoStates: parseTodoStatesInput(todoStatesText),
       quickTaskParentId: settings.quickTaskParentId.trim(),
       quickTaskArchiveId: settings.quickTaskArchiveId.trim(),
+      staleTabDays: settings.staleTabDays.trim(),
+      tabGroups: settings.tabGroups,
       bookmarkFolderName: settings.bookmarkFolderName.trim(),
       themeOverrides: settings.themeOverrides
     },
@@ -532,6 +540,55 @@ export function SettingsPane({
 
       {activeTab === 'maintenance' && (
         <div className={classes.regionBody}>
+          <SettingsHelp summary="About closing old tabs">
+            <p>
+              Right-clicking <strong>Close duplicate tabs</strong> offers to
+              close tabs you have not looked at for this many days. It asks
+              first, and never touches a pinned tab, the tab you are on, or
+              anything playing audio. Leave it empty for the default of{' '}
+              {DEFAULT_STALE_TAB_DAYS} days.
+            </p>
+          </SettingsHelp>
+
+          <label className={classes.fieldLabel}>
+            Close tabs untouched for (days)
+            <input
+              className={classes.textInput}
+              type="number"
+              min={1}
+              inputMode="numeric"
+              placeholder={String(DEFAULT_STALE_TAB_DAYS)}
+              value={settings.staleTabDays}
+              onChange={(event) =>
+                onChange({ ...settings, staleTabDays: event.target.value })
+              }
+            />
+            <span className={classes.helperText}>
+              In force now: {resolveStaleTabDays(settings.staleTabDays)} days.
+            </span>
+          </label>
+
+          <hr className={classes.separator} />
+
+          <h3 className={classes.sectionHeading}>Tab groups</h3>
+          <SettingsHelp summary="About tab groups">
+            <p>
+              The <strong>Tabs</strong> tab groups your open tabs. Azure DevOps
+              is grouped by its own sections already; add a domain here to give
+              anywhere else a group too. Start with just the domain — narrow it
+              into sub-domains or paths once you have seen what lands in it.
+            </p>
+          </SettingsHelp>
+
+          <TabGroupsEditor
+            groups={settings.tabGroups}
+            onChange={(tabGroups) => {
+              onChange({ ...settings, tabGroups });
+            }}
+          />
+
+          <hr className={classes.separator} />
+
           <SettingsHelp summary="About tab icons">
             <p>
               Re-scrape the Azure DevOps section icons from the live page and
