@@ -18,7 +18,7 @@ interface TabGroupsEditorProps {
  * lands in the group — which is why adding one asks for nothing else, and the
  * rules are edited on the group afterwards.
  *
- * Past a bare domain the field is a pattern: `wiki.*​/spaces`, `localhost:3000`,
+ * Past a bare domain the field is a pattern: `wiki.*` followed by `/spaces`, `localhost:3000`,
  * `http://*:1234/path`. `*` stands for any run of characters, a port counts as
  * part of the address, and the scheme is https unless another is typed.
  */

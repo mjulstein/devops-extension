@@ -235,3 +235,33 @@ describe('sortTabGroups', () => {
     ).toEqual([2, 1]);
   });
 });
+
+describe('opening a group that is empty', () => {
+  it('carries an address when the pattern names one place', () => {
+    const [group] = buildTabGroups([], [createTabGroup('example.com')]);
+    expect(group.tabs).toEqual([]);
+    expect(group.openUrl).toBe('https://example.com');
+  });
+
+  it('carries none when the pattern describes many', () => {
+    const [group] = buildTabGroups(
+      [],
+      [{ domain: 'wiki.*', label: 'Wikis', rules: [] }]
+    );
+    expect(group.openUrl).toBeUndefined();
+  });
+
+  it('keeps the address on a narrowed group too', () => {
+    const [group] = buildTabGroups(
+      [],
+      [
+        {
+          domain: 'http://localhost:3000',
+          label: 'Local',
+          rules: [{ label: 'App', match: '/app' }]
+        }
+      ]
+    );
+    expect(group.openUrl).toBe('http://localhost:3000');
+  });
+});

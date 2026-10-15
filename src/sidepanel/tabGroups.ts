@@ -122,10 +122,11 @@ export function buildTabGroups(
 
     const key = `${setting.domain}:${index}`;
     const label = setting.label.trim() || setting.domain;
+    const openUrl = patternToUrl(setting.domain) ?? undefined;
     const rules = setting.rules.filter((rule) => rule.match.trim() !== '');
 
     if (rules.length === 0) {
-      return { key, label, tabs: mine, children: [] };
+      return { key, label, tabs: mine, children: [], openUrl };
     }
 
     const children: TabGroupNode[] = rules.map((rule, ruleIndex) => ({
@@ -149,7 +150,8 @@ export function buildTabGroups(
       key,
       label,
       tabs: [],
-      children: children.filter((child) => child.tabs.length > 0)
+      children: children.filter((child) => child.tabs.length > 0),
+      openUrl
     };
   });
   // Nothing is filtered out: a group you defined stays on the list with

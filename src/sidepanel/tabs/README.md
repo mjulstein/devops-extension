@@ -21,7 +21,7 @@ thing is it":
   [`tabGroupPattern.ts`](../tabGroupPattern.ts).
 
 A definition starts as a bare domain, which matches it and everything under it.
-Past that it is a pattern: `wiki.*​/spaces`, `localhost:3000`,
+Past that it is a pattern: `wiki.*` followed by `/spaces`, `localhost:3000`,
 `http://*:1234/path`. `*` stands for any run of characters, a port is as much
 part of an address as a path, and the scheme is https unless another is written
 — which is the same bargain a typed address makes in the app commands.
