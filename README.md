@@ -204,7 +204,12 @@ npm test
     The **Tabs** tab groups every open tab: Azure DevOps by its own sections,
     and anywhere else by domains you add on Settings → **Tools**. Add just the
     domain to start, then narrow it into sub-domains or paths once you have seen
-    what lands in it. Oldest first, with **✕** to close a tab and the name to
+    what lands in it. A definition can be a pattern — `wiki.*` with `/spaces`,
+    `localhost:3000`, `http://*:1234/path` — where `*` is any run of characters
+    and the scheme is https unless you type another. Groups you define stay
+    listed when empty, with **＋** to open one. Everything ungrouped collects
+    under **Other** by host, and **📌** turns one of those into a group of its
+    own. Drag a group to reorder. Oldest first, with **✕** to close a tab and the name to
     switch to it. Pinned tabs, the
     tab you are on, and anything playing audio are left alone.
 12. The pop-out button beside **Close duplicate tabs** moves the panel into a

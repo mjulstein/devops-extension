@@ -31,6 +31,19 @@ said you go, and empty is exactly when you want the **＋** that opens the first
 tab there. That button appears only where the pattern names one place: a
 wildcard describes many addresses and picks none.
 
+Whatever landed in no group at all comes last, under **Other**, grouped by
+host. A list of what you have open that says nothing about most of it is not a
+list of what you have open. Each host there carries **📌**, which makes it a
+configured group of its own and saves outright — it is a decision taken where
+the group is, and leaving it pending on a tab you are not looking at would lose
+it. Other disappears when everything is claimed: an empty catch-all is noise,
+and unlike a configured group nobody asked for it.
+
+Top-level groups can be dragged to reorder. Only the top level: a narrowed
+group's sub-groups are in the order its rules are, and the catch-all's are
+alphabetical, so there is nowhere to record a different one. The order written
+is of the configured groups, so dragging a built-in section moves nothing.
+
 Rows are ordered oldest first, then by address, so the tabs you have not touched
 come to the top and one repo's tabs sit together. A tab whose age the browser
 does not report sorts last — the rule `staleTabs.ts` uses, because not knowing

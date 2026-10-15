@@ -6,7 +6,9 @@ import {
   type OpenTab
 } from './adoTabs';
 import {
+  buildOtherGroup,
   buildTabGroups,
+  claimedTabIds,
   type TabGroupNode,
   type TabGroupSetting
 } from './tabGroups';
@@ -54,13 +56,16 @@ export function useTabGroups(groupSettings: TabGroupSetting[]): {
   // Azure DevOps's sections first, then the configured domains, all at the same
   // level: by the time you are looking at this you are asking what you have
   // open, not what kind of thing it is.
-  const groups = useMemo(
-    () => [
+  const groups = useMemo(() => {
+    const defined = [
       ...toTabGroupNodes(groupAdoTabs(readAdoTabs(tabs))),
       ...buildTabGroups(tabs, groupSettings)
-    ],
-    [groupSettings, tabs]
-  );
+    ];
+    // Last, and only when it holds something: everything that landed nowhere,
+    // by host, each one a group waiting to be made permanent.
+    const other = buildOtherGroup(tabs, claimedTabIds(defined));
+    return other === null ? defined : [...defined, other];
+  }, [groupSettings, tabs]);
 
   return { groups, refresh };
 }

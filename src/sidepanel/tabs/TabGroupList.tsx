@@ -6,6 +6,12 @@ import {
 } from '@/sidepanel/tabGroups';
 import classes from './TabGroupList.module.css';
 
+/**
+ * The drag payload's type. Ours alone, so a drag from anywhere else is left
+ * for the page to deal with.
+ */
+export const GROUP_DRAG_TYPE = 'text/x-tab-group-key';
+
 interface TabGroupListProps {
   groups: TabGroupNode[];
   onClose: (id: number) => void;
@@ -17,6 +23,10 @@ interface TabGroupListProps {
   onCleanGroup: (group: TabGroupNode, days: number) => void;
   /** Opens a new tab at a group's own address. */
   onOpenGroup: (url: string) => void;
+  /** Makes one of **Other**'s hosts a group of its own. */
+  onPromoteGroup: (domain: string) => void;
+  /** Moves a configured group to where another one sits. */
+  onReorder: (fromKey: string, toKey: string) => void;
   /** The days typed for each group, falling back to the saved threshold. */
   daysFor: (key: string) => number;
   onDaysChange: (key: string, days: string) => void;
@@ -48,6 +58,8 @@ export function TabGroupList({
   onToggleCollapsed,
   onCleanGroup,
   onOpenGroup,
+  onPromoteGroup,
+  onReorder,
   daysFor,
   onDaysChange,
   depth = 0
@@ -63,6 +75,30 @@ export function TabGroupList({
           key={group.key}
           className={classes.group}
           style={{ paddingInlineStart: depth * 10 }}
+          // Only the top level drags: the sub-groups of a narrowed group are in
+          // the order its rules are, and the catch-all's are alphabetical, so
+          // there is nowhere to record a different one.
+          draggable={depth === 0}
+          onDragStart={(event) => {
+            event.dataTransfer.setData(GROUP_DRAG_TYPE, group.key);
+            event.dataTransfer.effectAllowed = 'move';
+          }}
+          onDragOver={(event) => {
+            if (
+              depth === 0 &&
+              event.dataTransfer.types.includes(GROUP_DRAG_TYPE)
+            ) {
+              event.preventDefault();
+              event.dataTransfer.dropEffect = 'move';
+            }
+          }}
+          onDrop={(event) => {
+            const fromKey = event.dataTransfer.getData(GROUP_DRAG_TYPE);
+            if (fromKey !== '' && fromKey !== group.key) {
+              event.preventDefault();
+              onReorder(fromKey, group.key);
+            }
+          }}
           open={!collapsed.has(group.key)}
           onToggle={(event) => {
             const isOpen = event.currentTarget.open;
@@ -104,6 +140,17 @@ export function TabGroupList({
                   onDaysChange(group.key, event.target.value);
                 }}
               />
+              {group.promoteDomain !== undefined && (
+                <Button
+                  size="compact"
+                  variant="quiet"
+                  icon="📌"
+                  description={`Make ${group.promoteDomain} a group of its own`}
+                  onClick={() => {
+                    onPromoteGroup(group.promoteDomain ?? '');
+                  }}
+                />
+              )}
               {group.openUrl !== undefined && (
                 <Button
                   size="compact"
@@ -167,6 +214,8 @@ export function TabGroupList({
               onToggleCollapsed={onToggleCollapsed}
               onCleanGroup={onCleanGroup}
               onOpenGroup={onOpenGroup}
+              onPromoteGroup={onPromoteGroup}
+              onReorder={onReorder}
               daysFor={daysFor}
               onDaysChange={onDaysChange}
               depth={depth + 1}

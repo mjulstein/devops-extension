@@ -39,6 +39,8 @@ function render(props: Partial<Parameters<typeof TabGroupList>[0]> = {}) {
       onToggleCollapsed={() => undefined}
       onCleanGroup={() => undefined}
       onOpenGroup={() => undefined}
+      onPromoteGroup={() => undefined}
+      onReorder={() => undefined}
       daysFor={() => 24}
       onDaysChange={() => undefined}
       {...props}
@@ -96,6 +98,12 @@ describe('TabGroupList', () => {
   it('sections the repos group per repository', () => {
     const markup = render();
     expect(markup).toContain('>repo<');
+  });
+
+  it('lets a top-level group be dragged, and its children not', () => {
+    const markup = render();
+    // One draggable per top-level group; the repo sub-group is not one.
+    expect(markup.split('draggable="true"').length - 1).toBe(groups.length);
   });
 
   it('gives each group a days box and a cleanup button', () => {

@@ -1,8 +1,11 @@
 import {
+  buildOtherGroup,
   buildTabGroups,
+  claimedTabIds,
   createTabGroup,
   groupFavIconUrl,
   matchTarget,
+  reorderTabGroups,
   sortTabGroups,
   type TabGroupSetting
 } from './tabGroups';
@@ -263,5 +266,92 @@ describe('opening a group that is empty', () => {
       ]
     );
     expect(group.openUrl).toBe('http://localhost:3000');
+  });
+});
+
+describe('buildOtherGroup', () => {
+  const tabs = [
+    tab(1, 'https://wiki.example.com/a', 5),
+    tab(2, 'https://wiki.example.com/b', 1),
+    tab(3, 'https://news.test/story', 2)
+  ];
+
+  it('collects what nothing claimed, by host', () => {
+    const other = buildOtherGroup(tabs, new Set());
+    expect(other?.label).toBe('Other');
+    expect(other?.children.map((child) => child.label)).toEqual([
+      'news.test',
+      'wiki.example.com'
+    ]);
+  });
+
+  it('offers each host as a group waiting to be made', () => {
+    const other = buildOtherGroup(tabs, new Set());
+    expect(other?.children[0].promoteDomain).toBe('news.test');
+  });
+
+  it('leaves out what a group already holds', () => {
+    const other = buildOtherGroup(tabs, new Set([1, 2]));
+    expect(other?.children.map((child) => child.label)).toEqual(['news.test']);
+  });
+
+  it('is nothing at all when everything is claimed', () => {
+    // An empty catch-all is noise, and nobody asked for it to be there.
+    expect(buildOtherGroup(tabs, new Set([1, 2, 3]))).toBeNull();
+  });
+
+  it('orders a host own tabs oldest first', () => {
+    const other = buildOtherGroup(tabs, new Set([3]));
+    expect(other?.children[0].tabs.map((entry) => entry.id)).toEqual([1, 2]);
+  });
+});
+
+describe('claimedTabIds', () => {
+  it('counts the tabs of a group and its children', () => {
+    const groups = buildTabGroups(
+      [
+        tab(1, 'https://example.com/spaces/a', 1),
+        tab(2, 'https://example.com/b', 1)
+      ],
+      [
+        {
+          domain: 'example.com',
+          label: 'Example',
+          rules: [{ label: 'Spaces', match: '/spaces/' }]
+        }
+      ]
+    );
+    expect([...claimedTabIds(groups)].sort()).toEqual([1, 2]);
+  });
+});
+
+describe('reorderTabGroups', () => {
+  const settings = [
+    createTabGroup('a.test'),
+    createTabGroup('b.test'),
+    createTabGroup('c.test')
+  ];
+  const keyOf = (index: number) => `${settings[index].domain}:${index}`;
+
+  it('moves a group to where another sits', () => {
+    expect(
+      reorderTabGroups(settings, keyOf(2), keyOf(0)).map((g) => g.domain)
+    ).toEqual(['c.test', 'a.test', 'b.test']);
+  });
+
+  it('moves one down as readily as up', () => {
+    expect(
+      reorderTabGroups(settings, keyOf(0), keyOf(2)).map((g) => g.domain)
+    ).toEqual(['b.test', 'c.test', 'a.test']);
+  });
+
+  it('does nothing for a key that is not a configured group', () => {
+    // A built-in section or the catch-all has nowhere to record an order.
+    expect(reorderTabGroups(settings, 'ado:repos', keyOf(0))).toBe(settings);
+    expect(reorderTabGroups(settings, keyOf(0), 'other')).toBe(settings);
+  });
+
+  it('does nothing when a group is dropped on itself', () => {
+    expect(reorderTabGroups(settings, keyOf(1), keyOf(1))).toBe(settings);
   });
 });

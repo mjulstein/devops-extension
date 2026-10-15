@@ -53,6 +53,7 @@ import { navigateToWorkItem } from './navigateToWorkItem';
 import { deduplicateTabs } from './deduplicateTabs';
 import { closeStaleTabs, resolveStaleTabDays } from './staleTabs';
 import { useTabGroups } from './useTabGroups';
+import { createTabGroup, reorderTabGroups } from './tabGroups';
 import {
   fetchOrphanWorkItems,
   parentWorkItems
@@ -2055,6 +2056,34 @@ export function useSidepanelController({
     );
   }
 
+  /**
+   * Makes one of the catch-all's hosts a group of its own.
+   *
+   * Saved outright rather than left as an unsaved edit on the Settings tab:
+   * it is a decision taken where the group is, and leaving it pending on a tab
+   * the user is not looking at would lose it.
+   */
+  async function onPromoteTabGroup(domain: string) {
+    const next = [...savedSettings.tabGroups, createTabGroup(domain)];
+    const updated = { ...savedSettings, tabGroups: next };
+    await saveSettings(updated);
+    setSettings(updated);
+    setSavedSettings(updated);
+    pushDebugLog('success', `Added ${domain} as a tab group.`);
+  }
+
+  /** Moves a configured group, saving the order it leaves behind. */
+  async function onReorderTabGroups(fromKey: string, toKey: string) {
+    const next = reorderTabGroups(savedSettings.tabGroups, fromKey, toKey);
+    if (next === savedSettings.tabGroups) {
+      return;
+    }
+    const updated = { ...savedSettings, tabGroups: next };
+    await saveSettings(updated);
+    setSettings(updated);
+    setSavedSettings(updated);
+  }
+
   async function onToggleRecentFeaturesCollapsed() {
     const nextValue = !isRecentFeaturesCollapsed;
     setIsRecentFeaturesCollapsed(nextValue);
@@ -2242,6 +2271,8 @@ export function useSidepanelController({
     onCloseStaleTabs,
     staleTabDays: resolveStaleTabDays(savedSettings.staleTabDays),
     tabGroups,
+    onPromoteTabGroup,
+    onReorderTabGroups,
     onPopOutPanel,
     onChangeDebugLogs: setDebugLogs,
     onChangeSettings: onChangeSettings,

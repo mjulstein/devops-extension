@@ -51,6 +51,12 @@ export interface TabGroupNode {
    * describe many addresses and pick none.
    */
   openUrl?: string;
+  /**
+   * The host this group would be defined as, set only on the sub-groups of
+   * **Other**. They are the ones that are not a group yet, and this is what
+   * makes one of them permanent.
+   */
+  promoteDomain?: string;
 }
 
 function hostOf(url: string): string | null {
@@ -226,4 +232,94 @@ export function createTabGroup(domain: string): TabGroupSetting {
     .replace(/^https?:\/\//, '');
   const host = trimmed.split('/')[0].replace(/^\.+/, '');
   return { domain: host, label: host, rules: [] };
+}
+
+/** The label for the catch-all, and the key its sub-groups hang from. */
+export const OTHER_GROUP_KEY = 'other';
+
+/**
+ * Everything that landed in no group, by host.
+ *
+ * A list of what you have open that says nothing about most of it is not a
+ * list of what you have open. The host is the grouping because it is the one
+ * thing every address has and the one you would name if you were defining a
+ * group for it — which is exactly what the sub-groups offer to become.
+ *
+ * Null when everything is already claimed: an empty catch-all is noise, and
+ * unlike a configured group nobody asked for it to be there.
+ */
+export function buildOtherGroup(
+  tabs: OpenTab[],
+  claimed: Set<number>
+): TabGroupNode | null {
+  const rest = tabs
+    .map(toGroupedTab)
+    .filter((tab): tab is GroupedTab => tab !== null)
+    .filter((tab) => !claimed.has(tab.id));
+
+  if (rest.length === 0) {
+    return null;
+  }
+
+  const byHost = new Map<string, GroupedTab[]>();
+  for (const tab of rest) {
+    const host = hostOf(tab.url) ?? tab.url;
+    byHost.set(host, [...(byHost.get(host) ?? []), tab]);
+  }
+
+  return {
+    key: OTHER_GROUP_KEY,
+    label: 'Other',
+    tabs: [],
+    children: [...byHost]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([host, hostTabs]) => ({
+        key: `${OTHER_GROUP_KEY}:${host}`,
+        label: host,
+        tabs: [...hostTabs].sort(compareTabsByAgeThenPath),
+        children: [],
+        promoteDomain: host
+      }))
+  };
+}
+
+/** Every tab id a group and its children hold. */
+export function claimedTabIds(groups: TabGroupNode[]): Set<number> {
+  const ids = new Set<number>();
+  for (const group of groups) {
+    for (const tab of allTabsIn(group)) {
+      ids.add(tab.id);
+    }
+  }
+  return ids;
+}
+
+/**
+ * Moves one group to where another sits.
+ *
+ * By key rather than by index, because the list the user dragged in is the one
+ * with the built-in sections and the catch-all in it, while the order being
+ * written is of the configured groups alone. A key that is not a configured
+ * group — a section, **Other** — moves nothing: there is nowhere to record it.
+ */
+export function reorderTabGroups(
+  settings: TabGroupSetting[],
+  fromKey: string,
+  toKey: string
+): TabGroupSetting[] {
+  const indexOf = (key: string) =>
+    settings.findIndex(
+      (setting, index) => `${setting.domain}:${index}` === key
+    );
+
+  const from = indexOf(fromKey);
+  const to = indexOf(toKey);
+  if (from < 0 || to < 0 || from === to) {
+    return settings;
+  }
+
+  const next = [...settings];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
 }

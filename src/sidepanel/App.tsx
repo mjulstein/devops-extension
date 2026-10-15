@@ -92,6 +92,12 @@ export function App({ initialTab }: AppProps = {}) {
         <TabsPane
           groups={controller.tabGroups}
           staleTabDays={controller.staleTabDays}
+          onPromoteGroup={(domain) => {
+            void controller.onPromoteTabGroup(domain);
+          }}
+          onReorderGroups={(fromKey, toKey) => {
+            void controller.onReorderTabGroups(fromKey, toKey);
+          }}
         />
       ) : null}
 

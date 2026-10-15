@@ -16,6 +16,10 @@ interface TabsPaneProps {
   groups: TabGroupNode[];
   /** The saved threshold, which each group's days box starts from. */
   staleTabDays: number;
+  /** Adds a host from **Other** to the configured groups, and saves. */
+  onPromoteGroup: (domain: string) => void;
+  /** Moves a configured group to where another one sits, and saves. */
+  onReorderGroups: (fromKey: string, toKey: string) => void;
 }
 
 /**
@@ -25,7 +29,12 @@ interface TabsPaneProps {
  * the same level, because by the time you are looking at this you are asking
  * "what have I got open", not "what kind of thing is it".
  */
-export function TabsPane({ groups, staleTabDays }: TabsPaneProps) {
+export function TabsPane({
+  groups,
+  staleTabDays,
+  onPromoteGroup,
+  onReorderGroups
+}: TabsPaneProps) {
   const [order, setOrder] = useTabOrder();
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   // Per group, and only while the panel is open: it is a number you reach for
@@ -87,6 +96,8 @@ export function TabsPane({ groups, staleTabDays }: TabsPaneProps) {
         onOpenGroup={(url) => {
           void chrome.tabs.create({ url });
         }}
+        onPromoteGroup={onPromoteGroup}
+        onReorder={onReorderGroups}
         daysFor={daysFor}
         onDaysChange={(key, value) => {
           setDays((current) => ({ ...current, [key]: value }));
