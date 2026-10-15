@@ -38,6 +38,7 @@ function render(props: Partial<Parameters<typeof TabGroupList>[0]> = {}) {
       collapsed={new Set()}
       onToggleCollapsed={() => undefined}
       onCleanGroup={() => undefined}
+      onOpenGroup={() => undefined}
       daysFor={() => 24}
       onDaysChange={() => undefined}
       {...props}

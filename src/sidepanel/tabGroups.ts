@@ -7,9 +7,12 @@
 //
 // A group is a domain first because that is the thing you can name without
 // looking anything up. The narrowing comes second, once you have seen what
-// lands in it, which is why adding a domain takes no rules at all.
+// lands in it, which is why adding a domain takes no rules at all. Past a bare
+// domain the definition is a pattern — see `tabGroupPattern.ts` — so a
+// sub-domain and a path, a port, or a local server on http are all one field.
 
 import type { TabGroupRule, TabGroupSetting } from '@/types';
+import { patternToUrl, urlMatchesPattern } from './tabGroupPattern';
 import {
   compareTabsByAgeThenPath,
   readFavIconUrl,
@@ -42,6 +45,12 @@ export interface TabGroupNode {
   /** Tabs directly in this group. Empty when the children hold them all. */
   tabs: GroupedTab[];
   children: TabGroupNode[];
+  /**
+   * Where a new tab for this group would go, when the definition names one
+   * place. Absent for the built-in sections and for wildcarded patterns, which
+   * describe many addresses and pick none.
+   */
+  openUrl?: string;
 }
 
 function hostOf(url: string): string | null {
@@ -50,15 +59,6 @@ function hostOf(url: string): string | null {
   } catch {
     return null;
   }
-}
-
-/** Whether a host is this domain or something under it. */
-export function hostMatchesDomain(host: string, domain: string): boolean {
-  const wanted = domain.trim().toLowerCase().replace(/^\.+/, '');
-  if (wanted === '') {
-    return false;
-  }
-  return host === wanted || host.endsWith(`.${wanted}`);
 }
 
 function toGroupedTab(tab: OpenTab): GroupedTab | null {
@@ -105,55 +105,56 @@ function matchingRule(rules: TabGroupRule[], url: string): TabGroupRule | null {
  * like before anyone has needed to split it. With rules, the tabs sit in the
  * sub-group that matched first, and whatever matched nothing lands in "Other"
  * — dropping it would make the group quietly lie about what is open.
+ *
+ * A group with nothing open stays on the list. It is somewhere you said you go,
+ * and an empty one is exactly when you want the button that opens the first tab.
  */
 export function buildTabGroups(
   tabs: OpenTab[],
   settings: TabGroupSetting[]
 ): TabGroupNode[] {
-  return settings
-    .map((setting, index) => {
-      const mine = tabs
-        .map(toGroupedTab)
-        .filter((tab): tab is GroupedTab => tab !== null)
-        .filter((tab) => {
-          const host = hostOf(tab.url);
-          return host !== null && hostMatchesDomain(host, setting.domain);
-        })
-        .sort(compareTabsByAgeThenPath);
+  return settings.map((setting, index) => {
+    const mine = tabs
+      .map(toGroupedTab)
+      .filter((tab): tab is GroupedTab => tab !== null)
+      .filter((tab) => urlMatchesPattern(tab.url, setting.domain))
+      .sort(compareTabsByAgeThenPath);
 
-      const key = `${setting.domain}:${index}`;
-      const label = setting.label.trim() || setting.domain;
-      const rules = setting.rules.filter((rule) => rule.match.trim() !== '');
+    const key = `${setting.domain}:${index}`;
+    const label = setting.label.trim() || setting.domain;
+    const rules = setting.rules.filter((rule) => rule.match.trim() !== '');
 
-      if (rules.length === 0) {
-        return { key, label, tabs: mine, children: [] };
-      }
+    if (rules.length === 0) {
+      return { key, label, tabs: mine, children: [] };
+    }
 
-      const children: TabGroupNode[] = rules.map((rule, ruleIndex) => ({
-        key: `${key}:${ruleIndex}`,
-        label: rule.label.trim() || rule.match,
-        tabs: mine.filter((tab) => matchingRule(rules, tab.url) === rule),
+    const children: TabGroupNode[] = rules.map((rule, ruleIndex) => ({
+      key: `${key}:${ruleIndex}`,
+      label: rule.label.trim() || rule.match,
+      tabs: mine.filter((tab) => matchingRule(rules, tab.url) === rule),
+      children: []
+    }));
+
+    const rest = mine.filter((tab) => matchingRule(rules, tab.url) === null);
+    if (rest.length > 0) {
+      children.push({
+        key: `${key}:other`,
+        label: 'Other',
+        tabs: rest,
         children: []
-      }));
+      });
+    }
 
-      const rest = mine.filter((tab) => matchingRule(rules, tab.url) === null);
-      if (rest.length > 0) {
-        children.push({
-          key: `${key}:other`,
-          label: 'Other',
-          tabs: rest,
-          children: []
-        });
-      }
-
-      return {
-        key,
-        label,
-        tabs: [],
-        children: children.filter((child) => child.tabs.length > 0)
-      };
-    })
-    .filter((group) => group.tabs.length > 0 || group.children.length > 0);
+    return {
+      key,
+      label,
+      tabs: [],
+      children: children.filter((child) => child.tabs.length > 0)
+    };
+  });
+  // Nothing is filtered out: a group you defined stays on the list with
+  // nothing in it, because an empty one is still somewhere you meant to go and
+  // is where you open the first tab from.
 }
 
 export type TabOrder = 'oldest' | 'newest';

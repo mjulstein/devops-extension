@@ -47,10 +47,18 @@ export interface TabGroupRule {
 }
 
 export interface TabGroupSetting {
+  /**
+   * What the group matches. A bare domain matches it and everything under it;
+   * past that it is a pattern — `wiki.*​/spaces`, `localhost:3000`,
+   * `*:1234/path` — where `*` stands for any run of characters and a port is as
+   * much part of an address as a path. The scheme defaults to https; write
+   * `http://localhost:1234/path` when you mean the other one.
+   */
   domain: string;
   label: string;
   rules: TabGroupRule[];
 }
+
 
 export interface ThemeOverrides {
   light: Record<string, string>;

@@ -2,7 +2,6 @@ import {
   buildTabGroups,
   createTabGroup,
   groupFavIconUrl,
-  hostMatchesDomain,
   matchTarget,
   sortTabGroups,
   type TabGroupSetting
@@ -15,22 +14,6 @@ const now = 1_000 * DAY;
 function tab(id: number, url: string, daysOld = 1): OpenTab {
   return { id, url, title: `Tab ${id}`, lastAccessed: now - daysOld * DAY };
 }
-
-describe('hostMatchesDomain', () => {
-  it('matches the domain itself and anything under it', () => {
-    expect(hostMatchesDomain('example.com', 'example.com')).toBe(true);
-    expect(hostMatchesDomain('wiki.example.com', 'example.com')).toBe(true);
-  });
-
-  it('does not match a domain that merely ends the same way', () => {
-    expect(hostMatchesDomain('notexample.com', 'example.com')).toBe(false);
-  });
-
-  it('ignores a leading dot and empty input', () => {
-    expect(hostMatchesDomain('wiki.example.com', '.example.com')).toBe(true);
-    expect(hostMatchesDomain('example.com', '  ')).toBe(false);
-  });
-});
 
 describe('createTabGroup', () => {
   it('takes a domain as typed, however it was typed', () => {
@@ -114,7 +97,9 @@ describe('buildTabGroups', () => {
     expect(group.children[0].tabs.map((entry) => entry.id)).toEqual([1, 2]);
   });
 
-  it('leaves out a sub-group and a group with nothing open', () => {
+  it('leaves out a sub-group with nothing in it, but keeps the group', () => {
+    // A group you defined stays on the list empty: it is somewhere you said
+    // you go, and empty is exactly when you want to open the first tab.
     const groups = buildTabGroups(tabs, [
       {
         domain: 'example.com',
@@ -126,11 +111,15 @@ describe('buildTabGroups', () => {
       },
       createTabGroup('absent.test')
     ]);
-    expect(groups).toHaveLength(1);
+    expect(groups.map((group) => group.label)).toEqual([
+      'Example',
+      'absent.test'
+    ]);
     expect(groups[0].children.map((child) => child.label)).toEqual([
       'Spaces',
       'Other'
     ]);
+    expect(groups[1].tabs).toEqual([]);
   });
 
   it('ignores a rule with nothing to match on', () => {

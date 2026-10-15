@@ -84,6 +84,9 @@ export function TabsPane({ groups, staleTabDays }: TabsPaneProps) {
         collapsed={collapsed}
         onToggleCollapsed={toggleCollapsed}
         onCleanGroup={cleanGroup}
+        onOpenGroup={(url) => {
+          void chrome.tabs.create({ url });
+        }}
         daysFor={daysFor}
         onDaysChange={(key, value) => {
           setDays((current) => ({ ...current, [key]: value }));

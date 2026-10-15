@@ -17,7 +17,19 @@ thing is it":
   same function the favicons use, so the grouping and the icons cannot come to
   disagree about what a page is.
 - **Everything else** comes from the domains configured on Settings → Tools.
-  See [`tabGroups.ts`](../tabGroups.ts).
+  See [`tabGroups.ts`](../tabGroups.ts) and
+  [`tabGroupPattern.ts`](../tabGroupPattern.ts).
+
+A definition starts as a bare domain, which matches it and everything under it.
+Past that it is a pattern: `wiki.*​/spaces`, `localhost:3000`,
+`http://*:1234/path`. `*` stands for any run of characters, a port is as much
+part of an address as a path, and the scheme is https unless another is written
+— which is the same bargain a typed address makes in the app commands.
+
+A configured group stays on the list with nothing in it. It is somewhere you
+said you go, and empty is exactly when you want the **＋** that opens the first
+tab there. That button appears only where the pattern names one place: a
+wildcard describes many addresses and picks none.
 
 Rows are ordered oldest first, then by address, so the tabs you have not touched
 come to the top and one repo's tabs sit together. A tab whose age the browser

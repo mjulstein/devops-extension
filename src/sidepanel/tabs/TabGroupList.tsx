@@ -15,6 +15,8 @@ interface TabGroupListProps {
   onToggleCollapsed: (key: string) => void;
   /** Closes this group's tabs untouched for that many days. */
   onCleanGroup: (group: TabGroupNode, days: number) => void;
+  /** Opens a new tab at a group's own address. */
+  onOpenGroup: (url: string) => void;
   /** The days typed for each group, falling back to the saved threshold. */
   daysFor: (key: string) => number;
   onDaysChange: (key: string, days: string) => void;
@@ -45,6 +47,7 @@ export function TabGroupList({
   collapsed,
   onToggleCollapsed,
   onCleanGroup,
+  onOpenGroup,
   daysFor,
   onDaysChange,
   depth = 0
@@ -101,6 +104,17 @@ export function TabGroupList({
                   onDaysChange(group.key, event.target.value);
                 }}
               />
+              {group.openUrl !== undefined && (
+                <Button
+                  size="compact"
+                  variant="quiet"
+                  icon="＋"
+                  description={`Open ${group.openUrl}`}
+                  onClick={() => {
+                    onOpenGroup(group.openUrl ?? '');
+                  }}
+                />
+              )}
               <Button
                 size="compact"
                 variant="quiet"
@@ -152,6 +166,7 @@ export function TabGroupList({
               collapsed={collapsed}
               onToggleCollapsed={onToggleCollapsed}
               onCleanGroup={onCleanGroup}
+              onOpenGroup={onOpenGroup}
               daysFor={daysFor}
               onDaysChange={onDaysChange}
               depth={depth + 1}

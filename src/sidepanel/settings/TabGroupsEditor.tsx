@@ -17,6 +17,10 @@ interface TabGroupsEditorProps {
  * without looking anything up. The narrowing comes after you have seen what
  * lands in the group — which is why adding one asks for nothing else, and the
  * rules are edited on the group afterwards.
+ *
+ * Past a bare domain the field is a pattern: `wiki.*​/spaces`, `localhost:3000`,
+ * `http://*:1234/path`. `*` stands for any run of characters, a port counts as
+ * part of the address, and the scheme is https unless another is typed.
  */
 export function TabGroupsEditor({ groups, onChange }: TabGroupsEditorProps) {
   const [domain, setDomain] = useState('');
@@ -31,8 +35,8 @@ export function TabGroupsEditor({ groups, onChange }: TabGroupsEditorProps) {
         <input
           className={classes.textInput}
           value={domain}
-          placeholder="example.com"
-          aria-label="Domain to group tabs for"
+          placeholder="example.com or http://localhost:3000"
+          aria-label="Domain or pattern to group tabs for"
           onChange={(event) => {
             setDomain(event.target.value);
           }}
