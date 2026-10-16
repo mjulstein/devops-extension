@@ -4,8 +4,9 @@ import {
   claimedTabIds,
   createTabGroup,
   groupFavIconUrl,
+  applyKeyOrder,
   matchTarget,
-  reorderTabGroups,
+  moveKeyTo,
   sortTabGroups,
   type TabGroupSetting
 } from './tabGroups';
@@ -325,33 +326,59 @@ describe('claimedTabIds', () => {
   });
 });
 
-describe('reorderTabGroups', () => {
-  const settings = [
-    createTabGroup('a.test'),
-    createTabGroup('b.test'),
-    createTabGroup('c.test')
-  ];
-  const keyOf = (index: number) => `${settings[index].domain}:${index}`;
+describe('applyKeyOrder', () => {
+  const groups = ['a', 'b', 'c'].map((key) => ({
+    key,
+    label: key,
+    tabs: [],
+    children: []
+  }));
 
-  it('moves a group to where another sits', () => {
-    expect(
-      reorderTabGroups(settings, keyOf(2), keyOf(0)).map((g) => g.domain)
-    ).toEqual(['c.test', 'a.test', 'b.test']);
+  it('draws them in the stored order', () => {
+    expect(applyKeyOrder(groups, ['c', 'a', 'b']).map((g) => g.key)).toEqual([
+      'c',
+      'a',
+      'b'
+    ]);
   });
 
-  it('moves one down as readily as up', () => {
-    expect(
-      reorderTabGroups(settings, keyOf(0), keyOf(2)).map((g) => g.domain)
-    ).toEqual(['b.test', 'c.test', 'a.test']);
+  it('leaves the natural order alone when nothing is stored', () => {
+    expect(applyKeyOrder(groups, []).map((g) => g.key)).toEqual([
+      'a',
+      'b',
+      'c'
+    ]);
   });
 
-  it('does nothing for a key that is not a configured group', () => {
-    // A built-in section or the catch-all has nowhere to record an order.
-    expect(reorderTabGroups(settings, 'ado:repos', keyOf(0))).toBe(settings);
-    expect(reorderTabGroups(settings, keyOf(0), 'other')).toBe(settings);
+  it('puts a key it has never seen after the ones it has', () => {
+    // A section that turns up later is added, not hidden.
+    expect(applyKeyOrder(groups, ['c']).map((g) => g.key)).toEqual([
+      'c',
+      'a',
+      'b'
+    ]);
+  });
+});
+
+describe('moveKeyTo', () => {
+  const keys = ['a', 'b', 'c'];
+
+  it('moves a key to the gap before another', () => {
+    expect(moveKeyTo(keys, 'c', 0)).toEqual(['c', 'a', 'b']);
+    expect(moveKeyTo(keys, 'a', 2)).toEqual(['b', 'a', 'c']);
   });
 
-  it('does nothing when a group is dropped on itself', () => {
-    expect(reorderTabGroups(settings, keyOf(1), keyOf(1))).toBe(settings);
+  it('moves a key to the last gap', () => {
+    expect(moveKeyTo(keys, 'a', 3)).toEqual(['b', 'c', 'a']);
+  });
+
+  it('changes nothing when dropped into its own gaps', () => {
+    // Either side of where it already is leaves it where it already is.
+    expect(moveKeyTo(keys, 'b', 1)).toEqual(['a', 'b', 'c']);
+    expect(moveKeyTo(keys, 'b', 2)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('ignores a key that is not in the list', () => {
+    expect(moveKeyTo(keys, 'zzz', 0)).toBe(keys);
   });
 });

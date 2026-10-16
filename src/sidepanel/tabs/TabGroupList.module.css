@@ -128,3 +128,21 @@
   border: 1px solid var(--color-border);
   border-radius: 4px;
 }
+
+/* Only there while a drag is in progress: a permanent gap between every group
+   would be a list with holes in it. */
+.dropZone {
+  block-size: 12px;
+  margin-block: -2px;
+  border-radius: 2px;
+}
+
+/* The line is on the gap, so what you see is where the thing will land. */
+.dropZoneOver {
+  background:
+    linear-gradient(
+      var(--color-accent-strong),
+      var(--color-accent-strong)
+    )
+    center / 100% 2px no-repeat;
+}

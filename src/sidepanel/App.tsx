@@ -95,8 +95,8 @@ export function App({ initialTab }: AppProps = {}) {
           onPromoteGroup={(domain) => {
             void controller.onPromoteTabGroup(domain);
           }}
-          onReorderGroups={(fromKey, toKey) => {
-            void controller.onReorderTabGroups(fromKey, toKey);
+          onReorderGroups={(keys) => {
+            void controller.onReorderTabGroups(keys);
           }}
         />
       ) : null}

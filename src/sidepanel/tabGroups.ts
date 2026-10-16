@@ -295,31 +295,64 @@ export function claimedTabIds(groups: TabGroupNode[]): Set<number> {
 }
 
 /**
- * Moves one group to where another sits.
+ * The group keys in the order they should be drawn.
  *
- * By key rather than by index, because the list the user dragged in is the one
- * with the built-in sections and the catch-all in it, while the order being
- * written is of the configured groups alone. A key that is not a configured
- * group — a section, **Other** — moves nothing: there is nowhere to record it.
+ * A stored order of *every* top-level group, not only the configured ones. The
+ * first version of this reordered the settings, which meant dragging an Azure
+ * DevOps section or the catch-all did nothing at all — and from the outside
+ * that is indistinguishable from dragging being broken. What the user is
+ * arranging is the list in front of them, so that is what gets recorded.
+ *
+ * Keys that are not in the stored order keep their natural position after the
+ * ones that are, so a section that appears later is added rather than hidden.
  */
-export function reorderTabGroups(
-  settings: TabGroupSetting[],
-  fromKey: string,
-  toKey: string
-): TabGroupSetting[] {
-  const indexOf = (key: string) =>
-    settings.findIndex(
-      (setting, index) => `${setting.domain}:${index}` === key
-    );
+export function applyKeyOrder(
+  groups: TabGroupNode[],
+  orderedKeys: string[]
+): TabGroupNode[] {
+  const rank = new Map(orderedKeys.map((key, index) => [key, index]));
 
-  const from = indexOf(fromKey);
-  const to = indexOf(toKey);
-  if (from < 0 || to < 0 || from === to) {
-    return settings;
+  return [...groups]
+    .map((group, index) => ({ group, index }))
+    .sort((a, b) => {
+      const left = rank.get(a.group.key);
+      const right = rank.get(b.group.key);
+      if (left === undefined && right === undefined) {
+        return a.index - b.index;
+      }
+      if (left === undefined) {
+        return 1;
+      }
+      if (right === undefined) {
+        return -1;
+      }
+      return left - right;
+    })
+    .map((entry) => entry.group);
+}
+
+/**
+ * The order left behind by dropping one group into a gap.
+ *
+ * `index` counts the gaps, not the groups: 0 is before the first, and the last
+ * is after the last. Taking the dragged key out before inserting is what makes
+ * a drop into the gap just below where it came from a no-op rather than an
+ * off-by-one.
+ */
+export function moveKeyTo(
+  keys: string[],
+  fromKey: string,
+  index: number
+): string[] {
+  const from = keys.indexOf(fromKey);
+  if (from < 0) {
+    return keys;
   }
 
-  const next = [...settings];
-  const [moved] = next.splice(from, 1);
-  next.splice(to, 0, moved);
-  return next;
+  const without = keys.filter((key) => key !== fromKey);
+  const at = Math.max(
+    0,
+    Math.min(without.length, index > from ? index - 1 : index)
+  );
+  return [...without.slice(0, at), fromKey, ...without.slice(at)];
 }

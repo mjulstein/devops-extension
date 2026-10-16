@@ -41,8 +41,21 @@ and unlike a configured group nobody asked for it.
 
 Top-level groups can be dragged to reorder. Only the top level: a narrowed
 group's sub-groups are in the order its rules are, and the catch-all's are
-alphabetical, so there is nowhere to record a different one. The order written
-is of the configured groups, so dragging a built-in section moves nothing.
+alphabetical, so there is nowhere to record a different one.
+
+While a drag is in progress a gap opens on each side of every group, and the
+one under the pointer draws a line where the group will land. The gaps are only
+there during the drag — a permanent one between every group would be a list
+with holes in it — and the line is on the gap rather than on a group's edge, so
+what you see is where the thing goes.
+
+What is recorded is the order of *every* top-level key, the built-in sections
+included, in `tabGroupKeyOrder`. The first version reordered the settings, which
+meant dragging an Azure DevOps section or the catch-all did nothing at all — and
+from the outside that is indistinguishable from dragging being broken. What is
+being arranged is the list in front of you, not the settings behind it. A key
+with no stored position keeps its natural place after the ones that have one, so
+a section that turns up later is added rather than hidden.
 
 Rows are ordered oldest first, then by address, so the tabs you have not touched
 come to the top and one repo's tabs sit together. A tab whose age the browser

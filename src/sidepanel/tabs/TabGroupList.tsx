@@ -1,3 +1,5 @@
+import { Fragment, useState } from 'react';
+import clsx from 'clsx';
 import { Button } from '@/sidepanel/atoms/Button';
 import { describeTabAge } from '@/sidepanel/adoTabs';
 import {
@@ -25,8 +27,11 @@ interface TabGroupListProps {
   onOpenGroup: (url: string) => void;
   /** Makes one of **Other**'s hosts a group of its own. */
   onPromoteGroup: (domain: string) => void;
-  /** Moves a configured group to where another one sits. */
-  onReorder: (fromKey: string, toKey: string) => void;
+  /** Moves the dragged group into the gap at this index. */
+  onReorder: (fromKey: string, gapIndex: number) => void;
+  /** The group being dragged, which is what opens the gaps. */
+  draggingKey?: string | null;
+  onDragStateChange?: (key: string | null) => void;
   /** The days typed for each group, falling back to the saved threshold. */
   daysFor: (key: string) => number;
   onDaysChange: (key: string, days: string) => void;
@@ -60,6 +65,8 @@ export function TabGroupList({
   onOpenGroup,
   onPromoteGroup,
   onReorder,
+  draggingKey = null,
+  onDragStateChange,
   daysFor,
   onDaysChange,
   depth = 0
@@ -68,162 +75,212 @@ export function TabGroupList({
     return <p className={classes.empty}>No tabs in these groups are open.</p>;
   }
 
+  const isDragging = depth === 0 && draggingKey !== null;
+
   return (
     <div className={classes.groups}>
-      {groups.map((group) => (
-        <details
-          key={group.key}
-          className={classes.group}
-          style={{ paddingInlineStart: depth * 10 }}
-          // Only the top level drags: the sub-groups of a narrowed group are in
-          // the order its rules are, and the catch-all's are alphabetical, so
-          // there is nowhere to record a different one.
-          draggable={depth === 0}
-          onDragStart={(event) => {
-            event.dataTransfer.setData(GROUP_DRAG_TYPE, group.key);
-            event.dataTransfer.effectAllowed = 'move';
-          }}
-          onDragOver={(event) => {
-            if (
-              depth === 0 &&
-              event.dataTransfer.types.includes(GROUP_DRAG_TYPE)
-            ) {
-              event.preventDefault();
-              event.dataTransfer.dropEffect = 'move';
-            }
-          }}
-          onDrop={(event) => {
-            const fromKey = event.dataTransfer.getData(GROUP_DRAG_TYPE);
-            if (fromKey !== '' && fromKey !== group.key) {
-              event.preventDefault();
-              onReorder(fromKey, group.key);
-            }
-          }}
-          open={!collapsed.has(group.key)}
-          onToggle={(event) => {
-            const isOpen = event.currentTarget.open;
-            if (isOpen === collapsed.has(group.key)) {
-              onToggleCollapsed(group.key);
-            }
-          }}
-        >
-          <summary className={classes.heading}>
-            {favIconOf(group) === null ? (
-              <span className={classes.icon} aria-hidden="true" />
-            ) : (
-              <img
-                className={classes.icon}
-                src={favIconOf(group) ?? ''}
-                alt=""
-              />
-            )}
-            {group.label}
-            <span className={classes.count}>{countTabs(group)}</span>
+      {groups.map((group, index) => (
+        <Fragment key={group.key}>
+          {isDragging && (
+            <DropZone
+              index={index}
+              onReorder={onReorder}
+              onDragStateChange={onDragStateChange}
+            />
+          )}
+          <details
+            key={group.key}
+            className={classes.group}
+            style={{ paddingInlineStart: depth * 10 }}
+            draggable={depth === 0}
+            onDragStart={(event) => {
+              event.dataTransfer.setData(GROUP_DRAG_TYPE, group.key);
+              event.dataTransfer.effectAllowed = 'move';
+              onDragStateChange?.(group.key);
+            }}
+            onDragEnd={() => {
+              onDragStateChange?.(null);
+            }}
+            open={!collapsed.has(group.key)}
+            onToggle={(event) => {
+              const isOpen = event.currentTarget.open;
+              if (isOpen === collapsed.has(group.key)) {
+                onToggleCollapsed(group.key);
+              }
+            }}
+          >
+            <summary className={classes.heading}>
+              {favIconOf(group) === null ? (
+                <span className={classes.icon} aria-hidden="true" />
+              ) : (
+                <img
+                  className={classes.icon}
+                  src={favIconOf(group) ?? ''}
+                  alt=""
+                />
+              )}
+              {group.label}
+              <span className={classes.count}>{countTabs(group)}</span>
 
-            {/* The controls live in the summary so they are beside the group
+              {/* The controls live in the summary so they are beside the group
                 they act on, and stop the click there: pressing them should not
                 also fold the group away under the hand. */}
-            <span
-              className={classes.groupActions}
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-              }}
-            >
-              <input
-                type="number"
-                min={1}
-                className={classes.days}
-                value={String(daysFor(group.key))}
-                aria-label={`Days untouched before closing a ${group.label} tab`}
-                onChange={(event) => {
-                  onDaysChange(group.key, event.target.value);
+              <span
+                className={classes.groupActions}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
                 }}
-              />
-              {group.promoteDomain !== undefined && (
-                <Button
-                  size="compact"
-                  variant="quiet"
-                  icon="📌"
-                  description={`Make ${group.promoteDomain} a group of its own`}
-                  onClick={() => {
-                    onPromoteGroup(group.promoteDomain ?? '');
+              >
+                <input
+                  type="number"
+                  min={1}
+                  className={classes.days}
+                  value={String(daysFor(group.key))}
+                  aria-label={`Days untouched before closing a ${group.label} tab`}
+                  onChange={(event) => {
+                    onDaysChange(group.key, event.target.value);
                   }}
                 />
-              )}
-              {group.openUrl !== undefined && (
-                <Button
-                  size="compact"
-                  variant="quiet"
-                  icon="＋"
-                  description={`Open ${group.openUrl}`}
-                  onClick={() => {
-                    onOpenGroup(group.openUrl ?? '');
-                  }}
-                />
-              )}
-              <Button
-                size="compact"
-                variant="quiet"
-                icon="🧹"
-                description={`Close ${group.label} tabs untouched for ${daysFor(group.key)} days`}
-                onClick={() => {
-                  onCleanGroup(group, daysFor(group.key));
-                }}
-              />
-            </span>
-          </summary>
-
-          {group.tabs.length > 0 && (
-            <ul className={classes.list}>
-              {group.tabs.map((tab) => (
-                <li key={tab.id} className={classes.row}>
+                {group.promoteDomain !== undefined && (
                   <Button
                     size="compact"
                     variant="quiet"
-                    icon="✕"
-                    description={`Close ${tab.title}`}
+                    icon="📌"
+                    description={`Make ${group.promoteDomain} a group of its own`}
                     onClick={() => {
-                      onClose(tab.id);
+                      onPromoteGroup(group.promoteDomain ?? '');
                     }}
                   />
-                  <button
-                    type="button"
-                    className={classes.name}
-                    title={tab.url}
+                )}
+                {group.openUrl !== undefined && (
+                  <Button
+                    size="compact"
+                    variant="quiet"
+                    icon="＋"
+                    description={`Open ${group.openUrl}`}
                     onClick={() => {
-                      onSwitchTo(tab.id, tab.windowId);
+                      onOpenGroup(group.openUrl ?? '');
                     }}
-                  >
-                    <span className={classes.title}>{tab.title}</span>
-                    <span className={classes.meta}>
-                      {describeTabAge(tab)} · {tab.path}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+                  />
+                )}
+                <Button
+                  size="compact"
+                  variant="quiet"
+                  icon="🧹"
+                  description={`Close ${group.label} tabs untouched for ${daysFor(group.key)} days`}
+                  onClick={() => {
+                    onCleanGroup(group, daysFor(group.key));
+                  }}
+                />
+              </span>
+            </summary>
 
-          {group.children.length > 0 && (
-            <TabGroupList
-              groups={group.children}
-              onClose={onClose}
-              onSwitchTo={onSwitchTo}
-              collapsed={collapsed}
-              onToggleCollapsed={onToggleCollapsed}
-              onCleanGroup={onCleanGroup}
-              onOpenGroup={onOpenGroup}
-              onPromoteGroup={onPromoteGroup}
-              onReorder={onReorder}
-              daysFor={daysFor}
-              onDaysChange={onDaysChange}
-              depth={depth + 1}
-            />
-          )}
-        </details>
+            {group.tabs.length > 0 && (
+              <ul className={classes.list}>
+                {group.tabs.map((tab) => (
+                  <li key={tab.id} className={classes.row}>
+                    <Button
+                      size="compact"
+                      variant="quiet"
+                      icon="✕"
+                      description={`Close ${tab.title}`}
+                      onClick={() => {
+                        onClose(tab.id);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className={classes.name}
+                      title={tab.url}
+                      onClick={() => {
+                        onSwitchTo(tab.id, tab.windowId);
+                      }}
+                    >
+                      <span className={classes.title}>{tab.title}</span>
+                      <span className={classes.meta}>
+                        {describeTabAge(tab)} · {tab.path}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {group.children.length > 0 && (
+              <TabGroupList
+                groups={group.children}
+                onClose={onClose}
+                onSwitchTo={onSwitchTo}
+                collapsed={collapsed}
+                onToggleCollapsed={onToggleCollapsed}
+                onCleanGroup={onCleanGroup}
+                onOpenGroup={onOpenGroup}
+                onPromoteGroup={onPromoteGroup}
+                onReorder={onReorder}
+                daysFor={daysFor}
+                onDaysChange={onDaysChange}
+                depth={depth + 1}
+              />
+            )}
+          </details>
+        </Fragment>
       ))}
+
+      {isDragging && (
+        <DropZone
+          index={groups.length}
+          onReorder={onReorder}
+          onDragStateChange={onDragStateChange}
+        />
+      )}
     </div>
+  );
+}
+
+/**
+ * The gap a group can be dropped into.
+ *
+ * Only there while a drag is in progress: a permanent gap between every group
+ * would be a list with holes in it. The line is drawn on the gap itself rather
+ * than on a group's edge, so what you see is where the thing will land — the
+ * first version gave no clue at all and a drop that changed nothing looked
+ * exactly like a drop that had failed.
+ */
+function DropZone({
+  index,
+  onReorder,
+  onDragStateChange
+}: {
+  index: number;
+  onReorder: (fromKey: string, gapIndex: number) => void;
+  onDragStateChange?: (key: string | null) => void;
+}) {
+  const [isOver, setIsOver] = useState(false);
+
+  return (
+    <div
+      className={clsx(classes.dropZone, isOver && classes.dropZoneOver)}
+      onDragOver={(event) => {
+        if (event.dataTransfer.types.includes(GROUP_DRAG_TYPE)) {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = 'move';
+          setIsOver(true);
+        }
+      }}
+      onDragLeave={() => {
+        setIsOver(false);
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        setIsOver(false);
+        const fromKey = event.dataTransfer.getData(GROUP_DRAG_TYPE);
+        if (fromKey !== '') {
+          onReorder(fromKey, index);
+        }
+        onDragStateChange?.(null);
+      }}
+    />
   );
 }
 

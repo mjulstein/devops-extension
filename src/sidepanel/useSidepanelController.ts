@@ -52,8 +52,12 @@ import {
 import { navigateToWorkItem } from './navigateToWorkItem';
 import { deduplicateTabs } from './deduplicateTabs';
 import { closeStaleTabs, resolveStaleTabDays } from './staleTabs';
-import { useTabGroups } from './useTabGroups';
-import { createTabGroup, reorderTabGroups } from './tabGroups';
+import {
+  loadTabGroupOrder,
+  TAB_GROUP_ORDER_KEY,
+  useTabGroups
+} from './useTabGroups';
+import { createTabGroup } from './tabGroups';
 import {
   fetchOrphanWorkItems,
   parentWorkItems
@@ -203,7 +207,16 @@ export function useSidepanelController({
   const [isOrphansLoading, setIsOrphansLoading] = useState(false);
   const [orphansError, setOrphansError] = useState<string | null>(null);
   const [orphansStatus, setOrphansStatus] = useState<string | null>(null);
-  const { groups: tabGroups } = useTabGroups(savedSettings.tabGroups);
+  const [tabGroupOrder, setTabGroupOrder] = useState<string[]>([]);
+  const { groups: tabGroups } = useTabGroups(
+    savedSettings.tabGroups,
+    tabGroupOrder
+  );
+
+  // The dragged order is browser-local panel state, read once on open.
+  useEffect(() => {
+    void loadTabGroupOrder().then(setTabGroupOrder);
+  }, []);
   const [orphansMode, setOrphansMode] = useState<OrphansMode>('orphans');
   const [inProgressByMe, setInProgressByMe] = useState<InProgressByMe | null>(
     null
@@ -2072,16 +2085,17 @@ export function useSidepanelController({
     pushDebugLog('success', `Added ${domain} as a tab group.`);
   }
 
-  /** Moves a configured group, saving the order it leaves behind. */
-  async function onReorderTabGroups(fromKey: string, toKey: string) {
-    const next = reorderTabGroups(savedSettings.tabGroups, fromKey, toKey);
-    if (next === savedSettings.tabGroups) {
-      return;
-    }
-    const updated = { ...savedSettings, tabGroups: next };
-    await saveSettings(updated);
-    setSettings(updated);
-    setSavedSettings(updated);
+  /**
+   * Remembers the order the groups were dragged into.
+   *
+   * Browser-local, like the sort direction: it arranges this machine's panel
+   * and says nothing useful on another one. It records every top-level key,
+   * including the built-in sections, because what is being arranged is the
+   * list in front of you rather than the settings behind it.
+   */
+  async function onReorderTabGroups(keys: string[]) {
+    setTabGroupOrder(keys);
+    await chrome.storage.local.set({ [TAB_GROUP_ORDER_KEY]: keys });
   }
 
   async function onToggleRecentFeaturesCollapsed() {

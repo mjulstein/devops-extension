@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/sidepanel/atoms/Button';
 import {
   allTabsIn,
+  moveKeyTo,
   sortTabGroups,
   type TabGroupNode,
   type TabOrder
@@ -18,8 +19,8 @@ interface TabsPaneProps {
   staleTabDays: number;
   /** Adds a host from **Other** to the configured groups, and saves. */
   onPromoteGroup: (domain: string) => void;
-  /** Moves a configured group to where another one sits, and saves. */
-  onReorderGroups: (fromKey: string, toKey: string) => void;
+  /** Records the order left by dropping a group into the gap at this index. */
+  onReorderGroups: (keys: string[]) => void;
 }
 
 /**
@@ -40,6 +41,9 @@ export function TabsPane({
   // Per group, and only while the panel is open: it is a number you reach for
   // when tidying one section, not a preference about it.
   const [days, setDays] = useState<Record<string, string>>({});
+  const [draggingKey, setDraggingKey] = useState<string | null>(null);
+
+  const ordered = sortTabGroups(groups, order);
 
   const daysFor = useCallback(
     (key: string) => resolveStaleTabDays(days[key] ?? String(staleTabDays)),
@@ -89,7 +93,7 @@ export function TabsPane({
       </div>
 
       <TabGroupList
-        groups={sortTabGroups(groups, order)}
+        groups={ordered}
         collapsed={collapsed}
         onToggleCollapsed={toggleCollapsed}
         onCleanGroup={cleanGroup}
@@ -97,7 +101,17 @@ export function TabsPane({
           void chrome.tabs.create({ url });
         }}
         onPromoteGroup={onPromoteGroup}
-        onReorder={onReorderGroups}
+        draggingKey={draggingKey}
+        onDragStateChange={setDraggingKey}
+        onReorder={(fromKey, gapIndex) => {
+          onReorderGroups(
+            moveKeyTo(
+              ordered.map((group) => group.key),
+              fromKey,
+              gapIndex
+            )
+          );
+        }}
         daysFor={daysFor}
         onDaysChange={(key, value) => {
           setDays((current) => ({ ...current, [key]: value }));

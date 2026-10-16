@@ -41,6 +41,8 @@ function render(props: Partial<Parameters<typeof TabGroupList>[0]> = {}) {
       onOpenGroup={() => undefined}
       onPromoteGroup={() => undefined}
       onReorder={() => undefined}
+      draggingKey={null}
+      onDragStateChange={() => undefined}
       daysFor={() => 24}
       onDaysChange={() => undefined}
       {...props}
@@ -104,6 +106,17 @@ describe('TabGroupList', () => {
     const markup = render();
     // One draggable per top-level group; the repo sub-group is not one.
     expect(markup.split('draggable="true"').length - 1).toBe(groups.length);
+  });
+
+  it('shows no gaps until something is being dragged', () => {
+    // A permanent gap between every group would be a list with holes in it.
+    expect(render()).not.toContain('dropZone');
+  });
+
+  it('opens a gap on each side of every group while dragging', () => {
+    const markup = render({ draggingKey: groups[0].key });
+    // One before each group, and one at the end.
+    expect(markup.split('dropZone').length - 1).toBe(groups.length + 1);
   });
 
   it('gives each group a days box and a cleanup button', () => {
