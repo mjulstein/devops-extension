@@ -39,6 +39,14 @@ the group is, and leaving it pending on a tab you are not looking at would lose
 it. Other disappears when everything is claimed: an empty catch-all is noise,
 and unlike a configured group nobody asked for it.
 
+The catch-all sits on its own background, so it is plain where the groups you
+defined stop and the leftovers begin.
+
+Top-level groups are dragged by their heading. A `<summary>` is an interactive
+control in its own right, so a drag starting on it never reaches a draggable
+parent — with `draggable` on the `<details>` the only surface that worked was
+the body, which from the outside is a handle in an arbitrary place.
+
 Top-level groups can be dragged to reorder. Only the top level: a narrowed
 group's sub-groups are in the order its rules are, and the catch-all's are
 alphabetical, so there is nowhere to record a different one.

@@ -4,6 +4,7 @@ import { Button } from '@/sidepanel/atoms/Button';
 import { describeTabAge } from '@/sidepanel/adoTabs';
 import {
   groupFavIconUrl as favIconOf,
+  OTHER_GROUP_KEY,
   type TabGroupNode
 } from '@/sidepanel/tabGroups';
 import classes from './TabGroupList.module.css';
@@ -90,17 +91,13 @@ export function TabGroupList({
           )}
           <details
             key={group.key}
-            className={classes.group}
+            // The catch-all gets its own ground so it is plain where the
+            // groups you defined stop and the leftovers begin.
+            className={clsx(
+              classes.group,
+              group.key === OTHER_GROUP_KEY && classes.otherGroup
+            )}
             style={{ paddingInlineStart: depth * 10 }}
-            draggable={depth === 0}
-            onDragStart={(event) => {
-              event.dataTransfer.setData(GROUP_DRAG_TYPE, group.key);
-              event.dataTransfer.effectAllowed = 'move';
-              onDragStateChange?.(group.key);
-            }}
-            onDragEnd={() => {
-              onDragStateChange?.(null);
-            }}
             open={!collapsed.has(group.key)}
             onToggle={(event) => {
               const isOpen = event.currentTarget.open;
@@ -109,7 +106,23 @@ export function TabGroupList({
               }
             }}
           >
-            <summary className={classes.heading}>
+            {/* The heading is what is dragged, not the whole details. A
+                summary is an interactive control in its own right, so a drag
+                starting on it never reached a draggable parent — which left
+                the body as the only surface that worked, and from the outside
+                that is a handle in an arbitrary place. */}
+            <summary
+              className={classes.heading}
+              draggable={depth === 0}
+              onDragStart={(event) => {
+                event.dataTransfer.setData(GROUP_DRAG_TYPE, group.key);
+                event.dataTransfer.effectAllowed = 'move';
+                onDragStateChange?.(group.key);
+              }}
+              onDragEnd={() => {
+                onDragStateChange?.(null);
+              }}
+            >
               {favIconOf(group) === null ? (
                 <span className={classes.icon} aria-hidden="true" />
               ) : (

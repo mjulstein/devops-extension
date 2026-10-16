@@ -146,3 +146,13 @@
     )
     center / 100% 2px no-repeat;
 }
+
+/* The catch-all, set on its own ground: the groups above it are ones you
+   defined, and everything inside this one is still looking for a home. */
+.otherGroup {
+  background: var(--color-surface-sunken);
+  border-radius: 8px;
+  padding-block: 4px;
+  padding-inline-end: 4px;
+  margin-block-start: 8px;
+}

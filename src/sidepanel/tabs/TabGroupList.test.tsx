@@ -108,6 +108,13 @@ describe('TabGroupList', () => {
     expect(markup.split('draggable="true"').length - 1).toBe(groups.length);
   });
 
+  it('drags from the heading, which is what you would grab', () => {
+    // A summary is an interactive control: a drag starting on it never
+    // reached a draggable parent, leaving the body as the only handle.
+    expect(render()).toContain('<summary');
+    expect(render()).toContain('draggable="true"');
+  });
+
   it('shows no gaps until something is being dragged', () => {
     // A permanent gap between every group would be a list with holes in it.
     expect(render()).not.toContain('dropZone');
