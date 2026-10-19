@@ -125,6 +125,9 @@ export function TabsPane({
         onDuplicate={(id) => {
           void chrome.tabs.duplicate(id);
         }}
+        onOpenBookmark={(url) => {
+          void chrome.tabs.create({ url });
+        }}
       />
     </div>
   );

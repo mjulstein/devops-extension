@@ -23,7 +23,8 @@ import classes from './SettingsCard.module.css';
 import card from '../atoms/Card.module.css';
 import { FavoritesEditor } from './FavoritesEditor';
 import { SettingsHelp } from './SettingsHelp';
-import { TabGroupsEditor } from './TabGroupsEditor';
+import { AppFoldersEditor } from './AppFoldersEditor';
+import { useAppFolders } from '@/sidepanel/useAppFolders';
 import {
   DEFAULT_STALE_TAB_DAYS,
   resolveStaleTabDays
@@ -65,6 +66,7 @@ export function SettingsPane({
     settings.todoStates.join(', ')
   );
 
+  const appFolders = useAppFolders(settings.bookmarkFolderName);
   const [refreshingIcons, setRefreshingIcons] = useState(false);
   const [iconRefreshStatus, setIconRefreshStatus] = useState<string | null>(
     null
@@ -248,7 +250,6 @@ export function SettingsPane({
       quickTaskParentId: settings.quickTaskParentId.trim(),
       quickTaskArchiveId: settings.quickTaskArchiveId.trim(),
       staleTabDays: settings.staleTabDays.trim(),
-      tabGroups: settings.tabGroups,
       bookmarkFolderName: settings.bookmarkFolderName.trim(),
       themeOverrides: settings.themeOverrides
     },
@@ -525,20 +526,27 @@ export function SettingsPane({
 
       {activeTab === 'apps' && (
         <div className={classes.regionBody}>
-          <h3 className={classes.sectionHeading}>Tab groups</h3>
-          <SettingsHelp summary="About tab groups">
+          <SettingsHelp summary="About apps">
             <p>
-              The <strong>Tabs</strong> tab groups your open tabs. Azure DevOps
-              is grouped by its own sections already; add a domain here to give
-              anywhere else a group too. Start with just the domain — narrow it
-              into sub-domains or paths once you have seen what lands in it.
+              An app is a folder of bookmarks under your favorites folder. The
+              bookmarks are the few main addresses, so they reach a machine with
+              no extension installed; everything else you open on that app is
+              grouped with it on the <strong>Tabs</strong> tab anyway, because a
+              group covers whatever its bookmarks have in common.
+            </p>
+            <p>
+              Add one by opening the app and running{' '}
+              <strong>&gt;add app</strong>
+              from the favorites search. A folder inside an app is a sub-group.
             </p>
           </SettingsHelp>
 
-          <TabGroupsEditor
-            groups={settings.tabGroups}
-            onChange={(tabGroups) => {
-              onChange({ ...settings, tabGroups });
+          <AppFoldersEditor
+            folders={appFolders}
+            onOpenBookmarkManager={() => {
+              void chrome.runtime.sendMessage({
+                type: 'OPEN_BOOKMARK_MANAGER'
+              });
             }}
           />
         </div>

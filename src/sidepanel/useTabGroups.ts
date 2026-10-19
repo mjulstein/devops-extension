@@ -7,12 +7,13 @@ import {
 } from './adoTabs';
 import {
   applyKeyOrder,
+  buildAppGroups,
   buildOtherGroup,
-  buildTabGroups,
   claimedTabIds,
-  type TabGroupNode,
-  type TabGroupSetting
+  type TabGroupNode
 } from './tabGroups';
+import { readAppFolders, type AppFolder } from './appGroups';
+import { findAppsFolder } from './apps/appsFolder';
 
 /**
  * The open tabs worth grouping, kept current.
@@ -37,20 +38,31 @@ export async function loadTabGroupOrder(): Promise<string[]> {
 }
 
 export function useTabGroups(
-  groupSettings: TabGroupSetting[],
+  favoritesFolderName: string,
   orderedKeys: string[]
 ): {
   groups: TabGroupNode[];
   refresh: () => void;
 } {
   const [tabs, setTabs] = useState<OpenTab[]>([]);
+  const [folders, setFolders] = useState<AppFolder[]>([]);
 
   const refresh = useCallback(() => {
     void chrome.tabs
       ?.query({})
       .then(setTabs)
       .catch(() => undefined);
-  }, []);
+
+    // The group definitions are the bookmark folders themselves, so they are
+    // re-read with the tabs: a folder added on another machine arrives the
+    // same way a tab does.
+    void chrome.bookmarks
+      ?.getTree()
+      .then((tree) => {
+        setFolders(readAppFolders(findAppsFolder(tree, favoritesFolderName)));
+      })
+      .catch(() => undefined);
+  }, [favoritesFolderName]);
 
   useEffect(() => {
     refresh();
@@ -60,7 +72,12 @@ export function useTabGroups(
       chrome.tabs?.onRemoved,
       chrome.tabs?.onUpdated,
       chrome.tabs?.onActivated,
-      chrome.tabs?.onMoved
+      chrome.tabs?.onMoved,
+      chrome.bookmarks?.onCreated,
+      chrome.bookmarks?.onRemoved,
+      chrome.bookmarks?.onChanged,
+      chrome.bookmarks?.onMoved,
+      chrome.bookmarks?.onChildrenReordered
     ];
     for (const event of events) {
       event?.addListener(refresh);
@@ -78,14 +95,14 @@ export function useTabGroups(
   const groups = useMemo(() => {
     const defined = [
       ...toTabGroupNodes(groupAdoTabs(readAdoTabs(tabs))),
-      ...buildTabGroups(tabs, groupSettings)
+      ...buildAppGroups(folders, tabs)
     ];
     // Last, and only when it holds something: everything that landed nowhere,
     // by host, each one a group waiting to be made permanent.
     const other = buildOtherGroup(tabs, claimedTabIds(defined));
     const all = other === null ? defined : [...defined, other];
     return applyKeyOrder(all, orderedKeys);
-  }, [groupSettings, orderedKeys, tabs]);
+  }, [folders, orderedKeys, tabs]);
 
   return { groups, refresh };
 }

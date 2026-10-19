@@ -1,14 +1,12 @@
+import { readAppFolders } from './appGroups';
 import {
+  buildAppGroups,
   buildOtherGroup,
-  buildTabGroups,
   claimedTabIds,
-  createTabGroup,
   groupFavIconUrl,
   applyKeyOrder,
-  matchTarget,
   moveKeyTo,
-  sortTabGroups,
-  type TabGroupSetting
+  sortTabGroups
 } from './tabGroups';
 import type { OpenTab } from './adoTabs';
 
@@ -18,126 +16,6 @@ const now = 1_000 * DAY;
 function tab(id: number, url: string, daysOld = 1): OpenTab {
   return { id, url, title: `Tab ${id}`, lastAccessed: now - daysOld * DAY };
 }
-
-describe('createTabGroup', () => {
-  it('takes a domain as typed, however it was typed', () => {
-    expect(createTabGroup(' https://Wiki.Example.com/spaces ')).toEqual({
-      domain: 'wiki.example.com',
-      label: 'wiki.example.com',
-      rules: []
-    });
-  });
-});
-
-describe('matchTarget', () => {
-  it('is the host and path together, so one rule covers both', () => {
-    expect(matchTarget('https://wiki.example.com/spaces/ABC?x=1')).toBe(
-      'wiki.example.com/spaces/abc?x=1'
-    );
-  });
-});
-
-describe('buildTabGroups', () => {
-  const tabs = [
-    tab(1, 'https://wiki.example.com/spaces/ABC', 5),
-    tab(2, 'https://wiki.example.com/pages/123', 2),
-    tab(3, 'https://jira.example.com/browse/X-1', 1),
-    tab(4, 'https://elsewhere.test/', 1)
-  ];
-
-  it('collects a domain with no rules into one group', () => {
-    const groups = buildTabGroups(tabs, [createTabGroup('example.com')]);
-    expect(groups).toHaveLength(1);
-    expect(groups[0].children).toEqual([]);
-    expect(groups[0].tabs.map((entry) => entry.id)).toEqual([1, 2, 3]);
-  });
-
-  it('orders a group oldest first, then by address', () => {
-    const groups = buildTabGroups(tabs, [createTabGroup('example.com')]);
-    expect(groups[0].tabs.map((entry) => entry.id)).toEqual([1, 2, 3]);
-  });
-
-  it('splits a group by its rules, first match winning', () => {
-    const setting: TabGroupSetting = {
-      domain: 'example.com',
-      label: 'Confluence',
-      rules: [
-        { label: 'Spaces', match: '/spaces/' },
-        { label: 'Pages', match: '/pages/' }
-      ]
-    };
-    const [group] = buildTabGroups(tabs, [setting]);
-    expect(group.label).toBe('Confluence');
-    expect(group.tabs).toEqual([]);
-    expect(group.children.map((child) => child.label)).toEqual([
-      'Spaces',
-      'Pages',
-      'Other'
-    ]);
-    expect(group.children[0].tabs.map((entry) => entry.id)).toEqual([1]);
-  });
-
-  it('puts what matched no rule in Other rather than dropping it', () => {
-    // Dropping it would make the group quietly lie about what is open.
-    const [group] = buildTabGroups(tabs, [
-      {
-        domain: 'example.com',
-        label: 'Confluence',
-        rules: [{ label: 'Spaces', match: '/spaces/' }]
-      }
-    ]);
-    const other = group.children.find((child) => child.label === 'Other');
-    expect(other?.tabs.map((entry) => entry.id)).toEqual([2, 3]);
-  });
-
-  it('narrows by sub-domain with the same one field', () => {
-    const [group] = buildTabGroups(tabs, [
-      {
-        domain: 'example.com',
-        label: 'Example',
-        rules: [{ label: 'Wiki', match: 'wiki.example.com' }]
-      }
-    ]);
-    expect(group.children[0].tabs.map((entry) => entry.id)).toEqual([1, 2]);
-  });
-
-  it('leaves out a sub-group with nothing in it, but keeps the group', () => {
-    // A group you defined stays on the list empty: it is somewhere you said
-    // you go, and empty is exactly when you want to open the first tab.
-    const groups = buildTabGroups(tabs, [
-      {
-        domain: 'example.com',
-        label: 'Example',
-        rules: [
-          { label: 'Spaces', match: '/spaces/' },
-          { label: 'Nothing', match: '/never/' }
-        ]
-      },
-      createTabGroup('absent.test')
-    ]);
-    expect(groups.map((group) => group.label)).toEqual([
-      'Example',
-      'absent.test'
-    ]);
-    expect(groups[0].children.map((child) => child.label)).toEqual([
-      'Spaces',
-      'Other'
-    ]);
-    expect(groups[1].tabs).toEqual([]);
-  });
-
-  it('ignores a rule with nothing to match on', () => {
-    const [group] = buildTabGroups(tabs, [
-      {
-        domain: 'example.com',
-        label: 'Example',
-        rules: [{ label: 'Blank', match: '  ' }]
-      }
-    ]);
-    expect(group.children).toEqual([]);
-    expect(group.tabs).toHaveLength(3);
-  });
-});
 
 describe('groupFavIconUrl', () => {
   const group = {
@@ -202,74 +80,6 @@ describe('groupFavIconUrl', () => {
   });
 });
 
-describe('sortTabGroups', () => {
-  const groups = buildTabGroups(
-    [tab(1, 'https://example.com/a', 5), tab(2, 'https://example.com/b', 1)],
-    [createTabGroup('example.com')]
-  );
-
-  it('leaves the oldest-first order alone', () => {
-    expect(sortTabGroups(groups, 'oldest')[0].tabs.map((t) => t.id)).toEqual([
-      1, 2
-    ]);
-  });
-
-  it('turns it round for newest first', () => {
-    expect(sortTabGroups(groups, 'newest')[0].tabs.map((t) => t.id)).toEqual([
-      2, 1
-    ]);
-  });
-
-  it('turns the sub-groups round too', () => {
-    const narrowed = buildTabGroups(
-      [
-        tab(1, 'https://example.com/spaces/a', 5),
-        tab(2, 'https://example.com/spaces/b', 1)
-      ],
-      [
-        {
-          domain: 'example.com',
-          label: 'Example',
-          rules: [{ label: 'Spaces', match: '/spaces/' }]
-        }
-      ]
-    );
-    expect(
-      sortTabGroups(narrowed, 'newest')[0].children[0].tabs.map((t) => t.id)
-    ).toEqual([2, 1]);
-  });
-});
-
-describe('opening a group that is empty', () => {
-  it('carries an address when the pattern names one place', () => {
-    const [group] = buildTabGroups([], [createTabGroup('example.com')]);
-    expect(group.tabs).toEqual([]);
-    expect(group.openUrl).toBe('https://example.com');
-  });
-
-  it('carries none when the pattern describes many', () => {
-    const [group] = buildTabGroups(
-      [],
-      [{ domain: 'wiki.*', label: 'Wikis', rules: [] }]
-    );
-    expect(group.openUrl).toBeUndefined();
-  });
-
-  it('keeps the address on a narrowed group too', () => {
-    const [group] = buildTabGroups(
-      [],
-      [
-        {
-          domain: 'http://localhost:3000',
-          label: 'Local',
-          rules: [{ label: 'App', match: '/app' }]
-        }
-      ]
-    );
-    expect(group.openUrl).toBe('http://localhost:3000');
-  });
-});
-
 describe('buildOtherGroup', () => {
   const tabs = [
     tab(1, 'https://wiki.example.com/a', 5),
@@ -309,23 +119,32 @@ describe('buildOtherGroup', () => {
 
 describe('claimedTabIds', () => {
   it('counts the tabs of a group and its children', () => {
-    const groups = buildTabGroups(
-      [
-        tab(1, 'https://example.com/spaces/a', 1),
-        tab(2, 'https://example.com/b', 1)
-      ],
-      [
+    const folders = readAppFolders({
+      id: 'apps',
+      children: [
         {
-          domain: 'example.com',
-          label: 'Example',
-          rules: [{ label: 'Spaces', match: '/spaces/' }]
+          id: 'f',
+          title: 'example.com',
+          children: [
+            { id: 'b', title: 'Home', url: 'https://example.com/' },
+            {
+              id: 'sub',
+              title: '*/spaces',
+              children: [
+                { id: 'b2', title: 'A', url: 'https://example.com/spaces/a' }
+              ]
+            }
+          ]
         }
       ]
-    );
+    });
+    const groups = buildAppGroups(folders, [
+      tab(1, 'https://example.com/spaces/a', 1),
+      tab(2, 'https://example.com/b', 1)
+    ]);
     expect([...claimedTabIds(groups)].sort()).toEqual([1, 2]);
   });
 });
-
 describe('applyKeyOrder', () => {
   const groups = ['a', 'b', 'c'].map((key) => ({
     key,
@@ -380,5 +199,60 @@ describe('moveKeyTo', () => {
 
   it('ignores a key that is not in the list', () => {
     expect(moveKeyTo(keys, 'zzz', 0)).toBe(keys);
+  });
+});
+
+describe('buildAppGroups', () => {
+  const folders = readAppFolders({
+    id: 'apps',
+    children: [
+      {
+        id: 'f1',
+        title: 'example.com',
+        children: [
+          { id: 'b1', title: 'Home', url: 'https://example.com/' },
+          { id: 'b2', title: 'Report', url: 'https://example.com/report' }
+        ]
+      },
+      { id: 'f2', title: 'sub.example.com', children: [] }
+    ]
+  });
+
+  it('makes one flat group per folder', () => {
+    const groups = buildAppGroups(folders, []);
+    expect(groups.map((group) => group.label)).toEqual([
+      'example.com',
+      'sub.example.com'
+    ]);
+    expect(groups[0].children).toEqual([]);
+  });
+
+  it('keeps a bookmark with nothing open as a row that opens one', () => {
+    const [group] = buildAppGroups(folders, []);
+    expect(group.bookmarks?.map((b) => b.name)).toEqual(['Home', 'Report']);
+  });
+
+  it('drops a bookmark once a tab is open at its address, query and all', () => {
+    const [group] = buildAppGroups(folders, [
+      tab(1, 'https://example.com/report?from=2026', 1)
+    ]);
+    expect(group.bookmarks?.map((b) => b.name)).toEqual(['Home']);
+    expect(group.tabs.map((t) => t.id)).toEqual([1]);
+  });
+
+  it('gives a tab to the more specific host, not to both', () => {
+    // A folder named for a sub-domain exists to separate it out; counting the
+    // tab twice would make both groups lie.
+    const groups = buildAppGroups(folders, [
+      tab(1, 'https://sub.example.com/x', 1),
+      tab(2, 'https://example.com/y', 2)
+    ]);
+    expect(groups[0].tabs.map((t) => t.id)).toEqual([2]);
+    expect(groups[1].tabs.map((t) => t.id)).toEqual([1]);
+  });
+
+  it('leaves a tab from another domain alone', () => {
+    const groups = buildAppGroups(folders, [tab(1, 'https://other.org/', 1)]);
+    expect(groups.every((group) => group.tabs.length === 0)).toBe(true);
   });
 });

@@ -16,15 +16,27 @@ thing is it":
 - **Azure DevOps** is grouped by its own sections through `adoSectionOf`, the
   same function the favicons use, so the grouping and the icons cannot come to
   disagree about what a page is.
-- **Everything else** comes from the domains configured on Settings → Apps.
-  See [`tabGroups.ts`](../tabGroups.ts) and
-  [`tabGroupPattern.ts`](../tabGroupPattern.ts).
+- **Everything else** comes from the app folders in your bookmarks. See
+  [`appGroups.ts`](../appGroups.ts).
 
-A definition starts as a bare domain, which matches it and everything under it.
-Past that it is a pattern: `wiki.*` followed by `/spaces`, `localhost:3000`,
-`http://*:1234/path`. `*` stands for any run of characters, a port is as much
-part of an address as a path, and the scheme is https unless another is written
-— which is the same bargain a typed address makes in the app commands.
+An app is a folder under the favorites folder's `Apps`, and the folder's **name
+is the rule**: a host. That is the part of a bookmark that syncs, so the group
+definitions reach another machine the way everything else here does. Every tab
+on that host belongs to the group, bookmarked or not. Where two folders could
+both take a tab — `base.com` and `sub.base.com` — the longer name wins, because
+a folder named for a sub-domain exists precisely to separate it out and
+counting the tab twice would make both groups lie.
+
+Folders are one level and flat. The bookmarks inside are the few main addresses
+— the ones worth having on a machine with no extension — not a list of
+everywhere you have been. How a host's open pages are then arranged is this
+panel's business, not something to be written into somebody's bookmarks and
+synced to every machine they own.
+
+A bookmark with nothing open at its address shows as a row that opens one; a
+bookmark whose address already has a tab drops out, since the tab is the thing
+to act on and the bookmark has already done its job by putting it in this
+group.
 
 A configured group stays on the list with nothing in it. It is somewhere you
 said you go, and empty is exactly when you want the **＋** that opens the first

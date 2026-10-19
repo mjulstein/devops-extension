@@ -52,12 +52,12 @@ import {
 import { navigateToWorkItem } from './navigateToWorkItem';
 import { deduplicateTabs } from './deduplicateTabs';
 import { closeStaleTabs, resolveStaleTabDays } from './staleTabs';
+import { addAppEnvironment } from './apps/appsFolder';
 import {
   loadTabGroupOrder,
   TAB_GROUP_ORDER_KEY,
   useTabGroups
 } from './useTabGroups';
-import { createTabGroup } from './tabGroups';
 import {
   fetchOrphanWorkItems,
   parentWorkItems
@@ -209,7 +209,7 @@ export function useSidepanelController({
   const [orphansStatus, setOrphansStatus] = useState<string | null>(null);
   const [tabGroupOrder, setTabGroupOrder] = useState<string[]>([]);
   const { groups: tabGroups } = useTabGroups(
-    savedSettings.tabGroups,
+    savedSettings.bookmarkFolderName,
     tabGroupOrder
   );
 
@@ -2070,19 +2070,23 @@ export function useSidepanelController({
   }
 
   /**
-   * Makes one of the catch-all's hosts a group of its own.
+   * Makes one of the catch-all's hosts an app of its own.
    *
-   * Saved outright rather than left as an unsaved edit on the Settings tab:
-   * it is a decision taken where the group is, and leaving it pending on a tab
-   * the user is not looking at would lose it.
+   * A folder with nothing in it covers nothing, so the host's own address goes
+   * in with it — that one bookmark is what gives the group its reach, and it is
+   * the address worth having on a machine with no extension anyway.
    */
   async function onPromoteTabGroup(domain: string) {
-    const next = [...savedSettings.tabGroups, createTabGroup(domain)];
-    const updated = { ...savedSettings, tabGroups: next };
-    await saveSettings(updated);
-    setSettings(updated);
-    setSavedSettings(updated);
-    pushDebugLog('success', `Added ${domain} as a tab group.`);
+    const result = await addAppEnvironment(
+      savedSettings.bookmarkFolderName,
+      domain,
+      domain,
+      `https://${domain}/`
+    );
+    pushDebugLog(
+      'error' in result ? 'error' : 'success',
+      'error' in result ? result.error : `Added ${domain} as an app.`
+    );
   }
 
   /**
@@ -2323,7 +2327,6 @@ function getTrimmedSettingsFromState(settings: Settings): Settings {
     quickTaskParentId: settings.quickTaskParentId.trim(),
     quickTaskArchiveId: settings.quickTaskArchiveId.trim(),
     staleTabDays: settings.staleTabDays.trim(),
-    tabGroups: settings.tabGroups,
     bookmarkFolderName: settings.bookmarkFolderName.trim(),
     // Not text, so there is nothing to trim — carried through as it is, or
     // saving would wipe every colour the user set.

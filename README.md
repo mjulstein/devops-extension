@@ -202,51 +202,16 @@ npm test
     — it asks first, naming how many and how old the oldest is. The threshold is
     on Settings → **Tools**; leave it empty for the default of 24 days.
     The **Tabs** tab groups every open tab: Azure DevOps by its own sections,
-    and anywhere else by domains you add on Settings → **Apps**. Add just the
-    domain to start, then narrow it into sub-domains or paths once you have seen
-    what lands in it. A definition can be a pattern — `wiki.*` with `/spaces`,
-    `localhost:3000`, `http://*:1234/path` — where `*` is any run of characters
-    and the scheme is https unless you type another. Groups you define stay
-    listed when empty, with **＋** to open one. Everything ungrouped collects
-    under **Other** by host, and **📌** turns one of those into a group of its
-    own. Drag a group to reorder. Oldest first, with **✕** to close a tab and the name to
-    switch to it. Pinned tabs, the
-    tab you are on, and anything playing audio are left alone.
-12. The pop-out button beside **Close duplicate tabs** moves the panel into a
-    window of its own — useful on a second screen, since the browser's side
-    panel is fixed to one edge. Only one is ever open, and it remembers its
-    size and position.
-13. Star an Azure DevOps page with the toggle beside the favorites menu. The
-    menu opens at the full width of the side panel, and each entry shows the
-    page's icon taken from the browser's own favicon cache — the same icon the
-    bookmarks menu draws, so favorites synced in from another machine are
-    recognisable too. Azure DevOps favorites are the exception: all of Azure
-    DevOps is one site, so its favicon would make every entry look the same.
-    Those show the section icon instead — boards, repos, pipelines, wiki — taken
-    from Azure DevOps's own navigation where it has been seen, and from icons
-    built into the extension until then.
-    A favorite opens in the current tab; hold **Ctrl** to open it in a new one.
-    Quick tasks that are in progress are listed under the favorites behind a
-    divider, and mirrored into a **Quick tasks** sub-folder of the bookmarks
-    folder — so they reach a machine with no extension installed, and their
-    bookmarks disappear as the tasks are finished. Start the search with `.` to
-    reach the browser's own bookmarks: on its own it lists your bookmark folders,
-    and picking one — or typing its name — shows what is inside it. Rows carry
-    each site's icon. The **Bookmarks** button opens the extension's own
-    bookmark manager page (see below). Start the search with `>` for commands
-    instead of places: **add app** registers the app you are looking at, and
-    **add app env `<env>` `[url]`** files an address under it. Tab completes a
-    command to the nearest name. Apps themselves appear under their own divider:
-    one row each, with **Enter** opening the first environment, **Tab** stepping
-    to the next, and a typed second word naming one. Start the search with `#` for work
-    items: a number and **Enter** opens it in Azure DevOps straight away, `#` on
-    its own lists the ones you have looked at lately, and anything typed after
-    it narrows that list. Start the search with `-`
-    to walk into them instead: on its own it lists the apps, naming one shows
-    the bookmarks in its folder, and a further word filters those. Walking into an app
-    lists its environments with the one you were last in first and the one you
-    are looking at last, so two environments are a flip between them; Tab from
-    the search box walks those rows before reaching the buttons below. Switching
+    and everything else by the app folders in your bookmarks. An app is a
+    folder under `Apps` whose **name is a host** — that name is the rule, and
+    because it is a bookmark it syncs to your other browsers. The bookmarks
+    inside are the few main addresses, so they are useful on a machine with no
+    extension; every other tab on that host is grouped with them anyway. Add
+    one by opening the app and running `>add app`. Groups show even when
+    nothing is open, with **＋** to open one, a bookmark row for anything not
+    currently open, and **📌** on anything under **Other** to make it an app.
+    Drag a group's heading to reorder, and Ctrl-click a tab to duplicate it.
+    Switching
     environment keeps your place: from `env1.my-app.com/some/path` you land on
     `env2.my-app.com/some/path`, reusing a tab already showing it and opening a
     new one otherwise.

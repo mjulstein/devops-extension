@@ -156,3 +156,14 @@
   padding-inline-end: 4px;
   margin-block-start: 8px;
 }
+
+/* Where the ✕ would be on a tab row. A bookmark has no tab to close, and the
+   column still has to line up. */
+.closePlaceholder {
+  inline-size: 22px;
+}
+
+/* A definition rather than something open, so it reads a step back. */
+.unopened .title {
+  color: var(--color-text-secondary);
+}

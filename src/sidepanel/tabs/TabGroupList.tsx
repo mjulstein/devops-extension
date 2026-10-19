@@ -21,6 +21,8 @@ interface TabGroupListProps {
   onSwitchTo: (id: number, windowId: number | null) => void;
   /** Ctrl- or Cmd-click: a second tab at the same place, left where it is. */
   onDuplicate: (id: number) => void;
+  /** Opens a bookmark that has no tab at its address yet. */
+  onOpenBookmark: (url: string) => void;
   /** Keys of the groups folded away. */
   collapsed: Set<string>;
   onToggleCollapsed: (key: string) => void;
@@ -63,6 +65,7 @@ export function TabGroupList({
   onClose,
   onSwitchTo,
   onDuplicate,
+  onOpenBookmark,
   collapsed,
   onToggleCollapsed,
   onCleanGroup,
@@ -230,12 +233,42 @@ export function TabGroupList({
               </ul>
             )}
 
+            {(group.bookmarks ?? []).length > 0 && (
+              <ul className={classes.list}>
+                {(group.bookmarks ?? []).map((bookmark) => (
+                  <li key={bookmark.id} className={classes.row}>
+                    {/* No ✕: there is no tab to close. The bookmark is a
+                        definition, and removing it is the bookmark manager's
+                        job rather than a stray delete on a list of tabs. */}
+                    <span
+                      className={classes.closePlaceholder}
+                      aria-hidden="true"
+                    />
+                    <button
+                      type="button"
+                      className={clsx(classes.name, classes.unopened)}
+                      title={bookmark.url}
+                      onClick={() => {
+                        onOpenBookmark(bookmark.url);
+                      }}
+                    >
+                      <span className={classes.title}>{bookmark.name}</span>
+                      <span className={classes.meta}>
+                        not open · {bookmark.url}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
             {group.children.length > 0 && (
               <TabGroupList
                 groups={group.children}
                 onClose={onClose}
                 onSwitchTo={onSwitchTo}
                 onDuplicate={onDuplicate}
+                onOpenBookmark={onOpenBookmark}
                 collapsed={collapsed}
                 onToggleCollapsed={onToggleCollapsed}
                 onCleanGroup={onCleanGroup}
@@ -312,6 +345,7 @@ function DropZone({
 function countTabs(group: TabGroupNode): number {
   return (
     group.tabs.length +
+    (group.bookmarks ?? []).length +
     group.children.reduce((total, child) => total + countTabs(child), 0)
   );
 }

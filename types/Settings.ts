@@ -21,12 +21,6 @@ export interface Settings {
    */
   staleTabDays: string;
   /**
-   * Domains whose open tabs get a group of their own on the Tabs tab, each
-   * optionally narrowed into sub-domains or paths. Azure DevOps is grouped by
-   * its own sections and needs no entry here.
-   */
-  tabGroups: TabGroupSetting[];
-  /**
    * Bookmarks folder that favorites are mirrored into, so they also appear in
    * omnibox autocomplete. Empty disables the mirror — the name is the user's to
    * choose and is never assumed.
@@ -40,25 +34,6 @@ export interface Settings {
    */
   themeOverrides: ThemeOverrides;
 }
-
-export interface TabGroupRule {
-  label: string;
-  match: string;
-}
-
-export interface TabGroupSetting {
-  /**
-   * What the group matches. A bare domain matches it and everything under it;
-   * past that it is a pattern — `wiki.*` followed by `/spaces`, `localhost:3000`,
-   * `*:1234/path` — where `*` stands for any run of characters and a port is as
-   * much part of an address as a path. The scheme defaults to https; write
-   * `http://localhost:1234/path` when you mean the other one.
-   */
-  domain: string;
-  label: string;
-  rules: TabGroupRule[];
-}
-
 
 export interface ThemeOverrides {
   light: Record<string, string>;

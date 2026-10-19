@@ -3,8 +3,6 @@ export type { ChildTaskItem } from './ChildTaskItem';
 export type { CreatedChildTask } from './CreatedChildTask';
 export type {
   Settings,
-  TabGroupRule,
-  TabGroupSetting,
   ThemeOverrides
 } from './Settings';
 export type { WorkItem, WorkItemParentSummary } from './WorkItem';

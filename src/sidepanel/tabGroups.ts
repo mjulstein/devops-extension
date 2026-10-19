@@ -11,20 +11,18 @@
 // domain the definition is a pattern — see `tabGroupPattern.ts` — so a
 // sub-domain and a path, a port, or a local server on http are all one field.
 
-import type { TabGroupRule, TabGroupSetting } from '@/types';
 import { patternToUrl, urlMatchesPattern } from './tabGroupPattern';
+import {
+  unopenedBookmarks,
+  type AppBookmark,
+  type AppFolder
+} from './appGroups';
 import {
   compareTabsByAgeThenPath,
   readFavIconUrl,
   readTabPath,
   type OpenTab
 } from './adoTabs';
-
-// A rule's `match` is tested against the address's host and path together, so
-// one field covers both a sub-domain (`wiki.example.com`) and a path
-// (`/spaces/`) without asking which kind it is. The first rule that matches
-// wins.
-export type { TabGroupRule, TabGroupSetting } from '@/types';
 
 export interface GroupedTab {
   id: number;
@@ -57,6 +55,11 @@ export interface TabGroupNode {
    * makes one of them permanent.
    */
   promoteDomain?: string;
+  /**
+   * Bookmarks of this group with nothing open at their address. They are rows
+   * too: a definition is not an open tab, and clicking one makes the tab.
+   */
+  bookmarks?: AppBookmark[];
 }
 
 function hostOf(url: string): string | null {
@@ -84,85 +87,6 @@ function toGroupedTab(tab: OpenTab): GroupedTab | null {
     active: tab.active === true,
     audible: tab.audible === true
   };
-}
-
-/** What a rule is tested against: the host and path as one string. */
-export function matchTarget(url: string): string {
-  const host = hostOf(url);
-  return host === null
-    ? url.toLowerCase()
-    : `${host}${readTabPath(url)}`.toLowerCase();
-}
-
-function matchingRule(rules: TabGroupRule[], url: string): TabGroupRule | null {
-  const target = matchTarget(url);
-  return (
-    rules.find((rule) => {
-      const needle = rule.match.trim().toLowerCase();
-      return needle !== '' && target.includes(needle);
-    }) ?? null
-  );
-}
-
-/**
- * One group per configured domain, narrowed by its own rules.
- *
- * A group with no rules holds its tabs directly: that is what a domain looks
- * like before anyone has needed to split it. With rules, the tabs sit in the
- * sub-group that matched first, and whatever matched nothing lands in "Other"
- * — dropping it would make the group quietly lie about what is open.
- *
- * A group with nothing open stays on the list. It is somewhere you said you go,
- * and an empty one is exactly when you want the button that opens the first tab.
- */
-export function buildTabGroups(
-  tabs: OpenTab[],
-  settings: TabGroupSetting[]
-): TabGroupNode[] {
-  return settings.map((setting, index) => {
-    const mine = tabs
-      .map(toGroupedTab)
-      .filter((tab): tab is GroupedTab => tab !== null)
-      .filter((tab) => urlMatchesPattern(tab.url, setting.domain))
-      .sort(compareTabsByAgeThenPath);
-
-    const key = `${setting.domain}:${index}`;
-    const label = setting.label.trim() || setting.domain;
-    const openUrl = patternToUrl(setting.domain) ?? undefined;
-    const rules = setting.rules.filter((rule) => rule.match.trim() !== '');
-
-    if (rules.length === 0) {
-      return { key, label, tabs: mine, children: [], openUrl };
-    }
-
-    const children: TabGroupNode[] = rules.map((rule, ruleIndex) => ({
-      key: `${key}:${ruleIndex}`,
-      label: rule.label.trim() || rule.match,
-      tabs: mine.filter((tab) => matchingRule(rules, tab.url) === rule),
-      children: []
-    }));
-
-    const rest = mine.filter((tab) => matchingRule(rules, tab.url) === null);
-    if (rest.length > 0) {
-      children.push({
-        key: `${key}:other`,
-        label: 'Other',
-        tabs: rest,
-        children: []
-      });
-    }
-
-    return {
-      key,
-      label,
-      tabs: [],
-      children: children.filter((child) => child.tabs.length > 0),
-      openUrl
-    };
-  });
-  // Nothing is filtered out: a group you defined stays on the list with
-  // nothing in it, because an empty one is still somewhere you meant to go and
-  // is where you open the first tab from.
 }
 
 export type TabOrder = 'oldest' | 'newest';
@@ -222,16 +146,6 @@ export function sortTabGroups(
     tabs: [...group.tabs].reverse(),
     children: sortTabGroups(group.children, order)
   }));
-}
-
-/** A new group for a domain, before anyone has narrowed it. */
-export function createTabGroup(domain: string): TabGroupSetting {
-  const trimmed = domain
-    .trim()
-    .toLowerCase()
-    .replace(/^https?:\/\//, '');
-  const host = trimmed.split('/')[0].replace(/^\.+/, '');
-  return { domain: host, label: host, rules: [] };
 }
 
 /** The label for the catch-all, and the key its sub-groups hang from. */
@@ -355,4 +269,62 @@ export function moveKeyTo(
     Math.min(without.length, index > from ? index - 1 : index)
   );
   return [...without.slice(0, at), fromKey, ...without.slice(at)];
+}
+
+/**
+ * The groups the `Apps` folders describe, filled with what is open.
+ *
+ * The rule is the folder's name — a host — which is the part of a bookmark that
+ * syncs. Every tab on that host belongs to the group, whether or not it is
+ * bookmarked; the bookmarks are the few main addresses, and one with nothing
+ * open at it stays on the list as a row that opens it.
+ *
+ * A folder may be `base.com` and another `sub.base.com`, and a tab on the
+ * sub-domain answers to both. The longer name wins, so the more specific folder
+ * takes it: a group named for a sub-domain exists precisely to separate it out,
+ * and having the tab in both would make the counts lie.
+ *
+ * Flat, because the folders are: how a host's open pages are then arranged is
+ * this panel's business rather than something written into somebody's
+ * bookmarks and synced to every machine they own.
+ */
+export function buildAppGroups(
+  folders: AppFolder[],
+  tabs: OpenTab[]
+): TabGroupNode[] {
+  const all = tabs
+    .map(toGroupedTab)
+    .filter((tab): tab is GroupedTab => tab !== null);
+
+  const bestFor = (tab: GroupedTab): AppFolder | null => {
+    let best: AppFolder | null = null;
+    for (const folder of folders) {
+      const pattern = folder.name.trim();
+      if (!urlMatchesPattern(tab.url, pattern)) {
+        continue;
+      }
+      if (best === null || pattern.length > best.name.trim().length) {
+        best = folder;
+      }
+    }
+    return best;
+  };
+
+  return folders.map((folder) => {
+    const mine = all
+      .filter((tab) => bestFor(tab)?.id === folder.id)
+      .sort(compareTabsByAgeThenPath);
+
+    return {
+      key: `app:${folder.id}`,
+      label: folder.name,
+      tabs: mine,
+      children: [],
+      bookmarks: unopenedBookmarks(
+        folder.bookmarks,
+        mine.map((tab) => tab.url)
+      ),
+      openUrl: patternToUrl(folder.name.trim()) ?? undefined
+    };
+  });
 }
