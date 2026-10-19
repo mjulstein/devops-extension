@@ -16,7 +16,7 @@ thing is it":
 - **Azure DevOps** is grouped by its own sections through `adoSectionOf`, the
   same function the favicons use, so the grouping and the icons cannot come to
   disagree about what a page is.
-- **Everything else** comes from the domains configured on Settings → Tools.
+- **Everything else** comes from the domains configured on Settings → Apps.
   See [`tabGroups.ts`](../tabGroups.ts) and
   [`tabGroupPattern.ts`](../tabGroupPattern.ts).
 

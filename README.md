@@ -202,7 +202,7 @@ npm test
     — it asks first, naming how many and how old the oldest is. The threshold is
     on Settings → **Tools**; leave it empty for the default of 24 days.
     The **Tabs** tab groups every open tab: Azure DevOps by its own sections,
-    and anywhere else by domains you add on Settings → **Tools**. Add just the
+    and anywhere else by domains you add on Settings → **Apps**. Add just the
     domain to start, then narrow it into sub-domains or paths once you have seen
     what lands in it. A definition can be a pattern — `wiki.*` with `/spaces`,
     `localhost:3000`, `http://*:1234/path` — where `*` is any run of characters

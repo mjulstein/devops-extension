@@ -215,6 +215,11 @@ export function SettingsPane({
       title: 'Starred pages and bookmark syncing'
     },
     {
+      id: 'apps',
+      label: SETTINGS_TAB_LABELS.apps,
+      title: 'Domains grouped on the Tabs tab'
+    },
+    {
       id: 'theme',
       label: SETTINGS_TAB_LABELS.theme,
       title: 'Colours for light and dark mode'
@@ -518,6 +523,27 @@ export function SettingsPane({
         </div>
       )}
 
+      {activeTab === 'apps' && (
+        <div className={classes.regionBody}>
+          <h3 className={classes.sectionHeading}>Tab groups</h3>
+          <SettingsHelp summary="About tab groups">
+            <p>
+              The <strong>Tabs</strong> tab groups your open tabs. Azure DevOps
+              is grouped by its own sections already; add a domain here to give
+              anywhere else a group too. Start with just the domain — narrow it
+              into sub-domains or paths once you have seen what lands in it.
+            </p>
+          </SettingsHelp>
+
+          <TabGroupsEditor
+            groups={settings.tabGroups}
+            onChange={(tabGroups) => {
+              onChange({ ...settings, tabGroups });
+            }}
+          />
+        </div>
+      )}
+
       {activeTab === 'theme' && (
         <div className={classes.regionBody}>
           <SettingsHelp summary="About theme colours">
@@ -567,25 +593,6 @@ export function SettingsPane({
               In force now: {resolveStaleTabDays(settings.staleTabDays)} days.
             </span>
           </label>
-
-          <hr className={classes.separator} />
-
-          <h3 className={classes.sectionHeading}>Tab groups</h3>
-          <SettingsHelp summary="About tab groups">
-            <p>
-              The <strong>Tabs</strong> tab groups your open tabs. Azure DevOps
-              is grouped by its own sections already; add a domain here to give
-              anywhere else a group too. Start with just the domain — narrow it
-              into sub-domains or paths once you have seen what lands in it.
-            </p>
-          </SettingsHelp>
-
-          <TabGroupsEditor
-            groups={settings.tabGroups}
-            onChange={(tabGroups) => {
-              onChange({ ...settings, tabGroups });
-            }}
-          />
 
           <hr className={classes.separator} />
 
