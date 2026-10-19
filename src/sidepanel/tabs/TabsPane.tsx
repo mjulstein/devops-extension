@@ -122,6 +122,9 @@ export function TabsPane({
         onSwitchTo={(id, windowId) => {
           void switchToTab(id, windowId);
         }}
+        onDuplicate={(id) => {
+          void chrome.tabs.duplicate(id);
+        }}
       />
     </div>
   );

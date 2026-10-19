@@ -35,6 +35,7 @@ function render(props: Partial<Parameters<typeof TabGroupList>[0]> = {}) {
       groups={groups}
       onClose={() => undefined}
       onSwitchTo={() => undefined}
+      onDuplicate={() => undefined}
       collapsed={new Set()}
       onToggleCollapsed={() => undefined}
       onCleanGroup={() => undefined}

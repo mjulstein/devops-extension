@@ -164,3 +164,47 @@ export function describeScopeViolation(
   }
   return null;
 }
+
+/**
+ * Whether two addresses are the same place, ignoring the query.
+ *
+ * A bookmark names a place; a query names a view of it. Two tabs on the same
+ * path with different parameters are variants of one thing, and a bookmark that
+ * only matched an exact query would sit there offering to open a page already
+ * open in front of you.
+ *
+ * The fragment is ignored for the same reason, and because a tab already at the
+ * page can be sent to a fragment without being reloaded.
+ */
+export function sameBase(a: string, b: string): boolean {
+  const base = (raw: string): string | null => {
+    try {
+      const url = new URL(raw);
+      const path = url.pathname.replace(/\/+$/, '');
+      return `${url.origin.toLowerCase()}${path.toLowerCase()}`;
+    } catch {
+      return null;
+    }
+  };
+
+  const left = base(a);
+  const right = base(b);
+  return left !== null && left === right;
+}
+
+/**
+ * The bookmarks with nothing open at their address.
+ *
+ * The ones with a tab already there are left out: the tab is the thing to act
+ * on, and a row offering to open what is open in front of you is a row that
+ * does nothing. They still did their job — the bookmark is what put that tab in
+ * this group.
+ */
+export function unopenedBookmarks(
+  bookmarks: AppBookmark[],
+  openUrls: string[]
+): AppBookmark[] {
+  return bookmarks.filter(
+    (bookmark) => !openUrls.some((url) => sameBase(url, bookmark.url))
+  );
+}

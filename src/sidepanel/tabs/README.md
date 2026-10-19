@@ -91,6 +91,18 @@ sort.
 repositories is three things, not five. Every other section is a list of pages
 of one kind, so it stays flat.
 
+**Ctrl**- or **Cmd**-clicking a tab duplicates it instead of switching: the
+browser's own convention for "and keep this one", which here means a second tab
+rather than going to the one you have.
+
+A bookmark and a tab are the same place when their domain and path agree. The
+query is ignored, because a bookmark names a place and a query names a view of
+it — two tabs on one path with different parameters are variants of one thing,
+and a bookmark that insisted on an exact query would sit there offering to open
+a page already in front of you. A bookmark with a tab at its address is left out
+of the list: the tab is the thing to act on, and the bookmark has already done
+its job by putting that tab in this group.
+
 The **✕** sits to the left of the name. Closing is what the list is mostly for,
 and reaching past a title to find an x at the end of a ragged row is the slower
 half of doing it. The name is the control that switches, so the thing you read

@@ -19,6 +19,8 @@ interface TabGroupListProps {
   groups: TabGroupNode[];
   onClose: (id: number) => void;
   onSwitchTo: (id: number, windowId: number | null) => void;
+  /** Ctrl- or Cmd-click: a second tab at the same place, left where it is. */
+  onDuplicate: (id: number) => void;
   /** Keys of the groups folded away. */
   collapsed: Set<string>;
   onToggleCollapsed: (key: string) => void;
@@ -60,6 +62,7 @@ export function TabGroupList({
   groups,
   onClose,
   onSwitchTo,
+  onDuplicate,
   collapsed,
   onToggleCollapsed,
   onCleanGroup,
@@ -206,7 +209,14 @@ export function TabGroupList({
                       type="button"
                       className={classes.name}
                       title={tab.url}
-                      onClick={() => {
+                      onClick={(event) => {
+                        // Ctrl, or Cmd on a Mac, is the browser's own
+                        // convention for "and keep this one" — here that means
+                        // a second tab rather than going to the one you have.
+                        if (event.ctrlKey || event.metaKey) {
+                          onDuplicate(tab.id);
+                          return;
+                        }
                         onSwitchTo(tab.id, tab.windowId);
                       }}
                     >
@@ -225,6 +235,7 @@ export function TabGroupList({
                 groups={group.children}
                 onClose={onClose}
                 onSwitchTo={onSwitchTo}
+                onDuplicate={onDuplicate}
                 collapsed={collapsed}
                 onToggleCollapsed={onToggleCollapsed}
                 onCleanGroup={onCleanGroup}
