@@ -20,9 +20,11 @@ import { loadThemeTokens } from './sidepanel/theme';
 import {
   addAppEnvironment,
   findAppsFolder,
-  loadApps
+  loadApps,
+  findFavoritesFolder
 } from './sidepanel/apps/appsFolder';
 import { readAppFolders } from './sidepanel/appGroups';
+import { appFolderFor } from './sidepanel/appFiling';
 import { groupKeyOf, planGroupedTabOrder } from './sidepanel/tabArrangement';
 import { selectStaleTabs } from './sidepanel/staleTabs';
 import { hostOf } from './sidepanel/apps/appDns';
@@ -257,6 +259,70 @@ async function runQuickCommand(
   }
 
   return { error: `No such command: ${id}` };
+}
+
+/**
+ * Files a bookmark just made under the app that covers its address.
+ *
+ * The app folders already say which addresses belong to which app, so a
+ * bookmark saved on one of those hosts has a home without anyone choosing one.
+ * Only a bookmark the browser put somewhere else is moved: anything created
+ * inside the favorites folder is the extension's own doing — the favorites
+ * mirror, the quick tasks, an environment being added — and moving those would
+ * fight the code that wrote them.
+ */
+async function fileNewBookmark(
+  id: string,
+  node: { url?: string; parentId?: string }
+): Promise<void> {
+  if (node.url === undefined || node.parentId === undefined) {
+    return;
+  }
+  const settings = await loadSettings();
+  const favoritesFolderName = settings.bookmarkFolderName.trim();
+  if (!favoritesFolderName) {
+    return;
+  }
+  try {
+    const tree = await chrome.bookmarks.getTree();
+    const favorites = findFavoritesFolder(tree, favoritesFolderName);
+    if (favorites !== null && isInside(tree, favorites.id, node.parentId)) {
+      return;
+    }
+    const target = appFolderFor(
+      readAppFolders(findAppsFolder(tree, favoritesFolderName)),
+      node.url
+    );
+    if (target !== null && target.id !== node.parentId) {
+      await chrome.bookmarks.move(id, { parentId: target.id });
+    }
+  } catch {
+    // A bookmark left where the browser put it is the harmless outcome.
+  }
+}
+
+/** Whether a folder is the given one or sits under it. */
+function isInside(
+  tree: chrome.bookmarks.BookmarkTreeNode[],
+  ancestorId: string,
+  id: string
+): boolean {
+  const walk = (nodes: chrome.bookmarks.BookmarkTreeNode[]): boolean =>
+    nodes.some(
+      (node) => node.id === id || (node.children ? walk(node.children) : false)
+    );
+  const stack = [...tree];
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (!node) {
+      continue;
+    }
+    if (node.id === ancestorId) {
+      return node.id === id || walk(node.children ?? []);
+    }
+    stack.push(...(node.children ?? []));
+  }
+  return false;
 }
 
 /** The app folders, read straight from the bookmarks. */
@@ -1050,6 +1116,13 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
       ])
     )
     .catch(() => undefined);
+});
+
+// A bookmark saved on a host an app covers goes under that app. The browser's
+// own star is the one place a bookmark is made without this extension being
+// asked where it should go.
+chrome.bookmarks?.onCreated.addListener((id, node) => {
+  void fileNewBookmark(id, node);
 });
 
 chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {

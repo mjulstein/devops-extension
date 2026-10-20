@@ -15,7 +15,8 @@ import { patternToUrl, urlMatchesPattern } from './tabGroupPattern';
 import {
   unopenedBookmarks,
   type AppBookmark,
-  type AppFolder
+  type AppFolder,
+  type AppSubGroup
 } from './appGroups';
 import {
   compareTabsByAgeThenPath,
@@ -315,11 +316,46 @@ export function buildAppGroups(
       .filter((tab) => bestFor(tab)?.id === folder.id)
       .sort(compareTabsByAgeThenPath);
 
+    // A sub-group narrows the app to part of itself, and takes its tabs out of
+    // the app's own list: a tab counted in both would make both counts wrong.
+    // The longest name wins where two could take it, the same rule as between
+    // apps, so a narrower sub-group is not swallowed by a wider one.
+    const subGroupFor = (tab: GroupedTab): AppSubGroup | null => {
+      let best: AppSubGroup | null = null;
+      for (const sub of folder.subGroups) {
+        const pattern = sub.name.trim();
+        if (!urlMatchesPattern(tab.url, pattern)) {
+          continue;
+        }
+        if (best === null || pattern.length > best.name.trim().length) {
+          best = sub;
+        }
+      }
+      return best;
+    };
+
+    const children = folder.subGroups.map((sub) => {
+      const theirs = mine.filter((tab) => subGroupFor(tab)?.id === sub.id);
+      return {
+        key: `app:${folder.id}:${sub.id}`,
+        label: sub.name,
+        tabs: theirs,
+        children: [],
+        bookmarks: unopenedBookmarks(
+          sub.bookmarks,
+          theirs.map((tab) => tab.url)
+        ),
+        openUrl: patternToUrl(sub.name.trim()) ?? undefined
+      };
+    });
+
+    const unclaimed = mine.filter((tab) => subGroupFor(tab) === null);
+
     return {
       key: `app:${folder.id}`,
       label: folder.name,
-      tabs: mine,
-      children: [],
+      tabs: unclaimed,
+      children,
       bookmarks: unopenedBookmarks(
         folder.bookmarks,
         mine.map((tab) => tab.url)

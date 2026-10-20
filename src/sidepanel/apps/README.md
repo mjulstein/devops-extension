@@ -81,6 +81,40 @@ organization's domain — `myapp.orgname.com` — reads as the `myapp` environme
 of `orgname.com`, because from the address alone there is nothing to tell the
 two apart. Name the folder for it and add its addresses explicitly.
 
+## Sub-groups
+
+A folder inside an app narrows it to part of itself, and its name is a rule the
+same way the app's is. It is typed with a `*` for the app's own name:
+`something-*` inside `my.url.com` makes the folder `something-my.url.com`, and
+`*/spaces` under `example.com` makes `example.com/spaces`.
+
+The asterisk is only how it is typed. What is stored is the whole name, because
+the folder has to mean the same thing on a machine with no extension, where
+nothing knows what the asterisk stood for.
+
+One level, and no deeper. Past a host and a section there is nothing left that
+a list of open tabs can usefully say. A tab a sub-group covers leaves the app's
+own list, longest name winning where two could take it, so neither count is a
+lie about the other.
+
+## A bookmark lands in its app
+
+Saving a page on a host an app covers files it under that app, and under the
+sub-group that covers it when one does. The definition already answers the
+question, so being asked again is work that was already done.
+
+Only bookmarks made outside the favorites folder move. Everything inside it is
+the extension's own writing — the favorites mirror, the quick tasks, an
+environment being added — and moving those would fight the code that wrote
+them.
+
+## Searching
+
+Words are tokens, found anywhere in the name and in any order: `hello com`
+finds `hello-world.com`. A host is punctuated in a way nobody wants to
+reproduce from memory, and a space is safe to read this way because no app's
+name has one. A name that starts with what you typed still comes first.
+
 ## Adding an app
 
 An app is a folder in the `Apps` bookmark folder, so it is added the way a

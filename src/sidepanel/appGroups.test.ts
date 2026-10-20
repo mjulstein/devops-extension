@@ -1,4 +1,5 @@
 import {
+  expandFolderName,
   readAppFolders,
   sameBase,
   unopenedBookmarks,
@@ -85,5 +86,64 @@ describe('unopenedBookmarks', () => {
       'home',
       'report'
     ]);
+  });
+});
+
+describe('expandFolderName', () => {
+  it('fills the asterisk in from the folder it goes into', () => {
+    expect(expandFolderName('something-*', 'my.url.com')).toBe(
+      'something-my.url.com'
+    );
+    expect(expandFolderName('*/spaces', 'example.com')).toBe(
+      'example.com/spaces'
+    );
+  });
+
+  it('leaves a name that is already complete alone', () => {
+    expect(expandFolderName('wiki.example.com', 'example.com')).toBe(
+      'wiki.example.com'
+    );
+  });
+
+  it('ignores a parent whose name is padded', () => {
+    expect(expandFolderName('*-test', '  my.url.com ')).toBe('my.url.com-test');
+  });
+});
+
+describe('readAppFolders sub-groups', () => {
+  const folders = readAppFolders({
+    id: 'apps',
+    children: [
+      {
+        id: 'f',
+        title: 'example.com',
+        children: [
+          { id: 'b', title: 'Home', url: 'https://example.com/' },
+          {
+            id: 's',
+            title: 'example.com/spaces',
+            children: [
+              { id: 'b2', title: 'Eng', url: 'https://example.com/spaces/eng' }
+            ]
+          }
+        ]
+      }
+    ]
+  });
+
+  it('reads the folders inside an app as its sub-groups', () => {
+    expect(folders[0].subGroups.map((sub) => sub.name)).toEqual([
+      'example.com/spaces'
+    ]);
+  });
+
+  it('keeps a sub-group own bookmarks with it', () => {
+    expect(folders[0].subGroups[0].bookmarks.map((b) => b.name)).toEqual([
+      'Eng'
+    ]);
+  });
+
+  it('leaves the app own bookmarks where they are', () => {
+    expect(folders[0].bookmarks.map((b) => b.name)).toEqual(['Home']);
   });
 });

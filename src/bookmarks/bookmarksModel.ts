@@ -351,6 +351,25 @@ export function planFlatten(
   };
 }
 
+/** The folder a node sits in, or null for a root. */
+export function findParent(
+  tree: BookmarkNode[],
+  id: string
+): BookmarkNode | null {
+  const stack = [...tree];
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (!node?.children) {
+      continue;
+    }
+    if (node.children.some((child) => child.id === id)) {
+      return node;
+    }
+    stack.push(...node.children);
+  }
+  return null;
+}
+
 export function findNode(
   tree: BookmarkNode[],
   id: string

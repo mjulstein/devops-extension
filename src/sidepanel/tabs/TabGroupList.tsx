@@ -116,7 +116,12 @@ export function TabGroupList({
                 summary is an interactive control in its own right, so a drag
                 starting on it never reached a draggable parent — which left
                 the body as the only surface that worked, and from the outside
-                that is a handle in an arbitrary place. */}
+                that is a handle in an arbitrary place.
+
+                Its contents are a span rather than the summary itself being
+                the flex row: Chrome will not start a drag from a summary that
+                has been given another display, so the row that lays the icon,
+                name and controls out has to be inside it. */}
             <summary
               className={classes.heading}
               draggable={depth === 0}
@@ -129,69 +134,71 @@ export function TabGroupList({
                 onDragStateChange?.(null);
               }}
             >
-              {favIconOf(group) === null ? (
-                <span className={classes.icon} aria-hidden="true" />
-              ) : (
-                <img
-                  className={classes.icon}
-                  src={favIconOf(group) ?? ''}
-                  alt=""
-                />
-              )}
-              {group.label}
-              <span className={classes.count}>{countTabs(group)}</span>
+              <span className={classes.headingRow}>
+                {favIconOf(group) === null ? (
+                  <span className={classes.icon} aria-hidden="true" />
+                ) : (
+                  <img
+                    className={classes.icon}
+                    src={favIconOf(group) ?? ''}
+                    alt=""
+                  />
+                )}
+                {group.label}
+                <span className={classes.count}>{countTabs(group)}</span>
 
-              {/* The controls live in the summary so they are beside the group
+                {/* The controls live in the summary so they are beside the group
                 they act on, and stop the click there: pressing them should not
                 also fold the group away under the hand. */}
-              <span
-                className={classes.groupActions}
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                }}
-              >
-                <input
-                  type="number"
-                  min={1}
-                  className={classes.days}
-                  value={String(daysFor(group.key))}
-                  aria-label={`Days untouched before closing a ${group.label} tab`}
-                  onChange={(event) => {
-                    onDaysChange(group.key, event.target.value);
+                <span
+                  className={classes.groupActions}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
                   }}
-                />
-                {group.promoteDomain !== undefined && (
+                >
+                  <input
+                    type="number"
+                    min={1}
+                    className={classes.days}
+                    value={String(daysFor(group.key))}
+                    aria-label={`Days untouched before closing a ${group.label} tab`}
+                    onChange={(event) => {
+                      onDaysChange(group.key, event.target.value);
+                    }}
+                  />
+                  {group.promoteDomain !== undefined && (
+                    <Button
+                      size="compact"
+                      variant="quiet"
+                      icon="📌"
+                      description={`Make ${group.promoteDomain} a group of its own`}
+                      onClick={() => {
+                        onPromoteGroup(group.promoteDomain ?? '');
+                      }}
+                    />
+                  )}
+                  {group.openUrl !== undefined && (
+                    <Button
+                      size="compact"
+                      variant="quiet"
+                      icon="＋"
+                      description={`Open ${group.openUrl}`}
+                      onClick={() => {
+                        onOpenGroup(group.openUrl ?? '');
+                      }}
+                    />
+                  )}
                   <Button
                     size="compact"
                     variant="quiet"
-                    icon="📌"
-                    description={`Make ${group.promoteDomain} a group of its own`}
+                    icon="🧹"
+                    description={`Close ${group.label} tabs untouched for ${daysFor(group.key)} days`}
                     onClick={() => {
-                      onPromoteGroup(group.promoteDomain ?? '');
+                      onCleanGroup(group, daysFor(group.key));
                     }}
                   />
-                )}
-                {group.openUrl !== undefined && (
-                  <Button
-                    size="compact"
-                    variant="quiet"
-                    icon="＋"
-                    description={`Open ${group.openUrl}`}
-                    onClick={() => {
-                      onOpenGroup(group.openUrl ?? '');
-                    }}
-                  />
-                )}
-                <Button
-                  size="compact"
-                  variant="quiet"
-                  icon="🧹"
-                  description={`Close ${group.label} tabs untouched for ${daysFor(group.key)} days`}
-                  onClick={() => {
-                    onCleanGroup(group, daysFor(group.key));
-                  }}
-                />
+                </span>
               </span>
             </summary>
 

@@ -339,6 +339,55 @@ export function installMockChrome(getScenario: () => Scenario): void {
     title: 'Azure DevOps (dev harness)'
   };
 
+  // Enough open tabs for the Tabs tab to have something to group: two Azure
+  // DevOps sections, two hosts that an app folder can claim, and one that
+  // nothing claims so the catch-all appears. Ages are spread out so the
+  // oldest-first order and the per-group cleanup have something to show.
+  const DAY = 24 * 60 * 60 * 1000;
+  const openTabs = [
+    fakeTab,
+    {
+      id: 2,
+      windowId: 1,
+      active: false,
+      lastAccessed: Date.now() - 2 * DAY,
+      url: `https://dev.azure.com/${DEV_ORGANIZATION}/${DEV_PROJECT}/_git/repo/pullrequest/7`,
+      title: 'Pull request 7'
+    },
+    {
+      id: 3,
+      windowId: 1,
+      active: false,
+      lastAccessed: Date.now() - 5 * DAY,
+      url: 'https://example.com/reports/weekly',
+      title: 'Weekly report'
+    },
+    {
+      id: 4,
+      windowId: 1,
+      active: false,
+      lastAccessed: Date.now() - 1 * DAY,
+      url: 'https://example.com/',
+      title: 'Example home'
+    },
+    {
+      id: 5,
+      windowId: 1,
+      active: false,
+      lastAccessed: Date.now() - 9 * DAY,
+      url: 'https://wiki.example.org/spaces/eng',
+      title: 'Engineering space'
+    },
+    {
+      id: 6,
+      windowId: 1,
+      active: false,
+      lastAccessed: Date.now() - 30 * DAY,
+      url: 'https://unclaimed.test/page',
+      title: 'Nothing claims this'
+    }
+  ];
+
   const runtimeMessages = fakeEvent<[unknown]>();
   const storageChanges = fakeEvent<
     [Record<string, { newValue?: unknown; oldValue?: unknown }>, string]
@@ -387,7 +436,7 @@ export function installMockChrome(getScenario: () => Scenario): void {
       lastError: undefined
     },
     tabs: {
-      query: async () => [fakeTab],
+      query: async () => openTabs,
       get: async () => fakeTab,
       create: async (info: { url?: string }) => {
         console.info('[dev-harness] tabs.create', info.url);

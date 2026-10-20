@@ -119,3 +119,20 @@ The **✕** sits to the left of the name. Closing is what the list is mostly for
 and reaching past a title to find an x at the end of a ragged row is the slower
 half of doing it. The name is the control that switches, so the thing you read
 is the thing you press.
+
+## Sub-groups
+
+A folder inside an app folder is drawn under it, holding the tabs its own name
+covers. Those tabs leave the app's own list rather than appearing twice, and
+where two sub-groups could take a tab the longer name wins — a narrower rule
+exists precisely to separate something out.
+
+The names are made in the bookmark manager, typed with a `*` for the app's own
+name. See [`src/sidepanel/apps/README.md`](../apps/README.md).
+
+## Dragging a group
+
+The heading is the handle. It is a `<summary>`, and it has to keep its own
+`display`: a summary laid out as a flex box is one Chrome will not start a drag
+from at all, which is why the icon, name and controls are a span inside it
+rather than the summary itself being the row.

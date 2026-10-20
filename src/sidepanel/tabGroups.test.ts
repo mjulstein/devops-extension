@@ -256,3 +256,54 @@ describe('buildAppGroups', () => {
     expect(groups.every((group) => group.tabs.length === 0)).toBe(true);
   });
 });
+
+describe('buildAppGroups sub-groups', () => {
+  const folders = readAppFolders({
+    id: 'apps',
+    children: [
+      {
+        id: 'f1',
+        title: 'example.com',
+        children: [
+          { id: 'b1', title: 'Home', url: 'https://example.com/' },
+          {
+            id: 's1',
+            title: 'example.com/spaces',
+            children: [
+              { id: 'b2', title: 'Eng', url: 'https://example.com/spaces/eng' }
+            ]
+          }
+        ]
+      }
+    ]
+  });
+
+  const groups = buildAppGroups(folders, [
+    tab(1, 'https://example.com/spaces/eng/page', 1),
+    tab(2, 'https://example.com/report', 2)
+  ]);
+
+  it('draws a sub-group under the app it narrows', () => {
+    expect(groups[0].children.map((child) => child.label)).toEqual([
+      'example.com/spaces'
+    ]);
+  });
+
+  it('takes the sub-group tabs out of the app own list', () => {
+    // Counted in both, both counts would be wrong.
+    expect(groups[0].tabs.map((t) => t.id)).toEqual([2]);
+    expect(groups[0].children[0].tabs.map((t) => t.id)).toEqual([1]);
+  });
+
+  it('keeps a sub-group bookmark with it until something is open there', () => {
+    // The open tab is a page under it, not the bookmark's own address.
+    expect(groups[0].children[0].bookmarks?.map((b) => b.name)).toEqual([
+      'Eng'
+    ]);
+    expect(groups[0].bookmarks?.map((b) => b.name)).toEqual(['Home']);
+  });
+
+  it('still counts the whole app', () => {
+    expect([...claimedTabIds(groups)].sort()).toEqual([1, 2]);
+  });
+});

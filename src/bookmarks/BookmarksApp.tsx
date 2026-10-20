@@ -19,6 +19,7 @@ import {
   collectFolders,
   filterEntries,
   findNode,
+  findParent,
   flattenBookmarks,
   type BookmarkEntry,
   type BookmarkNode
@@ -38,6 +39,7 @@ import {
   saveColumnWidths,
   type ColumnWidths
 } from './columnWidths';
+import { expandFolderName } from '@/sidepanel/appGroups';
 import classes from './BookmarksApp.module.css';
 
 /**
@@ -175,6 +177,21 @@ export function BookmarksApp() {
       }
     });
   }, [act, checked]);
+
+  /**
+   * A folder's new name, with any `*` filled in from the folder it sits in.
+   *
+   * Typed in an app folder, `something-*` is how a sub-group is made:
+   * `*` is the app's own name, so the host is written once and a rename of the
+   * app cannot leave a sub-group quietly pointing at the old one. What is
+   * stored is the whole name, because the folder has to mean the same thing on
+   * a machine with no extension.
+   */
+  const folderName = useCallback(
+    (id: string, typed: string) =>
+      expandFolderName(typed, findParent(tree, id)?.title ?? ''),
+    [tree]
+  );
 
   const selected = selectedId ? findNode(tree, selectedId) : null;
   const scope = scopeId ? findNode(tree, scopeId) : null;
@@ -327,7 +344,7 @@ export function BookmarksApp() {
               act(() => applyFlatten(plan));
             }}
             onRename={(id, title) => {
-              act(() => updateNode(id, { title }));
+              act(() => updateNode(id, { title: folderName(id, title) }));
             }}
             onDelete={(id) => {
               // The selection cannot survive its own folder, and leaving it
@@ -438,7 +455,7 @@ export function BookmarksApp() {
               act(() => removeNode(id, true));
             }}
             onRenameFolder={(id, title) => {
-              act(() => updateNode(id, { title }));
+              act(() => updateNode(id, { title: folderName(id, title) }));
             }}
             onMove={handleMove}
           />

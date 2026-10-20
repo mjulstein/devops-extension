@@ -4,13 +4,19 @@
   gap: 10px;
 }
 
+/* The summary keeps its own display. Laying it out as a flex box stops
+   Chrome starting a drag from it at all — a summary that is no longer a
+   list-item is no longer draggable — so the flex row is the span inside. */
 .heading {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   font-size: 12px;
   margin: 0 0 2px;
   color: var(--color-text-secondary);
+}
+
+.headingRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .count {
@@ -139,8 +145,7 @@
 
 /* The line is on the gap, so what you see is where the thing will land. */
 .dropZoneOver {
-  background:
-    linear-gradient(
+  background: linear-gradient(
       var(--color-accent-strong),
       var(--color-accent-strong)
     )

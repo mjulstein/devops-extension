@@ -2,8 +2,8 @@ import { groupKeyOf, planGroupedTabOrder } from './tabArrangement';
 import type { AppFolder } from './appGroups';
 
 const folders: AppFolder[] = [
-  { id: 'f1', name: 'example.com', bookmarks: [] },
-  { id: 'f2', name: 'sub.example.com', bookmarks: [] }
+  { id: 'f1', name: 'example.com', bookmarks: [], subGroups: [] },
+  { id: 'f2', name: 'sub.example.com', bookmarks: [], subGroups: [] }
 ];
 
 describe('groupKeyOf', () => {
