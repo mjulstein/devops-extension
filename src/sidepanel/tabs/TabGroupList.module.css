@@ -57,6 +57,16 @@
   background: var(--color-surface-hover);
 }
 
+/* The tab its window is showing, so clicking a row leaves a mark. */
+.activeTab {
+  background: var(--color-surface-hover);
+  box-shadow: inset 2px 0 0 var(--color-accent-strong);
+}
+
+.activeTab .title {
+  font-weight: 600;
+}
+
 .title,
 .meta {
   overflow: hidden;
@@ -135,12 +145,16 @@
   border-radius: 4px;
 }
 
-/* Only there while a drag is in progress: a permanent gap between every group
-   would be a list with holes in it. */
+/* Always present, with no height until a drag is on: inserting the gaps when
+   the drag starts moves the page under the cursor at the worst moment. */
 .dropZone {
+  block-size: 0;
+  border-radius: 2px;
+}
+
+.dropZoneActive {
   block-size: 12px;
   margin-block: -2px;
-  border-radius: 2px;
 }
 
 /* The line is on the gap, so what you see is where the thing will land. */
@@ -171,4 +185,40 @@
 /* A definition rather than something open, so it reads a step back. */
 .unopened .title {
   color: var(--color-text-secondary);
+}
+
+/* The grip beside the heading, not the heading itself: a summary is the
+   disclosure control, and Chrome will not start a drag from one anyway. */
+.shell {
+  display: flex;
+  align-items: start;
+  gap: 2px;
+}
+
+.shell > details {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+.shellDragging {
+  opacity: 0.5;
+}
+
+.grip {
+  flex: 0 0 auto;
+  cursor: grab;
+  padding: 1px 2px;
+  line-height: 1;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  border-radius: 3px;
+}
+
+.grip:active {
+  cursor: grabbing;
+}
+
+.grip:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
 }

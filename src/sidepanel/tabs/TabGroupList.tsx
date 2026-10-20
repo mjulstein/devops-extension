@@ -88,212 +88,235 @@ export function TabGroupList({
     <div className={classes.groups}>
       {groups.map((group, index) => (
         <Fragment key={group.key}>
-          {isDragging && (
+          {depth === 0 && (
             <DropZone
               index={index}
+              active={isDragging}
               onReorder={onReorder}
               onDragStateChange={onDragStateChange}
             />
           )}
-          <details
-            key={group.key}
-            // The catch-all gets its own ground so it is plain where the
-            // groups you defined stop and the leftovers begin.
+          <div
             className={clsx(
-              classes.group,
-              group.key === OTHER_GROUP_KEY && classes.otherGroup
+              classes.shell,
+              depth === 0 && classes.shellTop,
+              draggingKey === group.key && classes.shellDragging
             )}
-            style={{ paddingInlineStart: depth * 10 }}
-            open={!collapsed.has(group.key)}
-            onToggle={(event) => {
-              const isOpen = event.currentTarget.open;
-              if (isOpen === collapsed.has(group.key)) {
-                onToggleCollapsed(group.key);
-              }
-            }}
           >
-            {/* The heading is what is dragged, not the whole details. A
-                summary is an interactive control in its own right, so a drag
-                starting on it never reached a draggable parent — which left
-                the body as the only surface that worked, and from the outside
-                that is a handle in an arbitrary place.
-
-                Its contents are a span rather than the summary itself being
-                the flex row: Chrome will not start a drag from a summary that
-                has been given another display, so the row that lays the icon,
-                name and controls out has to be inside it. */}
-            <summary
-              className={classes.heading}
-              draggable={depth === 0}
-              onDragStart={(event) => {
-                event.dataTransfer.setData(GROUP_DRAG_TYPE, group.key);
-                event.dataTransfer.effectAllowed = 'move';
-                onDragStateChange?.(group.key);
-              }}
-              onDragEnd={() => {
-                onDragStateChange?.(null);
+            {depth === 0 && (
+              // An explicit handle, rather than the heading itself. A summary
+              // is the disclosure control, and Chrome will not start a drag
+              // from one that has been laid out as anything but a summary — so
+              // a handle beside it is both the obvious place to grab and the
+              // one that actually works.
+              <span
+                className={classes.grip}
+                draggable
+                role="button"
+                tabIndex={-1}
+                aria-label={`Drag ${group.label} to reorder`}
+                title={`Drag to move ${group.label}`}
+                onDragStart={(event) => {
+                  event.dataTransfer.setData(GROUP_DRAG_TYPE, group.key);
+                  // Some surfaces will not start a drag that carries nothing
+                  // they recognise, and a plain-text copy costs nothing.
+                  event.dataTransfer.setData('text/plain', group.label);
+                  event.dataTransfer.effectAllowed = 'move';
+                  onDragStateChange?.(group.key);
+                }}
+                onDragEnd={() => {
+                  onDragStateChange?.(null);
+                }}
+              >
+                ⠿
+              </span>
+            )}
+            <details
+              key={group.key}
+              // The catch-all gets its own ground so it is plain where the
+              // groups you defined stop and the leftovers begin.
+              className={clsx(
+                classes.group,
+                group.key === OTHER_GROUP_KEY && classes.otherGroup
+              )}
+              style={{ paddingInlineStart: depth * 10 }}
+              open={!collapsed.has(group.key)}
+              onToggle={(event) => {
+                const isOpen = event.currentTarget.open;
+                if (isOpen === collapsed.has(group.key)) {
+                  onToggleCollapsed(group.key);
+                }
               }}
             >
-              <span className={classes.headingRow}>
-                {favIconOf(group) === null ? (
-                  <span className={classes.icon} aria-hidden="true" />
-                ) : (
-                  <img
-                    className={classes.icon}
-                    src={favIconOf(group) ?? ''}
-                    alt=""
-                  />
-                )}
-                {group.label}
-                <span className={classes.count}>{countTabs(group)}</span>
+              <summary className={classes.heading}>
+                <span className={classes.headingRow}>
+                  {favIconOf(group) === null ? (
+                    <span className={classes.icon} aria-hidden="true" />
+                  ) : (
+                    <img
+                      className={classes.icon}
+                      src={favIconOf(group) ?? ''}
+                      alt=""
+                    />
+                  )}
+                  {group.label}
+                  <span className={classes.count}>{countTabs(group)}</span>
 
-                {/* The controls live in the summary so they are beside the group
+                  {/* The controls live in the summary so they are beside the group
                 they act on, and stop the click there: pressing them should not
                 also fold the group away under the hand. */}
-                <span
-                  className={classes.groupActions}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                  }}
-                >
-                  <input
-                    type="number"
-                    min={1}
-                    className={classes.days}
-                    value={String(daysFor(group.key))}
-                    aria-label={`Days untouched before closing a ${group.label} tab`}
-                    onChange={(event) => {
-                      onDaysChange(group.key, event.target.value);
+                  <span
+                    className={classes.groupActions}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
                     }}
-                  />
-                  {group.promoteDomain !== undefined && (
+                  >
+                    <input
+                      type="number"
+                      min={1}
+                      className={classes.days}
+                      value={String(daysFor(group.key))}
+                      aria-label={`Days untouched before closing a ${group.label} tab`}
+                      onChange={(event) => {
+                        onDaysChange(group.key, event.target.value);
+                      }}
+                    />
+                    {group.promoteDomain !== undefined && (
+                      <Button
+                        size="compact"
+                        variant="quiet"
+                        icon="📌"
+                        description={`Make ${group.promoteDomain} a group of its own`}
+                        onClick={() => {
+                          onPromoteGroup(group.promoteDomain ?? '');
+                        }}
+                      />
+                    )}
+                    {group.openUrl !== undefined && (
+                      <Button
+                        size="compact"
+                        variant="quiet"
+                        icon="＋"
+                        description={`Open ${group.openUrl}`}
+                        onClick={() => {
+                          onOpenGroup(group.openUrl ?? '');
+                        }}
+                      />
+                    )}
                     <Button
                       size="compact"
                       variant="quiet"
-                      icon="📌"
-                      description={`Make ${group.promoteDomain} a group of its own`}
+                      icon="🧹"
+                      description={`Close ${group.label} tabs untouched for ${daysFor(group.key)} days`}
                       onClick={() => {
-                        onPromoteGroup(group.promoteDomain ?? '');
+                        onCleanGroup(group, daysFor(group.key));
                       }}
                     />
-                  )}
-                  {group.openUrl !== undefined && (
-                    <Button
-                      size="compact"
-                      variant="quiet"
-                      icon="＋"
-                      description={`Open ${group.openUrl}`}
-                      onClick={() => {
-                        onOpenGroup(group.openUrl ?? '');
-                      }}
-                    />
-                  )}
-                  <Button
-                    size="compact"
-                    variant="quiet"
-                    icon="🧹"
-                    description={`Close ${group.label} tabs untouched for ${daysFor(group.key)} days`}
-                    onClick={() => {
-                      onCleanGroup(group, daysFor(group.key));
-                    }}
-                  />
+                  </span>
                 </span>
-              </span>
-            </summary>
+              </summary>
 
-            {group.tabs.length > 0 && (
-              <ul className={classes.list}>
-                {group.tabs.map((tab) => (
-                  <li key={tab.id} className={classes.row}>
-                    <Button
-                      size="compact"
-                      variant="quiet"
-                      icon="✕"
-                      description={`Close ${tab.title}`}
-                      onClick={() => {
-                        onClose(tab.id);
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className={classes.name}
-                      title={tab.url}
-                      onClick={(event) => {
-                        // Ctrl, or Cmd on a Mac, is the browser's own
-                        // convention for "and keep this one" — here that means
-                        // a second tab rather than going to the one you have.
-                        if (event.ctrlKey || event.metaKey) {
-                          onDuplicate(tab.id);
-                          return;
-                        }
-                        onSwitchTo(tab.id, tab.windowId);
-                      }}
-                    >
-                      <span className={classes.title}>{tab.title}</span>
-                      <span className={classes.meta}>
-                        {describeTabAge(tab)} · {tab.path}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+              {group.tabs.length > 0 && (
+                <ul className={classes.list}>
+                  {group.tabs.map((tab) => (
+                    <li key={tab.id} className={classes.row}>
+                      <Button
+                        size="compact"
+                        variant="quiet"
+                        icon="✕"
+                        description={`Close ${tab.title}`}
+                        onClick={() => {
+                          onClose(tab.id);
+                        }}
+                      />
+                      <button
+                        type="button"
+                        // The one the browser is showing. Clicking a row
+                        // makes it so, and without the mark the list gives no
+                        // sign that anything happened.
+                        className={clsx(
+                          classes.name,
+                          tab.active && classes.activeTab
+                        )}
+                        title={tab.url}
+                        onClick={(event) => {
+                          // Ctrl, or Cmd on a Mac, is the browser's own
+                          // convention for "and keep this one" — here that means
+                          // a second tab rather than going to the one you have.
+                          if (event.ctrlKey || event.metaKey) {
+                            onDuplicate(tab.id);
+                            return;
+                          }
+                          onSwitchTo(tab.id, tab.windowId);
+                        }}
+                      >
+                        <span className={classes.title}>{tab.title}</span>
+                        <span className={classes.meta}>
+                          {describeTabAge(tab)} · {tab.path}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
 
-            {(group.bookmarks ?? []).length > 0 && (
-              <ul className={classes.list}>
-                {(group.bookmarks ?? []).map((bookmark) => (
-                  <li key={bookmark.id} className={classes.row}>
-                    {/* No ✕: there is no tab to close. The bookmark is a
+              {(group.bookmarks ?? []).length > 0 && (
+                <ul className={classes.list}>
+                  {(group.bookmarks ?? []).map((bookmark) => (
+                    <li key={bookmark.id} className={classes.row}>
+                      {/* No ✕: there is no tab to close. The bookmark is a
                         definition, and removing it is the bookmark manager's
                         job rather than a stray delete on a list of tabs. */}
-                    <span
-                      className={classes.closePlaceholder}
-                      aria-hidden="true"
-                    />
-                    <button
-                      type="button"
-                      className={clsx(classes.name, classes.unopened)}
-                      title={bookmark.url}
-                      onClick={() => {
-                        onOpenBookmark(bookmark.url);
-                      }}
-                    >
-                      <span className={classes.title}>{bookmark.name}</span>
-                      <span className={classes.meta}>
-                        not open · {bookmark.url}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+                      <span
+                        className={classes.closePlaceholder}
+                        aria-hidden="true"
+                      />
+                      <button
+                        type="button"
+                        className={clsx(classes.name, classes.unopened)}
+                        title={bookmark.url}
+                        onClick={() => {
+                          onOpenBookmark(bookmark.url);
+                        }}
+                      >
+                        <span className={classes.title}>{bookmark.name}</span>
+                        <span className={classes.meta}>
+                          not open · {bookmark.url}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
 
-            {group.children.length > 0 && (
-              <TabGroupList
-                groups={group.children}
-                onClose={onClose}
-                onSwitchTo={onSwitchTo}
-                onDuplicate={onDuplicate}
-                onOpenBookmark={onOpenBookmark}
-                collapsed={collapsed}
-                onToggleCollapsed={onToggleCollapsed}
-                onCleanGroup={onCleanGroup}
-                onOpenGroup={onOpenGroup}
-                onPromoteGroup={onPromoteGroup}
-                onReorder={onReorder}
-                daysFor={daysFor}
-                onDaysChange={onDaysChange}
-                depth={depth + 1}
-              />
-            )}
-          </details>
+              {group.children.length > 0 && (
+                <TabGroupList
+                  groups={group.children}
+                  onClose={onClose}
+                  onSwitchTo={onSwitchTo}
+                  onDuplicate={onDuplicate}
+                  onOpenBookmark={onOpenBookmark}
+                  collapsed={collapsed}
+                  onToggleCollapsed={onToggleCollapsed}
+                  onCleanGroup={onCleanGroup}
+                  onOpenGroup={onOpenGroup}
+                  onPromoteGroup={onPromoteGroup}
+                  onReorder={onReorder}
+                  daysFor={daysFor}
+                  onDaysChange={onDaysChange}
+                  depth={depth + 1}
+                />
+              )}
+            </details>
+          </div>
         </Fragment>
       ))}
 
-      {isDragging && (
+      {depth === 0 && (
         <DropZone
           index={groups.length}
+          active={isDragging}
           onReorder={onReorder}
           onDragStateChange={onDragStateChange}
         />
@@ -305,18 +328,25 @@ export function TabGroupList({
 /**
  * The gap a group can be dropped into.
  *
- * Only there while a drag is in progress: a permanent gap between every group
- * would be a list with holes in it. The line is drawn on the gap itself rather
- * than on a group's edge, so what you see is where the thing will land — the
- * first version gave no clue at all and a drop that changed nothing looked
- * exactly like a drop that had failed.
+ * Always in the list, and only open while a drag is in progress: a permanent
+ * gap between every group would be a list with holes in it, but adding the
+ * gaps at the moment the drag starts rearranges the page under the cursor just
+ * as the browser is deciding what is being dragged. It costs nothing to have
+ * them there all along with no height.
+ *
+ * The line is drawn on the gap itself rather than on a group's edge, so what
+ * you see is where the thing will land — the first version gave no clue at all
+ * and a drop that changed nothing looked exactly like a drop that had failed.
  */
 function DropZone({
   index,
+  active,
   onReorder,
   onDragStateChange
 }: {
   index: number;
+  /** Open only while something is being dragged. */
+  active: boolean;
   onReorder: (fromKey: string, gapIndex: number) => void;
   onDragStateChange?: (key: string | null) => void;
 }) {
@@ -324,7 +354,11 @@ function DropZone({
 
   return (
     <div
-      className={clsx(classes.dropZone, isOver && classes.dropZoneOver)}
+      className={clsx(
+        classes.dropZone,
+        active && classes.dropZoneActive,
+        active && isOver && classes.dropZoneOver
+      )}
       onDragOver={(event) => {
         if (event.dataTransfer.types.includes(GROUP_DRAG_TYPE)) {
           event.preventDefault();

@@ -23,7 +23,8 @@ const groups = toTabGroupNodes(
         id: 2,
         url: 'https://dev.azure.com/o/p/_boards/board',
         title: 'Board',
-        lastAccessed: now - DAY
+        lastAccessed: now - DAY,
+        active: true
       }
     ])
   )
@@ -114,18 +115,22 @@ describe('TabGroupList', () => {
     // A summary is an interactive control: a drag starting on it never
     // reached a draggable parent, leaving the body as the only handle.
     expect(render()).toContain('<summary');
+    // The grip, not the heading: Chrome will not start a drag from a summary.
+    expect(render()).toContain('Drag to move Repos');
     expect(render()).toContain('draggable="true"');
   });
 
-  it('shows no gaps until something is being dragged', () => {
-    // A permanent gap between every group would be a list with holes in it.
-    expect(render()).not.toContain('dropZone');
+  it('keeps a gap on each side of every group, closed', () => {
+    // They are in the list all along with no height. Adding them when the drag
+    // starts rearranges the page under the cursor at the worst moment.
+    const markup = render();
+    expect(markup.split('_dropZone_').length - 1).toBe(groups.length + 1);
+    expect(markup).not.toContain('dropZoneActive');
   });
 
-  it('opens a gap on each side of every group while dragging', () => {
+  it('opens them while something is being dragged', () => {
     const markup = render({ draggingKey: groups[0].key });
-    // One before each group, and one at the end.
-    expect(markup.split('dropZone').length - 1).toBe(groups.length + 1);
+    expect(markup.split('dropZoneActive').length - 1).toBe(groups.length + 1);
   });
 
   it('gives each group a days box and a cleanup button', () => {
@@ -141,5 +146,10 @@ describe('TabGroupList', () => {
   it('shows the icon of the group newest tab', () => {
     // Repos' newest is tab 1 here, so its icon is the one drawn.
     expect(render()).toContain('repo.png');
+  });
+
+  it('marks the tab its window is showing', () => {
+    // Clicking a row makes it active; without the mark nothing looks changed.
+    expect(render()).toContain('activeTab');
   });
 });

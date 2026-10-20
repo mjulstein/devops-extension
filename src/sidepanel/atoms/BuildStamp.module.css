@@ -1,0 +1,7 @@
+/* Last in the row and quiet: it is there to be checked, not read. */
+.stamp {
+  margin-inline-start: auto;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}

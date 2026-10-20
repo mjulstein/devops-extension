@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { copyFileSync, existsSync, renameSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { build } from 'vite';
@@ -77,7 +78,35 @@ function buildContentScriptPlugin() {
   };
 }
 
+/**
+ * The commit this was built from, for the panel's own header.
+ *
+ * Reloading an unpacked extension is easy to believe you have done, and a
+ * panel that looks the same either way gives no way to tell. A dirty tree is
+ * marked, since a build from uncommitted work is not the commit it names.
+ *
+ * Not a secret: the repository is public and the sha is in its history. It
+ * falls back to a dash outside a checkout, where a build still has to work.
+ */
+function buildStamp(): string {
+  try {
+    const sha = execFileSync('git', ['rev-parse', '--short', 'HEAD'], {
+      encoding: 'utf8'
+    }).trim();
+    const dirty =
+      execFileSync('git', ['status', '--porcelain'], {
+        encoding: 'utf8'
+      }).trim() !== '';
+    return dirty ? `${sha}+` : sha;
+  } catch {
+    return '-';
+  }
+}
+
 export default defineConfig({
+  define: {
+    __BUILD_SHA__: JSON.stringify(buildStamp())
+  },
   resolve: {
     tsconfigPaths: true,
     alias: {

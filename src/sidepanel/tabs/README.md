@@ -132,7 +132,18 @@ name. See [`src/sidepanel/apps/README.md`](../apps/README.md).
 
 ## Dragging a group
 
-The heading is the handle. It is a `<summary>`, and it has to keep its own
-`display`: a summary laid out as a flex box is one Chrome will not start a drag
-from at all, which is why the icon, name and controls are a span inside it
-rather than the summary itself being the row.
+The handle is the **⠿** grip beside the heading, and it sits outside the
+`<summary>`. The heading itself was the handle first, which read better and did
+not work: a summary is the disclosure control, and Chrome will not start a drag
+from one that has been laid out as anything but a summary. An explicit grip is
+also the honest answer to "where am I supposed to grab this" — a row that can
+be dragged from some unmarked part of itself is a row nobody drags.
+
+The gaps between groups are in the list all along with no height, and open only
+while a drag is on. Inserting them when the drag starts rearranges the page
+under the cursor at the moment the browser is deciding what is being dragged.
+
+## The tab you are looking at
+
+The row for the tab its window is showing is marked. Clicking a row switches to
+that tab, and without the mark the list looks exactly as it did before.
