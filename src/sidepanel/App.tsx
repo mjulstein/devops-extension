@@ -7,7 +7,6 @@ import { PopOutPanelButton } from './atoms/PopOutPanelButton';
 import { StarPageToggle } from './atoms/StarPageToggle';
 import { StarredPagesMenu } from './atoms/StarredPagesMenu';
 import { ReconnectBanner } from './atoms/ReconnectBanner';
-import { BuildStamp } from './atoms/BuildStamp';
 import { ThemeSwitch } from './atoms/ThemeSwitch';
 import classes from './App.module.css';
 import { Tabs } from './Tabs';
@@ -58,7 +57,6 @@ export function App({ initialTab }: AppProps = {}) {
             void controller.onPopOutPanel();
           }}
         />
-        <BuildStamp />
         <ThemeSwitch
           theme={controller.theme}
           isAdoReachable={controller.isThemeKnown}

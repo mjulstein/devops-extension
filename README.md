@@ -109,10 +109,11 @@ The extension stores runtime settings in browser storage.
 
 The Work items tab also stores its closed-date range filter and parent-detail visibility toggle in browser-local storage so the tab reopens with the same view preferences. The Active item tab stores its Recent features collapsed state in browser-local storage as well.
 
-The row of buttons at the top of the panel ends with the short git sha the
-build came from, so you can tell at a glance whether the reload you think you
-did actually happened. A trailing `+` means the build was made with
-uncommitted changes in the tree.
+Every page's title carries the short git sha the build came from — the popped
+out panel, the bookmark manager and the settings window all show it in their
+title bar — so you can tell whether the reload you think you did actually
+happened. A trailing `+` means the build was made with uncommitted changes in
+the tree.
 
 In the side panel **Settings** card, use **Reload extension** during development to apply updates quickly. You can still reload manually from `edge://extensions` if needed.
 

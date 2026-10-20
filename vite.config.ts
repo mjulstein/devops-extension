@@ -103,6 +103,26 @@ function buildStamp(): string {
   }
 }
 
+/**
+ * Puts the build stamp in every page's `<title>`.
+ *
+ * The title is where you look when you want to know what a page is, and it
+ * costs nothing: the popped-out panel, the bookmark manager and the settings
+ * window all wear it in their title bar, and devtools shows it for the ones
+ * that have no bar of their own.
+ */
+function stampTitlePlugin(stamp: string) {
+  return {
+    name: 'stamp-title',
+    transformIndexHtml(html: string) {
+      return html.replace(
+        /<title>([^<]*)<\/title>/,
+        (_match, title: string) => `<title>${title} · ${stamp}</title>`
+      );
+    }
+  };
+}
+
 export default defineConfig({
   define: {
     __BUILD_SHA__: JSON.stringify(buildStamp())
@@ -140,5 +160,9 @@ export default defineConfig({
       }
     }
   },
-  plugins: [copyManifestPlugin(), buildContentScriptPlugin()]
+  plugins: [
+    stampTitlePlugin(buildStamp()),
+    copyManifestPlugin(),
+    buildContentScriptPlugin()
+  ]
 });
