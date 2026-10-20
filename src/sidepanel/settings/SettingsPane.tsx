@@ -535,9 +535,10 @@ export function SettingsPane({
               group covers whatever its bookmarks have in common.
             </p>
             <p>
-              Add one by opening the app and running{' '}
-              <strong>&gt;add app</strong>
-              from the favorites search. A folder inside an app is a sub-group.
+              Add one by making a folder named for its host in the bookmark
+              manager, or with the <strong>📌</strong> button a host carries
+              under <strong>Other</strong> on the Tabs tab. The folders are one
+              level and flat.
             </p>
           </SettingsHelp>
 

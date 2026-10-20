@@ -114,15 +114,15 @@ export function matchCommands(
 
   commands.forEach((command, index) => {
     const name = command.name.toLowerCase();
-    // Still growing into this name. It leads, because "add app e" is somebody
-    // part-way through "add app env" — reading it as the complete "add app"
+    // Still growing into this name. It leads, because "join w" is somebody
+    // part-way through "join windows" — reading it as a shorter complete name
     // with a stray argument would offer the wrong command at every keystroke.
     if (name.startsWith(needle)) {
       scored.push({ command, rank: 0, tie: 0, index });
       return;
     }
-    // Name complete, arguments following. The longest name wins, since
-    // "add app env x" also begins with "add app".
+    // Name complete, arguments following. The longest name wins, since a
+    // longer name can begin with a shorter one.
     if (needle.startsWith(name)) {
       scored.push({ command, rank: 1, tie: -name.length, index });
       return;

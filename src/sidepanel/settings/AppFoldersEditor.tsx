@@ -12,8 +12,8 @@ interface AppFoldersEditorProps {
  *
  * It mostly shows rather than edits, because the bookmarks in an app are the
  * few main ones — the addresses worth having on a machine with no extension —
- * and those are added from the page you are on with `>add app`, not typed into
- * a settings form. Everything else you open on that app is grouped with it
+ * and those are kept in the bookmark manager, not typed into a settings form.
+ * Everything else you open on that app is grouped with it
  * anyway: the group's reach comes from what its bookmarks have in common, not
  * from bookmarking every page.
  *

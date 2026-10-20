@@ -79,24 +79,20 @@ looks like a fourth app.
 One consequence worth knowing: an app with no hyphen in its name, sitting on an
 organization's domain — `myapp.orgname.com` — reads as the `myapp` environment
 of `orgname.com`, because from the address alone there is nothing to tell the
-two apart. Give it a name when registering it (`>add app myapp`) and add its
-addresses explicitly.
+two apart. Name the folder for it and add its addresses explicitly.
 
-## Adding what you are looking at
+## Adding an app
 
-`>add app` takes the page you are on and files it. Which app it belongs to is
-answered by the folders you already have: an address containing an app's name
-goes in that app's folder, punctuation ignored, because `myapp-dev.orgname.com`
-is the app you called `my-app` and refusing it over a hyphen would be correct
-and useless. The longest matching name wins, so `my-app-admin` is not swallowed
-by `my-app`. Only when no folder matches is a name read out of the address
-instead.
+An app is a folder in the `Apps` bookmark folder, so it is added the way a
+bookmark folder is added: in the extension's own bookmark manager, or with the
+**📌** button that each host under **Other** on the Tabs tab carries, which
+makes a folder for the host you are looking at.
 
-The whole address is stored, path and query included. The bookmark is named
-after whatever the address says the environment is, or after the host when it
-says nothing — a placeholder, because there is no list of environment names here
-and inventing one would be worse than a name you can see is provisional. Nothing
-depends on it, so nothing waits for it to be right.
+There is no command for it any more. The one that existed read the app out of
+the address and guessed, and a guess that files a page under the wrong app is
+worse than making the folder yourself.
+
+An address is stored whole, path and query included.
 
 A host typed into a command is an address: `https://` goes in front unless a
 scheme is already there. An explicit `http://` is kept, which is what it is for
