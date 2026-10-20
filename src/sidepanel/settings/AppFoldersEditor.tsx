@@ -27,9 +27,9 @@ export function AppFoldersEditor({
   if (folders.length === 0) {
     return (
       <p className={classes.helperText}>
-        No apps yet. Open an app and run <strong>&gt;add app</strong> from the
-        favorites search: it files the page under a folder in your bookmarks,
-        and that folder becomes a group on the Tabs tab.
+        No apps yet. Make a folder under <strong>Apps</strong> in your bookmarks
+        and name it after a host, or press <strong>📌</strong> on anything under{' '}
+        <strong>Other</strong> on the Tabs tab.
       </p>
     );
   }

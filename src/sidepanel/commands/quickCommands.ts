@@ -26,26 +26,49 @@ export interface QuickCommand {
 /**
  * The commands, in the order they are offered.
  *
- * Both of these fill the apps list, which is the part of the search that cannot
- * fill itself: a favorite is starred from the page it is on, but an app is a
- * family of addresses and there is nowhere else to say so.
+ * All of them act on the tabs you have open, which is the one thing the search
+ * box cannot otherwise reach: everything else in the panel is a place to go,
+ * and these are things to do with where you already are.
  */
 export const QUICK_COMMANDS: QuickCommand[] = [
   {
-    id: 'add-app',
-    name: 'add app',
-    usage: 'add app [name]',
+    id: 'sort-tabs',
+    name: 'sort tabs',
+    usage: 'sort tabs',
     description:
-      'Add the page you are on to its app. Files it under the app folder whose name the address contains, or starts one named from the address.',
-    argNames: ['name']
+      'Rearranges the tab bar so tabs of one app sit together. Gathers rather than shuffles: tabs keep their order within a group, and pinned tabs stay where the browser keeps them.',
+    argNames: []
   },
   {
-    id: 'add-app-env',
-    name: 'add app env',
-    usage: 'add app env <env> [url]',
+    id: 'join-windows',
+    name: 'join windows',
+    usage: 'join windows',
     description:
-      'The same, with the environment named rather than read off the address. Uses the page you are on when you give no address.',
-    argNames: ['env', 'url']
+      'Moves every tab into the window you are in, leaving the others empty and closed.',
+    argNames: []
+  },
+  {
+    id: 'tab-to-window',
+    name: 'tab to window',
+    usage: 'tab to window',
+    description: 'Moves the tab you are on into a window of its own.',
+    argNames: []
+  },
+  {
+    id: 'group-to-window',
+    name: 'group to window',
+    usage: 'group to window <app>',
+    description:
+      "Moves every tab of one app into a window of its own. Name the app's folder.",
+    argNames: ['app']
+  },
+  {
+    id: 'close-older-than',
+    name: 'close tabs older than',
+    usage: 'close tabs older than <days>',
+    description:
+      'Closes tabs nobody has looked at for that many days. Asks first, and never a pinned, active or audible one.',
+    argNames: ['days']
   }
 ];
 

@@ -206,8 +206,7 @@ npm test
     folder under `Apps` whose **name is a host** — that name is the rule, and
     because it is a bookmark it syncs to your other browsers. The bookmarks
     inside are the few main addresses, so they are useful on a machine with no
-    extension; every other tab on that host is grouped with them anyway. Add
-    one by opening the app and running `>add app`. Groups show even when
+    extension; every other tab on that host is grouped with them anyway. Add one in the bookmark manager, or with **📌** on anything under **Other**. Groups show even when
     nothing is open, with **＋** to open one, a bookmark row for anything not
     currently open, and **📌** on anything under **Other** to make it an app.
     Drag a group's heading to reorder, and Ctrl-click a tab to duplicate it.

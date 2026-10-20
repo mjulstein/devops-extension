@@ -17,12 +17,15 @@ import {
   loadStarredPages
 } from './sidepanel/chromeStorage';
 import { loadThemeTokens } from './sidepanel/theme';
-import { addAppEnvironment, loadApps } from './sidepanel/apps/appsFolder';
 import {
-  hostOf,
-  normalizeTypedUrl,
-  parseAppUrl
-} from './sidepanel/apps/appDns';
+  addAppEnvironment,
+  findAppsFolder,
+  loadApps
+} from './sidepanel/apps/appsFolder';
+import { readAppFolders } from './sidepanel/appGroups';
+import { groupKeyOf, planGroupedTabOrder } from './sidepanel/tabArrangement';
+import { selectStaleTabs } from './sidepanel/staleTabs';
+import { hostOf } from './sidepanel/apps/appDns';
 import {
   buildWorkItemUrl,
   recordRecentWorkItem,
@@ -46,7 +49,6 @@ import {
   isSamePage,
   usageFromTabs
 } from './sidepanel/apps/envSwitch';
-import { findAppForUrl, suggestEnvName } from './sidepanel/apps/appMatch';
 import { shouldCloseOnFocusChange } from './favoritesPalette/idleClose';
 import { loadSettings } from './sidepanel/chromeStorage';
 import { searchAllBookmarks } from './sidepanel/bookmarkSync';
@@ -163,68 +165,111 @@ async function browsingPageUrl(): Promise<string | null> {
 /**
  * Runs a command from the `>` list.
  *
- * Both commands work from the page you are on, which is the point: you are
- * looking at an environment, so there is nothing to type. Which app it belongs
- * to is answered by the app folders you already have — an address containing an
- * app's name goes in that app's folder, punctuation ignored, because
- * `myapp-dev.orgname.com` is the app you called `my-app` and refusing it over a
- * hyphen would be correct and useless. Only when no folder matches is a name
- * read out of the address instead.
- *
- * The whole address is stored, path and query included, and the bookmark is
- * named after whatever the address says the environment is — a placeholder, one
- * rename away in the bookmark manager. Nothing depends on that name, so nothing
- * waits for it to be right.
+ * All of them act on the tabs that are open, which is the one thing the search
+ * box cannot otherwise reach: everything else in the panel is a place to go,
+ * and these are things to do with where you already are.
  */
 async function runQuickCommand(
   id: string,
   args: string[]
-): Promise<{ ok: true } | { error: string }> {
-  const settings = await loadSettings();
-  const folder = settings.bookmarkFolderName;
-  const apps = await loadApps(folder);
-
-  if (id === 'add-app') {
-    const [givenName] = args;
-    const url = await browsingPageUrl();
-    if (url === null) {
-      return { error: 'No page to add. Open the app in a tab first.' };
+): Promise<{ ok: true; message: string } | { error: string }> {
+  if (id === 'sort-tabs') {
+    const settings = await loadSettings();
+    const folders = await readAppFoldersFromBookmarks(
+      settings.bookmarkFolderName
+    );
+    const tabs = await chrome.tabs.query({});
+    const moves = planGroupedTabOrder(tabs, folders);
+    // In order, because each move renumbers the tabs after it.
+    for (const move of moves) {
+      await chrome.tabs.move(move.id, { index: move.index });
     }
-
-    const appName =
-      givenName ?? findAppForUrl(apps, url)?.name ?? parseAppUrl(url)?.appName;
-    if (!appName) {
-      return { error: 'That address does not say what the app is called.' };
-    }
-
-    return await addAppEnvironment(folder, appName, suggestEnvName(url), url);
+    return { ok: true, message: `Arranged ${moves.length} tab(s).` };
   }
 
-  if (id === 'add-app-env') {
-    const [env, givenUrl] = args;
-    if (!env) {
-      return { error: 'Name the environment: add app env <env> [url]' };
+  if (id === 'join-windows') {
+    const windowId = await browsingWindowId();
+    if (windowId === null) {
+      return { error: 'No window to join them into.' };
     }
-    // A host typed into the command is an address: see normalizeTypedUrl.
-    const url =
-      givenUrl === undefined
-        ? await browsingPageUrl()
-        : normalizeTypedUrl(givenUrl);
-    if (url == null) {
-      return { error: 'No address to add.' };
+    const tabs = await chrome.tabs.query({});
+    const strays = tabs
+      .filter((tab) => tab.windowId !== windowId && tab.id != null)
+      .map((tab) => tab.id!);
+    if (strays.length === 0) {
+      return { ok: true, message: 'Everything is already in one window.' };
     }
+    await chrome.tabs.move(strays, { windowId, index: -1 });
+    return { ok: true, message: `Moved ${strays.length} tab(s) here.` };
+  }
 
-    // The folder you already have beats a name read out of the address.
-    const appName =
-      findAppForUrl(apps, url)?.name ?? parseAppUrl(url, env)?.appName;
-    if (!appName) {
-      return { error: 'That address does not say what the app is called.' };
+  if (id === 'tab-to-window') {
+    const [active] = await chrome.tabs.query({
+      active: true,
+      windowId: (await browsingWindowId()) ?? undefined
+    });
+    if (active?.id == null) {
+      return { error: 'No tab to move.' };
     }
+    await chrome.windows.create({ tabId: active.id });
+    return { ok: true, message: 'Moved it to a window of its own.' };
+  }
 
-    return await addAppEnvironment(folder, appName, env, url);
+  if (id === 'group-to-window') {
+    const name = args.join(' ').trim().toLowerCase();
+    if (name === '') {
+      return { error: 'Name the app: group to window <app>' };
+    }
+    const settings = await loadSettings();
+    const folders = await readAppFoldersFromBookmarks(
+      settings.bookmarkFolderName
+    );
+    const tabs = await chrome.tabs.query({});
+    const wanted = tabs.filter(
+      (tab) =>
+        tab.id != null &&
+        tab.url !== undefined &&
+        groupKeyOf(tab.url, folders) === `app:${name}`
+    );
+    if (wanted.length === 0) {
+      return { error: `Nothing open for ${name}.` };
+    }
+    const [first, ...rest] = wanted.map((tab) => tab.id!);
+    const created = await chrome.windows.create({ tabId: first });
+    if (rest.length > 0 && created?.id != null) {
+      await chrome.tabs.move(rest, { windowId: created.id, index: -1 });
+    }
+    return { ok: true, message: `Moved ${wanted.length} tab(s) to a window.` };
+  }
+
+  if (id === 'close-older-than') {
+    const days = Number(args[0]);
+    if (!Number.isFinite(days) || days < 1) {
+      return { error: 'How many days? close tabs older than <days>' };
+    }
+    const tabs = await chrome.tabs.query({});
+    const ids = selectStaleTabs(tabs, Date.now(), Math.floor(days));
+    if (ids.length === 0) {
+      return { ok: true, message: `Nothing has gone ${days} days untouched.` };
+    }
+    await chrome.tabs.remove(ids);
+    return { ok: true, message: `Closed ${ids.length} tab(s).` };
   }
 
   return { error: `No such command: ${id}` };
+}
+
+/** The app folders, read straight from the bookmarks. */
+async function readAppFoldersFromBookmarks(favoritesFolderName: string) {
+  if (!favoritesFolderName.trim()) {
+    return [];
+  }
+  try {
+    const tree = await chrome.bookmarks.getTree();
+    return readAppFolders(findAppsFolder(tree, favoritesFolderName));
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -1102,7 +1147,7 @@ chrome.runtime.onMessage.addListener(
           sendResponse(
             'error' in result
               ? { ok: false, error: result.error }
-              : { ok: true, result: null }
+              : { ok: true, result: result.message }
           )
         )
         .catch((error: Error) =>
