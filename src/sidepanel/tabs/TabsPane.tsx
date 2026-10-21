@@ -43,7 +43,6 @@ export function TabsPane({
   // Per group, and only while the panel is open: it is a number you reach for
   // when tidying one section, not a preference about it.
   const [days, setDays] = useState<Record<string, string>>({});
-  const [draggingKey, setDraggingKey] = useState<string | null>(null);
 
   const ordered = sortTabGroups(groups, order);
 
@@ -144,18 +143,7 @@ export function TabsPane({
           void chrome.tabs.create({ url });
         }}
         onPromoteGroup={onPromoteGroup}
-        draggingKey={draggingKey}
-        onDragStateChange={setDraggingKey}
         onMoveGroup={moveGroup}
-        onReorder={(fromKey, gapIndex) => {
-          onReorderGroups(
-            moveKeyTo(
-              ordered.map((group) => group.key),
-              fromKey,
-              gapIndex
-            )
-          );
-        }}
         daysFor={daysFor}
         onDaysChange={(key, value) => {
           setDays((current) => ({ ...current, [key]: value }));

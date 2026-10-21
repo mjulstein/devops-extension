@@ -145,27 +145,6 @@
   border-radius: 4px;
 }
 
-/* Always present, with no height until a drag is on: inserting the gaps when
-   the drag starts moves the page under the cursor at the worst moment. */
-.dropZone {
-  block-size: 0;
-  border-radius: 2px;
-}
-
-.dropZoneActive {
-  block-size: 12px;
-  margin-block: -2px;
-}
-
-/* The line is on the gap, so what you see is where the thing will land. */
-.dropZoneOver {
-  background: linear-gradient(
-      var(--color-accent-strong),
-      var(--color-accent-strong)
-    )
-    center / 100% 2px no-repeat;
-}
-
 /* The catch-all, set on its own ground: the groups above it are ones you
    defined, and everything inside this one is still looking for a home. */
 .otherGroup {
@@ -187,8 +166,7 @@
   color: var(--color-text-secondary);
 }
 
-/* The grip beside the heading, not the heading itself: a summary is the
-   disclosure control, and Chrome will not start a drag from one anyway. */
+/* The shell holds the heading's menu, which is positioned against it. */
 .shell {
   position: relative;
   display: flex;
@@ -199,29 +177,6 @@
 .shell > details {
   flex: 1 1 auto;
   min-inline-size: 0;
-}
-
-.shellDragging {
-  opacity: 0.5;
-}
-
-.grip {
-  flex: 0 0 auto;
-  cursor: grab;
-  padding: 1px 2px;
-  line-height: 1;
-  font-size: 12px;
-  color: var(--color-text-muted);
-  border-radius: 3px;
-}
-
-.grip:active {
-  cursor: grabbing;
-}
-
-.grip:hover {
-  color: var(--color-text);
-  background: var(--color-surface-hover);
 }
 
 /* The icon doubles as the menu's trigger, so it has to look like it does

@@ -43,10 +43,7 @@ function render(props: Partial<Parameters<typeof TabGroupList>[0]> = {}) {
       onCleanGroup={() => undefined}
       onOpenGroup={() => undefined}
       onPromoteGroup={() => undefined}
-      onReorder={() => undefined}
       onMoveGroup={() => undefined}
-      draggingKey={null}
-      onDragStateChange={() => undefined}
       daysFor={() => 24}
       onDaysChange={() => undefined}
       {...props}
@@ -106,32 +103,12 @@ describe('TabGroupList', () => {
     expect(markup).toContain('>repo<');
   });
 
-  it('lets a top-level group be dragged, and its children not', () => {
+  it('offers no move menu on a group nobody orders', () => {
+    // Azure DevOps's own sub-sections are arranged by age. A menu there would
+    // be four buttons that do nothing.
     const markup = render();
-    // One draggable per top-level group; the repo sub-group is not one.
-    expect(markup.split('draggable="true"').length - 1).toBe(groups.length);
-  });
-
-  it('drags from the heading, which is what you would grab', () => {
-    // A summary is an interactive control: a drag starting on it never
-    // reached a draggable parent, leaving the body as the only handle.
-    expect(render()).toContain('<summary');
-    // The grip, not the heading: Chrome will not start a drag from a summary.
-    expect(render()).toContain('Drag to move Repos');
-    expect(render()).toContain('draggable="true"');
-  });
-
-  it('keeps a gap on each side of every group, closed', () => {
-    // They are in the list all along with no height. Adding them when the drag
-    // starts rearranges the page under the cursor at the worst moment.
-    const markup = render();
-    expect(markup.split('_dropZone_').length - 1).toBe(groups.length + 1);
-    expect(markup).not.toContain('dropZoneActive');
-  });
-
-  it('opens them while something is being dragged', () => {
-    const markup = render({ draggingKey: groups[0].key });
-    expect(markup.split('dropZoneActive').length - 1).toBe(groups.length + 1);
+    expect(markup).toContain('Right-click to move Repos');
+    expect(markup).not.toContain('Right-click to move repo');
   });
 
   it('gives each group a days box and a cleanup button', () => {
