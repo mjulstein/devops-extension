@@ -190,6 +190,7 @@
 /* The grip beside the heading, not the heading itself: a summary is the
    disclosure control, and Chrome will not start a drag from one anyway. */
 .shell {
+  position: relative;
   display: flex;
   align-items: start;
   gap: 2px;
@@ -221,4 +222,47 @@
 .grip:hover {
   color: var(--color-text);
   background: var(--color-surface-hover);
+}
+
+/* The icon doubles as the menu's trigger, so it has to look like it does
+   something. Nothing else in the heading is free to take a right-click. */
+.iconMenu {
+  cursor: context-menu;
+}
+
+/* Beside the group rather than at the pointer: the list redraws itself on
+   every tab event, and a menu pinned to where the mouse was would end up
+   pointing at whatever had moved under it. */
+.menu {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 140px;
+  padding: 2px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 18%);
+}
+
+.menuItem {
+  font: inherit;
+  font-size: 12px;
+  text-align: start;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.menuItem:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.menuItem:disabled {
+  color: var(--color-text-muted);
+  cursor: default;
 }

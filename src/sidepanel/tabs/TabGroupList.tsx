@@ -7,6 +7,7 @@ import {
   OTHER_GROUP_KEY,
   type TabGroupNode
 } from '@/sidepanel/tabGroups';
+import { GroupMoveMenu, type GroupMove } from './GroupMoveMenu';
 import classes from './TabGroupList.module.css';
 
 /**
@@ -34,6 +35,16 @@ interface TabGroupListProps {
   onPromoteGroup: (domain: string) => void;
   /** Moves the dragged group into the gap at this index. */
   onReorder: (fromKey: string, gapIndex: number) => void;
+  /**
+   * Moves a group among its siblings from the menu on its icon, given where
+   * it sits now. The list this is drawn from is the one that knows the order.
+   */
+  onMoveGroup: (
+    group: TabGroupNode,
+    where: GroupMove,
+    index: number,
+    siblings: TabGroupNode[]
+  ) => void;
   /** The group being dragged, which is what opens the gaps. */
   draggingKey?: string | null;
   onDragStateChange?: (key: string | null) => void;
@@ -72,12 +83,17 @@ export function TabGroupList({
   onOpenGroup,
   onPromoteGroup,
   onReorder,
+  onMoveGroup,
   draggingKey = null,
   onDragStateChange,
   daysFor,
   onDaysChange,
   depth = 0
 }: TabGroupListProps) {
+  // Which group's move menu is open, by key. One at a time, and held here
+  // rather than per row so opening a second closes the first.
+  const [menuKey, setMenuKey] = useState<string | null>(null);
+
   if (groups.length === 0) {
     return <p className={classes.empty}>No tabs in these groups are open.</p>;
   }
@@ -131,6 +147,19 @@ export function TabGroupList({
                 ⠿
               </span>
             )}
+            {menuKey === group.key && (
+              <GroupMoveMenu
+                label={group.label}
+                index={index}
+                count={groups.length}
+                onMove={(where) => {
+                  onMoveGroup(group, where, index, groups);
+                }}
+                onClose={() => {
+                  setMenuKey(null);
+                }}
+              />
+            )}
             <details
               key={group.key}
               // The catch-all gets its own ground so it is plain where the
@@ -150,13 +179,29 @@ export function TabGroupList({
             >
               <summary className={classes.heading}>
                 <span className={classes.headingRow}>
+                  {/* The icon is the one part of the heading with no job of
+                      its own, so it is where the move menu lives. */}
                   {favIconOf(group) === null ? (
-                    <span className={classes.icon} aria-hidden="true" />
+                    <span
+                      className={clsx(classes.icon, classes.iconMenu)}
+                      title={`Right-click to move ${group.label}`}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setMenuKey(group.key);
+                      }}
+                    />
                   ) : (
                     <img
-                      className={classes.icon}
+                      className={clsx(classes.icon, classes.iconMenu)}
                       src={favIconOf(group) ?? ''}
                       alt=""
+                      title={`Right-click to move ${group.label}`}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setMenuKey(group.key);
+                      }}
                     />
                   )}
                   {group.label}
@@ -303,6 +348,7 @@ export function TabGroupList({
                   onOpenGroup={onOpenGroup}
                   onPromoteGroup={onPromoteGroup}
                   onReorder={onReorder}
+                  onMoveGroup={onMoveGroup}
                   daysFor={daysFor}
                   onDaysChange={onDaysChange}
                   depth={depth + 1}

@@ -44,6 +44,7 @@ function render(props: Partial<Parameters<typeof TabGroupList>[0]> = {}) {
       onOpenGroup={() => undefined}
       onPromoteGroup={() => undefined}
       onReorder={() => undefined}
+      onMoveGroup={() => undefined}
       draggingKey={null}
       onDragStateChange={() => undefined}
       daysFor={() => 24}
@@ -151,5 +152,10 @@ describe('TabGroupList', () => {
   it('marks the tab its window is showing', () => {
     // Clicking a row makes it active; without the mark nothing looks changed.
     expect(render()).toContain('activeTab');
+  });
+
+  it('offers the icon as the way to move a group without dragging', () => {
+    const markup = render();
+    expect(markup).toContain('Right-click to move Repos');
   });
 });

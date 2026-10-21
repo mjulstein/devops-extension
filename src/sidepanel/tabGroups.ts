@@ -45,6 +45,13 @@ export interface TabGroupNode {
   tabs: GroupedTab[];
   children: TabGroupNode[];
   /**
+   * The bookmark folder this group is, for the ones that are one. A sub-group
+   * is reordered by moving its folder, since the folder's own order is what
+   * the panel reads back — there is no second list to keep in step.
+   */
+  moveId?: string;
+  moveParentId?: string;
+  /**
    * Where a new tab for this group would go, when the definition names one
    * place. Absent for the built-in sections and for wildcarded patterns, which
    * describe many addresses and pick none.
@@ -339,6 +346,8 @@ export function buildAppGroups(
       return {
         key: `app:${folder.id}:${sub.id}`,
         label: sub.name,
+        moveId: sub.id,
+        moveParentId: folder.id,
         tabs: theirs,
         children: [],
         bookmarks: unopenedBookmarks(

@@ -9,6 +9,8 @@ import {
 } from '@/sidepanel/tabGroups';
 import { resolveStaleTabDays, selectStaleTabs } from '@/sidepanel/staleTabs';
 import { TabGroupList } from './TabGroupList';
+import { bookmarkMoveFor, gapForMove } from './moveGroup';
+import type { GroupMove } from './GroupMoveMenu';
 import classes from './TabGroupList.module.css';
 
 const ORDER_KEY = 'tabGroupOrder';
@@ -67,6 +69,47 @@ export function TabsPane({
     }
   }, []);
 
+  /**
+   * A move from the menu on a group's icon.
+   *
+   * A top-level group is ours to order and moves in the stored key order. A
+   * sub-group is a bookmark folder, and the folder's own order is what the
+   * panel reads back, so moving it is moving the folder — there is no second
+   * list that could disagree.
+   */
+  const moveGroup = useCallback(
+    (
+      group: TabGroupNode,
+      where: GroupMove,
+      index: number,
+      siblings: TabGroupNode[]
+    ) => {
+      if (group.moveId === undefined || group.moveParentId === undefined) {
+        onReorderGroups(
+          moveKeyTo(
+            siblings.map((entry) => entry.key),
+            group.key,
+            gapForMove(where, index, siblings.length)
+          )
+        );
+        return;
+      }
+
+      const move = bookmarkMoveFor(
+        where,
+        index,
+        siblings.map((entry) => entry.moveId ?? '')
+      );
+      if (move !== null) {
+        void chrome.bookmarks?.move(move.id, {
+          parentId: group.moveParentId,
+          index: move.index
+        });
+      }
+    },
+    [onReorderGroups]
+  );
+
   const toggleCollapsed = useCallback((key: string) => {
     setCollapsed((current) => {
       const next = new Set(current);
@@ -103,6 +146,7 @@ export function TabsPane({
         onPromoteGroup={onPromoteGroup}
         draggingKey={draggingKey}
         onDragStateChange={setDraggingKey}
+        onMoveGroup={moveGroup}
         onReorder={(fromKey, gapIndex) => {
           onReorderGroups(
             moveKeyTo(
