@@ -24,6 +24,12 @@ interface BookmarkRowProps {
   onEdit: (id: string, changes: { title: string; url: string }) => void;
   onDelete: (id: string) => void;
   onMove?: (id: string, parentId: string) => void;
+  /**
+   * Turns the bookmark into a folder holding it, where that is useful. Absent
+   * in the issue lists, which are about what is wrong with a bookmark rather
+   * than about growing one into a place.
+   */
+  onSplit?: (id: string) => void;
 }
 
 /**
@@ -44,7 +50,8 @@ export function BookmarkRow({
   onToggleChecked,
   onEdit,
   onDelete,
-  onMove
+  onMove,
+  onSplit
 }: BookmarkRowProps) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(entry.title);
@@ -173,6 +180,17 @@ export function BookmarkRow({
                 </option>
               ))}
           </select>
+        ) : null}
+        {onSplit ? (
+          <Button
+            size="compact"
+            variant="quiet"
+            icon="📂"
+            description={`Make ${entry.title} a folder holding itself`}
+            onClick={() => {
+              onSplit(entry.id);
+            }}
+          />
         ) : null}
         <Button
           size="compact"

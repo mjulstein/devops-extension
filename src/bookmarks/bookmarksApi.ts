@@ -52,6 +52,31 @@ export async function updateNode(
   await chrome.bookmarks.update(id, changes);
 }
 
+/**
+ * Turns a bookmark into a folder holding it.
+ *
+ * An app that has grown past one address needs a folder to put the rest in,
+ * and the bookmark that is already there is the obvious thing to grow from:
+ * the folder takes its name and its place in the list, and the bookmark moves
+ * inside. It is the inverse of flattening, and between them a level can be
+ * added or taken away without anything being retyped.
+ *
+ * The folder's name is the bookmark's, which is a starting point rather than
+ * the rule it will become — renaming it is where the `*` is filled in.
+ */
+export async function splitIntoFolder(id: string): Promise<void> {
+  const [node] = await chrome.bookmarks.get(id);
+  if (node?.parentId === undefined || node.url === undefined) {
+    return;
+  }
+  const folder = await chrome.bookmarks.create({
+    parentId: node.parentId,
+    title: node.title,
+    index: node.index
+  });
+  await chrome.bookmarks.move(id, { parentId: folder.id });
+}
+
 export async function createFolder(
   parentId: string,
   title: string

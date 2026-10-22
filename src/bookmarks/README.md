@@ -104,6 +104,20 @@ settled once the id arrives. `canDropInto` refuses a folder dropped into its own
 descendant — the browser reports that as an opaque error rather than refusing it
 usefully — and refuses a move that would change nothing.
 
+## Growing a bookmark into a folder
+
+A bookmark row carries **📂**, which turns it into a folder holding itself. The
+folder takes the bookmark's name and its place in the list, so adding a level
+does not rearrange anything around it, and the bookmark moves inside.
+
+It is how an app that has grown past one address gets somewhere to put the
+rest: the bookmark already there is the obvious thing to grow from. It is the
+inverse of flattening a folder, and between them a level can be added or taken
+away without retyping anything.
+
+The new folder's name is the bookmark's, which is a starting point rather than
+the rule it will become — renaming it is where the asterisk is filled in.
+
 ## Naming a folder with an asterisk
 
 Renaming a folder expands any `*` in the name to the folder it sits in:
