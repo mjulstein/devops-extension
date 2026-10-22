@@ -95,3 +95,38 @@ describe('readAppsFromFolder', () => {
     expect(readAppsFromFolder(null)).toEqual([]);
   });
 });
+
+describe('readAppsFromFolder with sub-groups', () => {
+  it('offers a page kept in a sub-group under the app it belongs to', () => {
+    // The `-` walk is where you go looking for it; leaving it out would make
+    // a partial answer look like a complete one.
+    const apps = readAppsFromFolder({
+      id: 'apps',
+      title: 'Apps',
+      children: [
+        {
+          id: 'f1',
+          title: 'example.com',
+          children: [
+            { id: 'b1', title: 'Home', url: 'https://example.com/' },
+            {
+              id: 's1',
+              title: 'example.com/spaces',
+              children: [
+                {
+                  id: 'b2',
+                  title: 'Eng',
+                  url: 'https://example.com/spaces/eng'
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+    expect(apps[0].environments.map((env) => env.name)).toEqual([
+      'Home',
+      'Eng'
+    ]);
+  });
+});

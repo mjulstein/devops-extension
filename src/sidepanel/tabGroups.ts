@@ -52,6 +52,18 @@ export interface TabGroupNode {
   moveId?: string;
   moveParentId?: string;
   /**
+   * The bookmark folder this group's own bookmarks live in, for the groups
+   * that have one. It is where a tab is kept when somebody asks for it to
+   * stay, so the button is only on the groups that can answer.
+   */
+  bookmarkFolderId?: string;
+  /**
+   * Every address already bookmarked in that folder, open or not. The
+   * `bookmarks` list holds only the ones with nothing open at them, so it
+   * cannot say whether the tab in front of you is already kept.
+   */
+  keptUrls?: string[];
+  /**
    * Where a new tab for this group would go, when the definition names one
    * place. Absent for the built-in sections and for wildcarded patterns, which
    * describe many addresses and pick none.
@@ -348,6 +360,8 @@ export function buildAppGroups(
         label: sub.name,
         moveId: sub.id,
         moveParentId: folder.id,
+        bookmarkFolderId: sub.id,
+        keptUrls: sub.bookmarks.map((entry) => entry.url),
         tabs: theirs,
         children: [],
         bookmarks: unopenedBookmarks(
@@ -365,6 +379,8 @@ export function buildAppGroups(
       label: folder.name,
       tabs: unclaimed,
       children,
+      bookmarkFolderId: folder.id,
+      keptUrls: folder.bookmarks.map((entry) => entry.url),
       bookmarks: unopenedBookmarks(
         folder.bookmarks,
         mine.map((tab) => tab.url)

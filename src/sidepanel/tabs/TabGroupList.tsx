@@ -5,8 +5,10 @@ import { describeTabAge } from '@/sidepanel/adoTabs';
 import {
   groupFavIconUrl as favIconOf,
   OTHER_GROUP_KEY,
+  type GroupedTab,
   type TabGroupNode
 } from '@/sidepanel/tabGroups';
+import { sameBase } from '@/sidepanel/appGroups';
 import { GroupMoveMenu, type GroupMove } from './GroupMoveMenu';
 import classes from './TabGroupList.module.css';
 
@@ -18,6 +20,11 @@ interface TabGroupListProps {
   onDuplicate: (id: number) => void;
   /** Opens a bookmark that has no tab at its address yet. */
   onOpenBookmark: (url: string) => void;
+  /**
+   * Keeps a tab where it already is: a real bookmark in the group's own
+   * folder, so it syncs to every browser signed in, extension or not.
+   */
+  onKeepTab: (group: TabGroupNode, tab: GroupedTab) => void;
   /** Keys of the groups folded away. */
   collapsed: Set<string>;
   onToggleCollapsed: (key: string) => void;
@@ -66,6 +73,7 @@ export function TabGroupList({
   onSwitchTo,
   onDuplicate,
   onOpenBookmark,
+  onKeepTab,
   collapsed,
   onToggleCollapsed,
   onCleanGroup,
@@ -275,6 +283,31 @@ export function TabGroupList({
                             {describeTabAge(tab)} · {tab.path}
                           </span>
                         </button>
+                        {/* Keeping a tab is the one thing this list can do
+                            that outlives the browser it is done in: a real
+                            bookmark in the group's own folder, which syncs
+                            like any other. A tab already kept says so rather
+                            than offering again. */}
+                        {group.bookmarkFolderId !== undefined &&
+                          (isKept(group, tab.url) ? (
+                            <span
+                              className={classes.kept}
+                              title={`Kept in ${group.label}`}
+                              aria-label={`Kept in ${group.label}`}
+                            >
+                              ★
+                            </span>
+                          ) : (
+                            <Button
+                              size="compact"
+                              variant="quiet"
+                              icon="☆"
+                              description={`Keep ${tab.title} in ${group.label}`}
+                              onClick={() => {
+                                onKeepTab(group, tab);
+                              }}
+                            />
+                          ))}
                       </li>
                     ))}
                   </ul>
@@ -316,6 +349,7 @@ export function TabGroupList({
                     onSwitchTo={onSwitchTo}
                     onDuplicate={onDuplicate}
                     onOpenBookmark={onOpenBookmark}
+                    onKeepTab={onKeepTab}
                     collapsed={collapsed}
                     onToggleCollapsed={onToggleCollapsed}
                     onCleanGroup={onCleanGroup}
@@ -334,6 +368,18 @@ export function TabGroupList({
       })}
     </div>
   );
+}
+
+/**
+ * Whether this address is already bookmarked in the group.
+ *
+ * On place alone, the way everything else here matches: a bookmark names a
+ * place and a query names a view of it, so offering to keep a page again
+ * because it carries different parameters would fill a folder with the same
+ * address over and over.
+ */
+function isKept(group: TabGroupNode, url: string): boolean {
+  return (group.keptUrls ?? []).some((kept) => sameBase(kept, url));
 }
 
 /** Everything under a group, so a narrowed one still counts what it holds. */

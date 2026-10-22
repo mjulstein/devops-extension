@@ -1,5 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { TabGroupList } from './TabGroupList';
+import { buildAppGroups } from '@/sidepanel/tabGroups';
+import { readAppFolders } from '@/sidepanel/appGroups';
 import {
   groupAdoTabs,
   readAdoTabs,
@@ -38,6 +40,7 @@ function render(props: Partial<Parameters<typeof TabGroupList>[0]> = {}) {
       onSwitchTo={() => undefined}
       onDuplicate={() => undefined}
       onOpenBookmark={() => undefined}
+      onKeepTab={() => undefined}
       collapsed={new Set()}
       onToggleCollapsed={() => undefined}
       onCleanGroup={() => undefined}
@@ -134,5 +137,61 @@ describe('TabGroupList', () => {
   it('offers the icon as the way to move a group without dragging', () => {
     const markup = render();
     expect(markup).toContain('Right-click to move Repos');
+  });
+
+  it('offers to keep a tab only where there is a folder to keep it in', () => {
+    // An Azure DevOps section is not a bookmark folder; there is nowhere to
+    // put it and a button would be a promise the list cannot keep.
+    expect(render()).not.toContain('Keep');
+  });
+});
+
+describe('TabGroupList keeping a tab', () => {
+  const folders = readAppFolders({
+    id: 'apps',
+    children: [
+      {
+        id: 'f1',
+        title: 'example.com',
+        children: [{ id: 'b1', title: 'Home', url: 'https://example.com/' }]
+      }
+    ]
+  });
+
+  const appGroups = buildAppGroups(folders, [
+    { id: 9, url: 'https://example.com/report', title: 'Report' },
+    { id: 10, url: 'https://example.com/?view=all', title: 'Home again' }
+  ]);
+
+  function renderApps() {
+    return renderToStaticMarkup(
+      <TabGroupList
+        groups={appGroups}
+        onClose={() => undefined}
+        onSwitchTo={() => undefined}
+        onDuplicate={() => undefined}
+        onOpenBookmark={() => undefined}
+        onKeepTab={() => undefined}
+        collapsed={new Set()}
+        onToggleCollapsed={() => undefined}
+        onCleanGroup={() => undefined}
+        onOpenGroup={() => undefined}
+        onPromoteGroup={() => undefined}
+        onMoveGroup={() => undefined}
+        daysFor={() => 24}
+        onDaysChange={() => undefined}
+      />
+    );
+  }
+
+  it('offers to keep a tab in the app it is grouped under', () => {
+    expect(renderApps()).toContain('Keep Report in example.com');
+  });
+
+  it('says a tab is already kept rather than offering again', () => {
+    // Same place, different query: a bookmark names a place.
+    const markup = renderApps();
+    expect(markup).toContain('Kept in example.com');
+    expect(markup).not.toContain('Keep Home again');
   });
 });
