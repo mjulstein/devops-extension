@@ -158,6 +158,16 @@ A tab already kept shows a **★** instead. The comparison is on place alone, so
 the same page with different parameters is not offered again — a bookmark names
 a place and a query names a view of it.
 
+A bookmark whose area something is already open in does not show as a "not
+open" row at all. The scheme is not part of what a bookmark names — nobody says
+`https://` out loud — so the comparison is the host and the path, and a tab
+deeper in that path counts: a bookmark for `example.com/spaces` offers to take
+you to an area, and an area you are standing in is not somewhere to be sent.
+The match is on whole segments, so `/spaces` does not swallow `/spacesuit`.
+
+A bookmark that covers so much it is always hidden is one to split into deeper
+ones, which the bookmark manager's **📂** does.
+
 Groups with no folder behind them — Azure DevOps's sections, the hosts under
 **Other** — have no button, because there is nowhere to put it.
 

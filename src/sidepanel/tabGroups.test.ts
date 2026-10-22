@@ -232,11 +232,13 @@ describe('buildAppGroups', () => {
     expect(group.bookmarks?.map((b) => b.name)).toEqual(['Home', 'Report']);
   });
 
-  it('drops a bookmark once a tab is open at its address, query and all', () => {
+  it('drops a bookmark once a tab is open in the area it names', () => {
+    // Home is the whole host, so an open report is inside it too. A bookmark
+    // that disappears too easily is one to split into deeper ones.
     const [group] = buildAppGroups(folders, [
       tab(1, 'https://example.com/report?from=2026', 1)
     ]);
-    expect(group.bookmarks?.map((b) => b.name)).toEqual(['Home']);
+    expect(group.bookmarks).toEqual([]);
     expect(group.tabs.map((t) => t.id)).toEqual([1]);
   });
 
@@ -295,12 +297,12 @@ describe('buildAppGroups sub-groups', () => {
     expect(groups[0].children[0].tabs.map((t) => t.id)).toEqual([1]);
   });
 
-  it('keeps a sub-group bookmark with it until something is open there', () => {
-    // The open tab is a page under it, not the bookmark's own address.
-    expect(groups[0].children[0].bookmarks?.map((b) => b.name)).toEqual([
-      'Eng'
-    ]);
-    expect(groups[0].bookmarks?.map((b) => b.name)).toEqual(['Home']);
+  it('drops a sub-group bookmark once a tab is open inside it', () => {
+    // The open tab is a page under the bookmark, which is the area it offers
+    // to take you to.
+    expect(groups[0].children[0].bookmarks).toEqual([]);
+    // Home names the whole host, so the open pages are inside it as well.
+    expect(groups[0].bookmarks).toEqual([]);
   });
 
   it('still counts the whole app', () => {

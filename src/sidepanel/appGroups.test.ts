@@ -1,4 +1,5 @@
 import {
+  coversPlace,
   expandFolderName,
   readAppFolders,
   sameBase,
@@ -73,12 +74,25 @@ describe('unopenedBookmarks', () => {
     mark('report', 'https://a.test/report')
   ];
 
-  it('leaves out the ones already open, query and all', () => {
+  it('leaves out the ones whose area something is already open in', () => {
+    // The report is open, so both go: its own row would send you where you
+    // are, and the home bookmark covers the whole host, which includes it.
     expect(
-      unopenedBookmarks(bookmarks, ['https://a.test/report?from=2026']).map(
+      unopenedBookmarks(bookmarks, ['https://a.test/report?from=2026'])
+    ).toEqual([]);
+  });
+
+  it('keeps a bookmark the open tab is not inside', () => {
+    const marks = [
+      mark('spaces', 'https://a.test/spaces'),
+      mark('suit', 'https://a.test/spacesuit')
+    ];
+    // Whole segments: /spaces does not swallow /spacesuit.
+    expect(
+      unopenedBookmarks(marks, ['https://a.test/spaces/eng']).map(
         (entry) => entry.id
       )
-    ).toEqual(['home']);
+    ).toEqual(['suit']);
   });
 
   it('keeps the ones with nothing open at their address', () => {
@@ -145,5 +159,37 @@ describe('readAppFolders sub-groups', () => {
 
   it('leaves the app own bookmarks where they are', () => {
     expect(folders[0].bookmarks.map((b) => b.name)).toEqual(['Home']);
+  });
+});
+
+describe('coversPlace', () => {
+  it('ignores the scheme, which nobody says out loud', () => {
+    expect(coversPlace('https://a.test/x', 'http://a.test/x')).toBe(true);
+  });
+
+  it('counts a tab deeper in the path', () => {
+    expect(
+      coversPlace('https://a.test/spaces', 'https://a.test/spaces/eng')
+    ).toBe(true);
+  });
+
+  it('stops at a segment boundary', () => {
+    expect(
+      coversPlace('https://a.test/spaces', 'https://a.test/spacesuit')
+    ).toBe(false);
+  });
+
+  it('reads a bare host as the whole host', () => {
+    expect(coversPlace('https://a.test/', 'https://a.test/anything')).toBe(
+      true
+    );
+  });
+
+  it('says nothing about another host', () => {
+    expect(coversPlace('https://a.test/x', 'https://b.test/x')).toBe(false);
+  });
+
+  it('is false for an address that cannot be read', () => {
+    expect(coversPlace('not a url', 'https://a.test/')).toBe(false);
   });
 });
