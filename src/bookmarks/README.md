@@ -103,3 +103,15 @@ the drag is ours and to show the drop target; whether the drop is legal is
 settled once the id arrives. `canDropInto` refuses a folder dropped into its own
 descendant — the browser reports that as an opaque error rather than refusing it
 usefully — and refuses a move that would change nothing.
+
+## Naming a folder with an asterisk
+
+Renaming a folder expands any `*` in the name to the folder it sits in:
+`something-*` inside `my.url.com` becomes `something-my.url.com`. It is there
+for app sub-groups, where the host would otherwise be typed again in every one
+and quietly drift the day the app is renamed, but the rule is the plain one —
+the asterisk is the parent's name, wherever you are.
+
+The expansion happens once, when the name is set. What is stored is the whole
+name, so the folder still means the same thing in a browser that has never
+heard of this extension.

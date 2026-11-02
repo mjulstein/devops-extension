@@ -129,3 +129,29 @@ describe('resolveAppTarget', () => {
     ).toBeNull();
   });
 });
+
+describe('matchApps on tokens', () => {
+  const apps = [
+    { name: 'hello-world.com', environments: [] },
+    { name: 'helloworld.org', environments: [] },
+    { name: 'other.net', environments: [] }
+  ] as unknown as Parameters<typeof matchApps>[0];
+
+  it('finds a name from words anywhere in it', () => {
+    // Nobody should have to remember whether the middle was a hyphen or a dot.
+    expect(matchApps(apps, 'hello com').map((app) => app.name)).toEqual([
+      'hello-world.com'
+    ]);
+  });
+
+  it('keeps the straightforward matches ahead of the token ones', () => {
+    expect(matchApps(apps, 'hello').map((app) => app.name)).toEqual([
+      'hello-world.com',
+      'helloworld.org'
+    ]);
+  });
+
+  it('needs every word, not just one', () => {
+    expect(matchApps(apps, 'hello zzz')).toEqual([]);
+  });
+});

@@ -8,6 +8,7 @@ export type SettingsTab =
   | 'connection'
   | 'quick'
   | 'favorites'
+  | 'apps'
   | 'theme'
   | 'token'
   | 'maintenance';
@@ -28,13 +29,14 @@ const FIELDS_BY_TAB: Record<SavableSettingsTab, (keyof Settings)[]> = {
   quick: ['quickTaskParentId', 'quickTaskArchiveId'],
   favorites: ['bookmarkFolderName'],
   theme: ['themeOverrides'],
-  maintenance: ['staleTabDays', 'tabGroups']
+  maintenance: ['staleTabDays']
 };
 
 export const SETTINGS_TAB_LABELS: Record<SettingsTab, string> = {
   connection: 'Project',
   quick: 'Quick',
   favorites: 'Favorites',
+  apps: 'Apps',
   theme: 'Theme',
   token: 'Token',
   maintenance: 'Tools'

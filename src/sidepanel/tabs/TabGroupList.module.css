@@ -4,13 +4,19 @@
   gap: 10px;
 }
 
+/* The summary keeps its own display. Laying it out as a flex box stops
+   Chrome starting a drag from it at all — a summary that is no longer a
+   list-item is no longer draggable — so the flex row is the span inside. */
 .heading {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   font-size: 12px;
   margin: 0 0 2px;
   color: var(--color-text-secondary);
+}
+
+.headingRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .count {
@@ -49,6 +55,16 @@
 
 .name:hover {
   background: var(--color-surface-hover);
+}
+
+/* The tab its window is showing, so clicking a row leaves a mark. */
+.activeTab {
+  background: var(--color-surface-hover);
+  box-shadow: inset 2px 0 0 var(--color-accent-strong);
+}
+
+.activeTab .title {
+  font-weight: 600;
 }
 
 .title,
@@ -127,4 +143,81 @@
   padding: 1px 4px;
   border: 1px solid var(--color-border);
   border-radius: 4px;
+}
+
+/* The catch-all, set on its own ground: the groups above it are ones you
+   defined, and everything inside this one is still looking for a home. */
+.otherGroup {
+  background: var(--color-surface-sunken);
+  border-radius: 8px;
+  padding-block: 4px;
+  padding-inline-end: 4px;
+  margin-block-start: 8px;
+}
+
+/* Where the ✕ would be on a tab row. A bookmark has no tab to close, and the
+   column still has to line up. */
+.closePlaceholder {
+  inline-size: 22px;
+}
+
+/* A definition rather than something open, so it reads a step back. */
+.unopened .title {
+  color: var(--color-text-secondary);
+}
+
+/* The shell holds the heading's menu, which is positioned against it. */
+.shell {
+  position: relative;
+  display: flex;
+  align-items: start;
+  gap: 2px;
+}
+
+.shell > details {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+/* The icon doubles as the menu's trigger, so it has to look like it does
+   something. Nothing else in the heading is free to take a right-click. */
+.iconMenu {
+  cursor: context-menu;
+}
+
+/* Beside the group rather than at the pointer: the list redraws itself on
+   every tab event, and a menu pinned to where the mouse was would end up
+   pointing at whatever had moved under it. */
+.menu {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 140px;
+  padding: 2px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 18%);
+}
+
+.menuItem {
+  font: inherit;
+  font-size: 12px;
+  text-align: start;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.menuItem:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.menuItem:disabled {
+  color: var(--color-text-muted);
+  cursor: default;
 }

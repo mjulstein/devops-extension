@@ -23,7 +23,8 @@ const groups = toTabGroupNodes(
         id: 2,
         url: 'https://dev.azure.com/o/p/_boards/board',
         title: 'Board',
-        lastAccessed: now - DAY
+        lastAccessed: now - DAY,
+        active: true
       }
     ])
   )
@@ -35,9 +36,14 @@ function render(props: Partial<Parameters<typeof TabGroupList>[0]> = {}) {
       groups={groups}
       onClose={() => undefined}
       onSwitchTo={() => undefined}
+      onDuplicate={() => undefined}
+      onOpenBookmark={() => undefined}
       collapsed={new Set()}
       onToggleCollapsed={() => undefined}
       onCleanGroup={() => undefined}
+      onOpenGroup={() => undefined}
+      onPromoteGroup={() => undefined}
+      onMoveGroup={() => undefined}
       daysFor={() => 24}
       onDaysChange={() => undefined}
       {...props}
@@ -97,6 +103,14 @@ describe('TabGroupList', () => {
     expect(markup).toContain('>repo<');
   });
 
+  it('offers no move menu on a group nobody orders', () => {
+    // Azure DevOps's own sub-sections are arranged by age. A menu there would
+    // be four buttons that do nothing.
+    const markup = render();
+    expect(markup).toContain('Right-click to move Repos');
+    expect(markup).not.toContain('Right-click to move repo');
+  });
+
   it('gives each group a days box and a cleanup button', () => {
     const markup = render();
     expect(markup).toContain('Days untouched before closing a Repos tab');
@@ -110,5 +124,15 @@ describe('TabGroupList', () => {
   it('shows the icon of the group newest tab', () => {
     // Repos' newest is tab 1 here, so its icon is the one drawn.
     expect(render()).toContain('repo.png');
+  });
+
+  it('marks the tab its window is showing', () => {
+    // Clicking a row makes it active; without the mark nothing looks changed.
+    expect(render()).toContain('activeTab');
+  });
+
+  it('offers the icon as the way to move a group without dragging', () => {
+    const markup = render();
+    expect(markup).toContain('Right-click to move Repos');
   });
 });

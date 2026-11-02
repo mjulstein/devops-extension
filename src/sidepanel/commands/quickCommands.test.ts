@@ -14,53 +14,55 @@ describe('isCommandQuery', () => {
   });
 
   it('drops the prefix and the space after it', () => {
-    expect(parseCommandQuery('> add app').text).toBe('add app');
+    expect(parseCommandQuery('> sort tabs').text).toBe('sort tabs');
   });
 });
 
 describe('matchCommands', () => {
   it('offers every command for a bare prefix, in order', () => {
     expect(matchCommands(QUICK_COMMANDS, '').map((c) => c.id)).toEqual([
-      'add-app',
-      'add-app-env'
+      'sort-tabs',
+      'join-windows',
+      'tab-to-window',
+      'group-to-window',
+      'close-older-than'
     ]);
   });
 
-  it('leads with the name being typed, over the shorter one already complete', () => {
-    // "add app e" is somebody part-way through "add app env". It is also a
-    // legitimate "add app" named "e", so that stays on offer underneath.
-    expect(matchCommands(QUICK_COMMANDS, 'add app e').map((c) => c.id)).toEqual(
-      ['add-app-env', 'add-app']
-    );
+  it('narrows to the one being typed', () => {
+    expect(matchCommands(QUICK_COMMANDS, 'sort').map((c) => c.id)).toEqual([
+      'sort-tabs'
+    ]);
   });
 
   it('keeps the row while its arguments are being typed', () => {
     expect(
-      matchCommands(QUICK_COMMANDS, 'add app env test https://x.test/')[0].id
-    ).toBe('add-app-env');
+      matchCommands(QUICK_COMMANDS, 'close tabs older than 30')[0].id
+    ).toBe('close-older-than');
   });
 
-  it('prefers the more specific name when both could match', () => {
-    // 'add app env x' begins with 'add app' as well; the longer name wins.
-    expect(matchCommands(QUICK_COMMANDS, 'add app env x')[0].id).toBe(
-      'add-app-env'
-    );
+  it('matches a word from the middle of a name', () => {
+    expect(matchCommands(QUICK_COMMANDS, 'window').map((c) => c.id)).toEqual([
+      'join-windows',
+      'tab-to-window',
+      'group-to-window'
+    ]);
   });
 });
 
 describe('completeCommand', () => {
   it('completes to the nearest name, ready for its arguments', () => {
-    expect(completeCommand(QUICK_COMMANDS, 'add app e')).toBe('add app env ');
+    expect(completeCommand(QUICK_COMMANDS, 'close')).toBe(
+      'close tabs older than '
+    );
   });
 
-  it('completes a bare prefix to the first command', () => {
-    expect(completeCommand(QUICK_COMMANDS, '')).toBe('add app ');
+  it('completes a bare prefix to the first command, which takes none', () => {
+    expect(completeCommand(QUICK_COMMANDS, '')).toBe('sort tabs');
   });
 
   it('leaves a name that is already complete alone', () => {
-    expect(completeCommand(QUICK_COMMANDS, 'add app env test')).toBe(
-      'add app env test'
-    );
+    expect(completeCommand(QUICK_COMMANDS, 'sort tabs')).toBe('sort tabs');
   });
 
   it('leaves text that matches nothing alone', () => {
@@ -70,23 +72,21 @@ describe('completeCommand', () => {
 
 describe('readCommand', () => {
   it('reads the arguments after the name', () => {
-    expect(
-      readCommand(QUICK_COMMANDS, 'add app env test https://x.test/')
-    ).toEqual({
-      command: QUICK_COMMANDS[1],
-      args: ['test', 'https://x.test/']
+    expect(readCommand(QUICK_COMMANDS, 'close tabs older than 30')).toEqual({
+      command: QUICK_COMMANDS[4],
+      args: ['30']
     });
   });
 
   it('reads a command with no arguments given', () => {
-    expect(readCommand(QUICK_COMMANDS, 'add app')).toEqual({
+    expect(readCommand(QUICK_COMMANDS, 'sort tabs')).toEqual({
       command: QUICK_COMMANDS[0],
       args: []
     });
   });
 
   it('gives no arguments while the name is still being typed', () => {
-    expect(readCommand(QUICK_COMMANDS, 'add a')).toEqual({
+    expect(readCommand(QUICK_COMMANDS, 'sort t')).toEqual({
       command: QUICK_COMMANDS[0],
       args: []
     });

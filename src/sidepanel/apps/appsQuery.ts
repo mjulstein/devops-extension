@@ -51,16 +51,32 @@ export function parseAppQuery(term: string, apps: AppEntry[]): AppQuery {
   };
 }
 
+/**
+ * How well a name answers to what was typed, lower being better.
+ *
+ * Words are tokens to be found anywhere in the name, in any order, because a
+ * host is punctuated in a way nobody wants to reproduce: `hello com` finds
+ * `hello-world.com` without anyone having to remember whether the middle was a
+ * hyphen, a dot or another word. A space is safe to read this way because no
+ * app's name has one — they are host names.
+ *
+ * A name that starts with what was typed still wins, and one that contains it
+ * whole comes next, so the straightforward case is unaffected.
+ */
 function rank(name: string, needle: string): number | null {
   const haystack = name.toLowerCase();
   if (needle === '') {
-    return 2;
+    return 3;
   }
   if (haystack.startsWith(needle)) {
     return 0;
   }
   if (haystack.includes(needle)) {
     return 1;
+  }
+  const tokens = needle.split(/\s+/).filter((token) => token !== '');
+  if (tokens.length > 1 && tokens.every((token) => haystack.includes(token))) {
+    return 2;
   }
   return null;
 }

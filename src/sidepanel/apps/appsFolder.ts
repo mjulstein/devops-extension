@@ -63,6 +63,14 @@ export function readAppsFromFolder(node: AppsTreeNode | null): AppEntry[] {
 }
 
 /** Finds the `Apps` folder inside a tree, by walking to it from the root. */
+/** The favorites folder itself, by the name in settings. */
+export function findFavoritesFolder(
+  tree: AppsTreeNode[],
+  favoritesFolderName: string
+): AppsTreeNode | null {
+  return findFolder(tree, favoritesFolderName);
+}
+
 export function findAppsFolder(
   tree: AppsTreeNode[],
   favoritesFolderName: string

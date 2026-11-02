@@ -52,7 +52,12 @@ import {
 import { navigateToWorkItem } from './navigateToWorkItem';
 import { deduplicateTabs } from './deduplicateTabs';
 import { closeStaleTabs, resolveStaleTabDays } from './staleTabs';
-import { useTabGroups } from './useTabGroups';
+import { addAppEnvironment } from './apps/appsFolder';
+import {
+  loadTabGroupOrder,
+  TAB_GROUP_ORDER_KEY,
+  useTabGroups
+} from './useTabGroups';
 import {
   fetchOrphanWorkItems,
   parentWorkItems
@@ -202,7 +207,16 @@ export function useSidepanelController({
   const [isOrphansLoading, setIsOrphansLoading] = useState(false);
   const [orphansError, setOrphansError] = useState<string | null>(null);
   const [orphansStatus, setOrphansStatus] = useState<string | null>(null);
-  const { groups: tabGroups } = useTabGroups(savedSettings.tabGroups);
+  const [tabGroupOrder, setTabGroupOrder] = useState<string[]>([]);
+  const { groups: tabGroups } = useTabGroups(
+    savedSettings.bookmarkFolderName,
+    tabGroupOrder
+  );
+
+  // The dragged order is browser-local panel state, read once on open.
+  useEffect(() => {
+    void loadTabGroupOrder().then(setTabGroupOrder);
+  }, []);
   const [orphansMode, setOrphansMode] = useState<OrphansMode>('orphans');
   const [inProgressByMe, setInProgressByMe] = useState<InProgressByMe | null>(
     null
@@ -2055,6 +2069,39 @@ export function useSidepanelController({
     );
   }
 
+  /**
+   * Makes one of the catch-all's hosts an app of its own.
+   *
+   * A folder with nothing in it covers nothing, so the host's own address goes
+   * in with it — that one bookmark is what gives the group its reach, and it is
+   * the address worth having on a machine with no extension anyway.
+   */
+  async function onPromoteTabGroup(domain: string) {
+    const result = await addAppEnvironment(
+      savedSettings.bookmarkFolderName,
+      domain,
+      domain,
+      `https://${domain}/`
+    );
+    pushDebugLog(
+      'error' in result ? 'error' : 'success',
+      'error' in result ? result.error : `Added ${domain} as an app.`
+    );
+  }
+
+  /**
+   * Remembers the order the groups were dragged into.
+   *
+   * Browser-local, like the sort direction: it arranges this machine's panel
+   * and says nothing useful on another one. It records every top-level key,
+   * including the built-in sections, because what is being arranged is the
+   * list in front of you rather than the settings behind it.
+   */
+  async function onReorderTabGroups(keys: string[]) {
+    setTabGroupOrder(keys);
+    await chrome.storage.local.set({ [TAB_GROUP_ORDER_KEY]: keys });
+  }
+
   async function onToggleRecentFeaturesCollapsed() {
     const nextValue = !isRecentFeaturesCollapsed;
     setIsRecentFeaturesCollapsed(nextValue);
@@ -2242,6 +2289,8 @@ export function useSidepanelController({
     onCloseStaleTabs,
     staleTabDays: resolveStaleTabDays(savedSettings.staleTabDays),
     tabGroups,
+    onPromoteTabGroup,
+    onReorderTabGroups,
     onPopOutPanel,
     onChangeDebugLogs: setDebugLogs,
     onChangeSettings: onChangeSettings,
@@ -2278,7 +2327,6 @@ function getTrimmedSettingsFromState(settings: Settings): Settings {
     quickTaskParentId: settings.quickTaskParentId.trim(),
     quickTaskArchiveId: settings.quickTaskArchiveId.trim(),
     staleTabDays: settings.staleTabDays.trim(),
-    tabGroups: settings.tabGroups,
     bookmarkFolderName: settings.bookmarkFolderName.trim(),
     // Not text, so there is nothing to trim — carried through as it is, or
     // saving would wipe every colour the user set.

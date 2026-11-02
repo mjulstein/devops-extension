@@ -23,7 +23,8 @@ import classes from './SettingsCard.module.css';
 import card from '../atoms/Card.module.css';
 import { FavoritesEditor } from './FavoritesEditor';
 import { SettingsHelp } from './SettingsHelp';
-import { TabGroupsEditor } from './TabGroupsEditor';
+import { AppFoldersEditor } from './AppFoldersEditor';
+import { useAppFolders } from '@/sidepanel/useAppFolders';
 import {
   DEFAULT_STALE_TAB_DAYS,
   resolveStaleTabDays
@@ -65,6 +66,7 @@ export function SettingsPane({
     settings.todoStates.join(', ')
   );
 
+  const appFolders = useAppFolders(settings.bookmarkFolderName);
   const [refreshingIcons, setRefreshingIcons] = useState(false);
   const [iconRefreshStatus, setIconRefreshStatus] = useState<string | null>(
     null
@@ -215,6 +217,11 @@ export function SettingsPane({
       title: 'Starred pages and bookmark syncing'
     },
     {
+      id: 'apps',
+      label: SETTINGS_TAB_LABELS.apps,
+      title: 'Domains grouped on the Tabs tab'
+    },
+    {
       id: 'theme',
       label: SETTINGS_TAB_LABELS.theme,
       title: 'Colours for light and dark mode'
@@ -243,7 +250,6 @@ export function SettingsPane({
       quickTaskParentId: settings.quickTaskParentId.trim(),
       quickTaskArchiveId: settings.quickTaskArchiveId.trim(),
       staleTabDays: settings.staleTabDays.trim(),
-      tabGroups: settings.tabGroups,
       bookmarkFolderName: settings.bookmarkFolderName.trim(),
       themeOverrides: settings.themeOverrides
     },
@@ -518,6 +524,35 @@ export function SettingsPane({
         </div>
       )}
 
+      {activeTab === 'apps' && (
+        <div className={classes.regionBody}>
+          <SettingsHelp summary="About apps">
+            <p>
+              An app is a folder of bookmarks under your favorites folder. The
+              bookmarks are the few main addresses, so they reach a machine with
+              no extension installed; everything else you open on that app is
+              grouped with it on the <strong>Tabs</strong> tab anyway, because a
+              group covers whatever its bookmarks have in common.
+            </p>
+            <p>
+              Add one by making a folder named for its host in the bookmark
+              manager, or with the <strong>📌</strong> button a host carries
+              under <strong>Other</strong> on the Tabs tab. The folders are one
+              level and flat.
+            </p>
+          </SettingsHelp>
+
+          <AppFoldersEditor
+            folders={appFolders}
+            onOpenBookmarkManager={() => {
+              void chrome.runtime.sendMessage({
+                type: 'OPEN_BOOKMARK_MANAGER'
+              });
+            }}
+          />
+        </div>
+      )}
+
       {activeTab === 'theme' && (
         <div className={classes.regionBody}>
           <SettingsHelp summary="About theme colours">
@@ -567,25 +602,6 @@ export function SettingsPane({
               In force now: {resolveStaleTabDays(settings.staleTabDays)} days.
             </span>
           </label>
-
-          <hr className={classes.separator} />
-
-          <h3 className={classes.sectionHeading}>Tab groups</h3>
-          <SettingsHelp summary="About tab groups">
-            <p>
-              The <strong>Tabs</strong> tab groups your open tabs. Azure DevOps
-              is grouped by its own sections already; add a domain here to give
-              anywhere else a group too. Start with just the domain — narrow it
-              into sub-domains or paths once you have seen what lands in it.
-            </p>
-          </SettingsHelp>
-
-          <TabGroupsEditor
-            groups={settings.tabGroups}
-            onChange={(tabGroups) => {
-              onChange({ ...settings, tabGroups });
-            }}
-          />
 
           <hr className={classes.separator} />
 

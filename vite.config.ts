@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { copyFileSync, existsSync, renameSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { build } from 'vite';
@@ -77,7 +78,55 @@ function buildContentScriptPlugin() {
   };
 }
 
+/**
+ * The commit this was built from, for the panel's own header.
+ *
+ * Reloading an unpacked extension is easy to believe you have done, and a
+ * panel that looks the same either way gives no way to tell. A dirty tree is
+ * marked, since a build from uncommitted work is not the commit it names.
+ *
+ * Not a secret: the repository is public and the sha is in its history. It
+ * falls back to a dash outside a checkout, where a build still has to work.
+ */
+function buildStamp(): string {
+  try {
+    const sha = execFileSync('git', ['rev-parse', '--short', 'HEAD'], {
+      encoding: 'utf8'
+    }).trim();
+    const dirty =
+      execFileSync('git', ['status', '--porcelain'], {
+        encoding: 'utf8'
+      }).trim() !== '';
+    return dirty ? `${sha}+` : sha;
+  } catch {
+    return '-';
+  }
+}
+
+/**
+ * Puts the build stamp in every page's `<title>`.
+ *
+ * The title is where you look when you want to know what a page is, and it
+ * costs nothing: the popped-out panel, the bookmark manager and the settings
+ * window all wear it in their title bar, and devtools shows it for the ones
+ * that have no bar of their own.
+ */
+function stampTitlePlugin(stamp: string) {
+  return {
+    name: 'stamp-title',
+    transformIndexHtml(html: string) {
+      return html.replace(
+        /<title>([^<]*)<\/title>/,
+        (_match, title: string) => `<title>${title} · ${stamp}</title>`
+      );
+    }
+  };
+}
+
 export default defineConfig({
+  define: {
+    __BUILD_SHA__: JSON.stringify(buildStamp())
+  },
   resolve: {
     tsconfigPaths: true,
     alias: {
@@ -111,5 +160,9 @@ export default defineConfig({
       }
     }
   },
-  plugins: [copyManifestPlugin(), buildContentScriptPlugin()]
+  plugins: [
+    stampTitlePlugin(buildStamp()),
+    copyManifestPlugin(),
+    buildContentScriptPlugin()
+  ]
 });
