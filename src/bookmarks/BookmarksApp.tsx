@@ -27,6 +27,7 @@ import {
 import {
   applyFlatten,
   createFolder,
+  splitIntoFolder,
   moveInto,
   readTree,
   removeNode,
@@ -410,6 +411,9 @@ export function BookmarksApp() {
                 }}
                 onDelete={(id) => {
                   act(() => removeNode(id, false));
+                }}
+                onSplit={(id) => {
+                  act(() => splitIntoFolder(id));
                 }}
                 onMove={handleMove}
               />

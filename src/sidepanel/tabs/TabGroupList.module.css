@@ -33,7 +33,7 @@
 /* The close first, then the name: closing is what the list is mostly for. */
 .row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 6px;
 }
@@ -164,6 +164,14 @@
 /* A definition rather than something open, so it reads a step back. */
 .unopened .title {
   color: var(--color-text-secondary);
+}
+
+/* A tab already kept: a mark rather than a button, since there is nothing
+   left to press. */
+.kept {
+  font-size: 12px;
+  padding-inline: 4px;
+  color: var(--color-text-muted);
 }
 
 /* The shell holds the heading's menu, which is positioned against it. */

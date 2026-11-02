@@ -155,18 +155,62 @@ export function sameBase(a: string, b: string): boolean {
 }
 
 /**
+ * Whether an open address is the bookmark's place or somewhere inside it.
+ *
+ * The scheme is not part of what a bookmark names here — `https://` is noise
+ * everybody drops when they say where something is — so the comparison is the
+ * host and the path. A tab deeper in the path counts: a bookmark for
+ * `example.com/spaces` is an offer to go to that area, and an area you are
+ * already standing in is not somewhere to be sent.
+ *
+ * The match is on whole path segments, so `/spaces` does not swallow
+ * `/spacesuit`. Somebody who wants the two told apart writes the deeper
+ * bookmark, which is what splitting a bookmark into a folder is for.
+ */
+export function coversPlace(bookmarkUrl: string, openUrl: string): boolean {
+  const parts = (raw: string): { host: string; path: string } | null => {
+    try {
+      const url = new URL(raw);
+      return {
+        host: url.host.toLowerCase(),
+        path: url.pathname.replace(/\/+$/, '').toLowerCase()
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  const mark = parts(bookmarkUrl);
+  const open = parts(openUrl);
+  if (mark === null || open === null) {
+    return false;
+  }
+  if (mark.host !== open.host) {
+    return false;
+  }
+  return (
+    mark.path === '' ||
+    open.path === mark.path ||
+    open.path.startsWith(`${mark.path}/`)
+  );
+}
+
+/**
  * The bookmarks with nothing open at their address.
  *
- * The ones with a tab already there are left out: the tab is the thing to act
- * on, and a row offering to open what is open in front of you is a row that
- * does nothing. They still did their job — the bookmark is what put that tab in
- * this group.
+ * The ones with a tab already there are left out, and so are the ones whose
+ * area a tab is somewhere inside: the tab is the thing to act on, and a row
+ * offering to open the place you are already in is a row that does nothing.
+ * They still did their job — the bookmark is what put that tab in this group.
+ *
+ * A bookmark that covers too much, and so disappears too easily, is a bookmark
+ * to split into deeper ones.
  */
 export function unopenedBookmarks(
   bookmarks: AppBookmark[],
   openUrls: string[]
 ): AppBookmark[] {
   return bookmarks.filter(
-    (bookmark) => !openUrls.some((url) => sameBase(url, bookmark.url))
+    (bookmark) => !openUrls.some((url) => coversPlace(bookmark.url, url))
   );
 }

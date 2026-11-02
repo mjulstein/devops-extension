@@ -53,16 +53,29 @@ export function readAppsFromFolder(node: AppsTreeNode | null): AppEntry[] {
     .filter((child) => child.url === undefined && (child.title ?? '') !== '')
     .map((child) => ({
       name: child.title ?? '',
-      environments: (child.children ?? [])
-        .filter(
-          (leaf): leaf is AppsTreeNode & { url: string } =>
-            typeof leaf.url === 'string' && (leaf.title ?? '') !== ''
-        )
-        .map((leaf) => ({ name: leaf.title ?? '', url: leaf.url }))
+      // The app's own bookmarks first, then the ones in its sub-groups. A
+      // page kept in a sub-group is still that app's, and the search is where
+      // you go looking for it — leaving it out would make the `-` walk a
+      // partial answer that looks like a complete one.
+      environments: [
+        ...readLeaves(child),
+        ...(child.children ?? [])
+          .filter((leaf) => leaf.url === undefined)
+          .flatMap((sub) => readLeaves(sub))
+      ]
     }));
 }
 
-/** Finds the `Apps` folder inside a tree, by walking to it from the root. */
+/** The bookmarks directly inside a folder, as environments. */
+function readLeaves(node: AppsTreeNode): { name: string; url: string }[] {
+  return (node.children ?? [])
+    .filter(
+      (leaf): leaf is AppsTreeNode & { url: string } =>
+        typeof leaf.url === 'string' && (leaf.title ?? '') !== ''
+    )
+    .map((leaf) => ({ name: leaf.title ?? '', url: leaf.url }));
+}
+
 /** The favorites folder itself, by the name in settings. */
 export function findFavoritesFolder(
   tree: AppsTreeNode[],
@@ -71,6 +84,7 @@ export function findFavoritesFolder(
   return findFolder(tree, favoritesFolderName);
 }
 
+/** Finds the `Apps` folder inside a tree, by walking to it from the root. */
 export function findAppsFolder(
   tree: AppsTreeNode[],
   favoritesFolderName: string

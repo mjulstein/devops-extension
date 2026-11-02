@@ -143,6 +143,34 @@ The gaps between groups are in the list all along with no height, and open only
 while a drag is on. Inserting them when the drag starts rearranges the page
 under the cursor at the moment the browser is deciding what is being dragged.
 
+## Keeping a tab
+
+Each tab in an app group carries a **☆**. Pressing it writes a real bookmark
+into that group's own folder — the app's, or the sub-group's when the tab is in
+one — so the page reaches every browser signed in, including the ones with no
+extension, and turns up in the favorites search under the app it was kept in.
+
+The bookmark takes the tab's own title, which is a placeholder to be renamed in
+the bookmark manager. It is the quick way to build an app up: keep the pages as
+you come across them, tidy the names later.
+
+A tab already kept shows a **★** instead. The comparison is on place alone, so
+the same page with different parameters is not offered again — a bookmark names
+a place and a query names a view of it.
+
+A bookmark whose area something is already open in does not show as a "not
+open" row at all. The scheme is not part of what a bookmark names — nobody says
+`https://` out loud — so the comparison is the host and the path, and a tab
+deeper in that path counts: a bookmark for `example.com/spaces` offers to take
+you to an area, and an area you are standing in is not somewhere to be sent.
+The match is on whole segments, so `/spaces` does not swallow `/spacesuit`.
+
+A bookmark that covers so much it is always hidden is one to split into deeper
+ones, which the bookmark manager's **📂** does.
+
+Groups with no folder behind them — Azure DevOps's sections, the hosts under
+**Other** — have no button, because there is nowhere to put it.
+
 ## The tab you are looking at
 
 The row for the tab its window is showing is marked. Clicking a row switches to

@@ -160,6 +160,19 @@ export function TabsPane({
         onOpenBookmark={(url) => {
           void chrome.tabs.create({ url });
         }}
+        onKeepTab={(group, tab) => {
+          // A real bookmark in the group's own folder. That is the whole
+          // point: it reaches every browser signed in, including the ones
+          // with no extension, and it turns up in the favorites search under
+          // the app it was kept in.
+          if (group.bookmarkFolderId !== undefined) {
+            void chrome.bookmarks?.create({
+              parentId: group.bookmarkFolderId,
+              title: tab.title,
+              url: tab.url
+            });
+          }
+        }}
       />
     </div>
   );
