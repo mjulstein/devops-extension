@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { WindowDeck } from './WindowDeck';
 import { useWindowDeck } from './useWindowDeck';
-import { orderWindows, type DeckWindow } from './windowDeck';
+import { orderWindows, type DeckWindow } from './openWindows';
 import classes from './WindowDeckApp.module.css';
 
 /**

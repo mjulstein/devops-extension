@@ -1,4 +1,10 @@
-// The open browser windows, as a deck to switch between.
+// The open browser windows, read into rows for the deck.
+//
+// Named for what it reads rather than for the deck it feeds, because a file
+// called `windowDeck.ts` beside `WindowDeck.tsx` is two files whose names
+// differ only in case: a filesystem that does not care about case resolves
+// `./WindowDeck` to whichever it finds first, and on Windows that was the
+// model, which has no component to export.
 //
 // The Tabs tab answers "what have I got open"; this answers "where do I go
 // now". They look alike on purpose — the same rows, the same move menu — but

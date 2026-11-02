@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { WindowDeck } from './WindowDeck';
-import { readWindows } from './windowDeck';
+import { readWindows } from './openWindows';
 
 const windows = readWindows([
   {

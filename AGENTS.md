@@ -43,6 +43,7 @@ The project uses Vite as the build system. Source files live under `src/`, and e
 - Side panel sections may add local `atoms/` subdirectories for reusable interactive concepts and colocated `*.test.ts` / `*.test.tsx` coverage; keep section layout files focused on composition rather than repeated row/button/control behavior.
 - Prefer moving side-panel stateful orchestration into section-local hooks or controller modules (for example `useSidepanelController.ts`) so `App.tsx` and card/layout components stay thin.
 - Utility/function modules should use `camelCase.ts`.
+- No two files in one directory may have names differing only in case. The conventions above make it easy to walk into — `WindowDeck.tsx` beside `windowDeck.ts` — and Linux keeps them apart while macOS and Windows do not, so an import written without an extension resolves to whichever the filesystem meets first and the build fails on one contributor's machine with a missing-export error that says nothing about filenames. `src/fileNames.test.ts` checks it.
 - When moving or renaming tracked files, use `git mv` so history is preserved; do not create a new file and delete the old file as a substitute for a move.
 - Run `npm run lint`, `npm test`, and `npm run build` after non-trivial changes.
 - Respect the repository formatting rules in `.prettierrc` and keep committed text files on LF line endings per `.editorconfig` and `.gitattributes`.

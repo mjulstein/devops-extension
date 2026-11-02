@@ -3,7 +3,7 @@ import clsx from 'clsx';
 import { Button } from '@/sidepanel/atoms/Button';
 import { GroupMoveMenu, type GroupMove } from '@/sidepanel/tabs/GroupMoveMenu';
 import { gapForMove } from '@/sidepanel/tabs/moveGroup';
-import { describeWindow, moveIdTo, type DeckWindow } from './windowDeck';
+import { describeWindow, moveIdTo, type DeckWindow } from './openWindows';
 import classes from './WindowDeck.module.css';
 
 interface WindowDeckProps {

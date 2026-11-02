@@ -55,8 +55,11 @@ now, which is exactly the thing that is worthless once it is stale.
 
 ## Files
 
-- `windowDeck.ts` — reading the browser's windows into rows, ordering them, and
-  the words for what closing one would cost
+- `openWindows.ts` — reading the browser's windows into rows, ordering them,
+  and the words for what closing one would cost. Named for what it reads, not
+  for the deck: `windowDeck.ts` beside `WindowDeck.tsx` differs only in case,
+  and a case-insensitive filesystem resolves `./WindowDeck` to whichever it
+  meets first — which broke the build on Windows and nowhere else
 - `useWindowDeck.ts` — the live list, re-read on every window and tab event
 - `WindowDeck.tsx` — the rows
 - `WindowDeckApp.tsx` — the page, which owns the order and the pins

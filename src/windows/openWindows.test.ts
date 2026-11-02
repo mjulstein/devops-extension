@@ -3,7 +3,7 @@ import {
   moveIdTo,
   orderWindows,
   readWindows
-} from './windowDeck';
+} from './openWindows';
 
 function raw(id: number, titles: string[], extra: object = {}) {
   return {
