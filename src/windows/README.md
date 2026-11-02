@@ -36,6 +36,12 @@ icon gives **Move to top / up / down / to bottom**. A **📍** holds a window at
 the top of the deck, which is most of what pinning is for in a list that
 rearranges itself every time a window opens.
 
+A window holding more than one tab also offers **⧉**, which takes the tab in
+front out into a window of its own and leaves the rest where they are. It is
+the deck's answer to a window that has grown into several things at once, and
+it is absent on a single-tab window, where it would move the tab from one
+window into an identical one.
+
 Closing asks first when the window holds more than one tab. The tabs list
 closes a tab without asking because one tab is one thing; a window is however
 many of them you have not looked at lately.

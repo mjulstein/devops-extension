@@ -53,6 +53,18 @@ export function WindowDeckApp() {
             drawAttention: true
           });
         }}
+        onDetachFront={(window: DeckWindow) => {
+          // The deck's own answer to a window that has grown into several
+          // things at once: take the one in front out, leave the rest where
+          // they are. The new window takes focus, because asking for it is
+          // asking to work in it.
+          if (window.frontTabId !== null) {
+            void chrome.windows?.create({
+              tabId: window.frontTabId,
+              focused: true
+            });
+          }
+        }}
         onClose={(window: DeckWindow) => {
           // A window can hold a day's work. The tabs list closes a tab without
           // asking because one tab is one thing; a window is however many you

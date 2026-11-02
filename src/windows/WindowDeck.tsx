@@ -14,6 +14,8 @@ interface WindowDeckProps {
   onTogglePinned: (id: number) => void;
   onSwitchTo: (id: number) => void;
   onClose: (window: DeckWindow) => void;
+  /** Sends the window's front tab off into a window of its own. */
+  onDetachFront: (window: DeckWindow) => void;
 }
 
 /**
@@ -35,7 +37,8 @@ export function WindowDeck({
   onOrderChange,
   onTogglePinned,
   onSwitchTo,
-  onClose
+  onClose,
+  onDetachFront
 }: WindowDeckProps) {
   const [menuId, setMenuId] = useState<number | null>(null);
 
@@ -107,6 +110,20 @@ export function WindowDeck({
                 {window.focused ? ' · here' : ''}
               </span>
             </button>
+            {/* Only where there is something to leave behind. Splitting a
+                single-tab window would move it from one window to an
+                identical one. */}
+            {!window.single && window.frontTabId !== null && (
+              <Button
+                size="compact"
+                variant="quiet"
+                icon="⧉"
+                description={`Move ${window.title} into a window of its own`}
+                onClick={() => {
+                  onDetachFront(window);
+                }}
+              />
+            )}
             <Button
               size="compact"
               variant="quiet"

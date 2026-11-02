@@ -28,6 +28,7 @@ function render(pinned: number[] = []) {
       onTogglePinned={() => undefined}
       onSwitchTo={() => undefined}
       onClose={() => undefined}
+      onDetachFront={() => undefined}
     />
   );
 }
@@ -73,8 +74,18 @@ describe('WindowDeck', () => {
         onTogglePinned={() => undefined}
         onSwitchTo={() => undefined}
         onClose={() => undefined}
+        onDetachFront={() => undefined}
       />
     );
     expect(markup).toContain('No other windows are open.');
+  });
+
+  it('offers to send the front tab off alone, where there is a rest', () => {
+    expect(render()).toContain('Move Front into a window of its own');
+  });
+
+  it('offers nothing of the kind on a window of one tab', () => {
+    // It would move the tab from one window to an identical one.
+    expect(render()).not.toContain('Move Alone into a window of its own');
   });
 });

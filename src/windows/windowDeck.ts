@@ -27,6 +27,11 @@ export interface DeckWindow {
   incognito: boolean;
   /** A window with one tab is that tab, and says so rather than counting. */
   single: boolean;
+  /**
+   * The tab the window is showing, which is the one the deck names it after
+   * and the one it offers to send off on its own.
+   */
+  frontTabId: number | null;
 }
 
 interface RawTab {
@@ -81,7 +86,8 @@ export function readWindows(windows: RawWindow[]): DeckWindow[] {
         tabs,
         focused: window.focused === true,
         incognito: window.incognito === true,
-        single: tabs.length === 1
+        single: tabs.length === 1,
+        frontTabId: front?.id ?? null
       };
     });
 }
