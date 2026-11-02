@@ -603,6 +603,13 @@ const SINGLETON_WINDOWS = {
     // Roughly the dialog's own size. It is a search box, not a workspace.
     defaults: { width: 620, height: 520 }
   },
+  windows: {
+    page: 'windows.html',
+    boundsKey: 'windowDeckBounds',
+    // Narrow and tall: it is meant to be parked down the side of a screen and
+    // left there, which is also why nothing ever closes it but its own button.
+    defaults: { width: 380, height: 900 }
+  },
   panel: {
     page: 'sidepanel.html',
     boundsKey: 'panelWindowBounds',
@@ -956,6 +963,10 @@ type RuntimeMessage =
       payload?: undefined;
     }
   | {
+      type: 'OPEN_WINDOW_DECK';
+      payload?: undefined;
+    }
+  | {
       type: 'OPEN_STARRED_PAGE';
       payload: {
         url: string;
@@ -1277,6 +1288,17 @@ chrome.runtime.onMessage.addListener(
 
     if (message.type === 'OPEN_BOOKMARK_MANAGER') {
       openBookmarkManager()
+        .then(() => sendResponse({ ok: true, result: null }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'OPEN_WINDOW_DECK') {
+      // One instance, raised rather than reopened: it is meant to be parked
+      // somewhere and left, so a second copy would be in the way of the first.
+      openSingletonWindow('windows')
         .then(() => sendResponse({ ok: true, result: null }))
         .catch((error: Error) =>
           sendResponse({ ok: false, error: error.message })

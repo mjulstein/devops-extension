@@ -109,6 +109,12 @@ The extension stores runtime settings in browser storage.
 
 The Work items tab also stores its closed-date range filter and parent-detail visibility toggle in browser-local storage so the tab reopens with the same view preferences. The Active item tab stores its Recent features collapsed state in browser-local storage as well.
 
+The panel's button row opens a **window deck** in a window of its own: every
+browser window as a row to switch to, with the one you are in marked, a pin to
+hold a window at the top and a right-click on a row's icon to move it. It is
+meant to be parked down the side of a screen; there is only ever one of it, and
+it closes when you close it.
+
 Every page's title carries the short git sha the build came from — the popped
 out panel, the bookmark manager and the settings window all show it in their
 title bar — so you can tell whether the reload you think you did actually

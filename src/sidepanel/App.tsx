@@ -4,6 +4,7 @@ import { TabsPane } from './tabs/TabsPane';
 import { ActiveWorkItemBanner } from './atoms/ActiveWorkItemBanner';
 import { DeduplicateTabsButton } from './atoms/DeduplicateTabsButton';
 import { PopOutPanelButton } from './atoms/PopOutPanelButton';
+import { WindowDeckButton } from './atoms/WindowDeckButton';
 import { StarPageToggle } from './atoms/StarPageToggle';
 import { StarredPagesMenu } from './atoms/StarredPagesMenu';
 import { ReconnectBanner } from './atoms/ReconnectBanner';
@@ -51,6 +52,11 @@ export function App({ initialTab }: AppProps = {}) {
             void controller.onCloseStaleTabs();
           }}
           staleTabDays={controller.staleTabDays}
+        />
+        <WindowDeckButton
+          onClick={() => {
+            void chrome.runtime.sendMessage({ type: 'OPEN_WINDOW_DECK' });
+          }}
         />
         <PopOutPanelButton
           onClick={() => {

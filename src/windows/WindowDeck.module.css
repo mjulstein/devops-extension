@@ -1,0 +1,83 @@
+.deck {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+}
+
+.empty {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: 0;
+  padding: 8px;
+}
+
+/* The close first, then the name, as in the tabs list: the thing you read is
+   the thing you press, and the destructive one is not in the middle of it. */
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+  border-radius: 6px;
+}
+
+/* The window the browser is in front of. It is where you came from, so it is
+   worth knowing which row not to press. */
+.focused {
+  background: var(--color-surface-hover);
+  box-shadow: inset 2px 0 0 var(--color-accent-strong);
+}
+
+.name {
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-inline-size: 0;
+  text-align: start;
+  padding: 5px 4px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.name:hover {
+  background: var(--color-surface-hover);
+}
+
+.title,
+.meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.title {
+  font-size: 13px;
+}
+
+.meta {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.icon {
+  flex: 0 0 auto;
+  inline-size: 16px;
+  block-size: 16px;
+  border-radius: 3px;
+  cursor: context-menu;
+}
+
+.pinned .title {
+  font-weight: 600;
+}
+
+.incognito {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
