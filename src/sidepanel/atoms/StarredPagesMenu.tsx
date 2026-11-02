@@ -155,8 +155,7 @@ export function StarredPagesMenu({
     }
     const panel = getPanelRect(wrap);
     // Measuring is a DOM read whose only product is this state, and one caller
-    // is an effect — which is what the rule below objects to.
-    // eslint-disable-next-line @eslint-react/set-state-in-effect
+    // is an effect.
     setBox({
       top: wrap.getBoundingClientRect().bottom + 4,
       left: panel.left,
