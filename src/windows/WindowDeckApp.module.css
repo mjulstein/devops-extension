@@ -1,0 +1,20 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 100vh;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+/* Barely a header: the deck is a column of places to go, and a title bar of
+   our own would only repeat the window's. */
+.header {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px 0;
+}
+
+.count {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}

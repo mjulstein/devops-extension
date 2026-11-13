@@ -76,6 +76,13 @@ export default defineConfig([
         it: 'readonly',
         vi: 'readonly'
       }
+    },
+    rules: {
+      // `expect(api.createPat).not.toHaveBeenCalled()` is the whole point of a
+      // mock: the reference is being inspected, never called, so there is no
+      // `this` to lose. The rule is about production code handing a method
+      // somewhere it will later be invoked bare.
+      '@typescript-eslint/unbound-method': 'off'
     }
   },
   {
