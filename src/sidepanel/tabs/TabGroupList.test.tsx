@@ -40,6 +40,7 @@ function render(props: Partial<Parameters<typeof TabGroupList>[0]> = {}) {
       onSwitchTo={() => undefined}
       onDuplicate={() => undefined}
       onOpenBookmark={() => undefined}
+      onEditBookmark={() => undefined}
       onKeepTab={() => undefined}
       collapsed={new Set()}
       onToggleCollapsed={() => undefined}
@@ -73,6 +74,23 @@ describe('TabGroupList', () => {
     const name = markup.indexOf('repo - Repos</span>');
     expect(close).toBeGreaterThan(-1);
     expect(close).toBeLessThan(name);
+  });
+
+  it("shows the tab's icon in the close slot, with the ✕ behind it", () => {
+    const markup = render();
+    const close = markup.indexOf('Close repo - Repos');
+    const icon = markup.indexOf('https://dev.azure.com/repo.png', close);
+    const name = markup.indexOf('repo - Repos</span>');
+    expect(icon).toBeGreaterThan(close);
+    expect(icon).toBeLessThan(name);
+  });
+
+  it('falls back to a plain ✕ for a tab with no icon', () => {
+    const markup = render();
+    const close = markup.indexOf('Close Board');
+    const name = markup.indexOf('Board</span>', close);
+    expect(markup.slice(close, name)).not.toContain('<img');
+    expect(markup.slice(close, name)).toContain('✕');
   });
 
   it('shows how long ago and where, under the name', () => {
@@ -171,6 +189,7 @@ describe('TabGroupList keeping a tab', () => {
         onSwitchTo={() => undefined}
         onDuplicate={() => undefined}
         onOpenBookmark={() => undefined}
+        onEditBookmark={() => undefined}
         onKeepTab={() => undefined}
         collapsed={new Set()}
         onToggleCollapsed={() => undefined}
@@ -193,5 +212,43 @@ describe('TabGroupList keeping a tab', () => {
     const markup = renderApps();
     expect(markup).toContain('Kept in example.com');
     expect(markup).not.toContain('Keep Home again');
+  });
+
+  describe('an unopened bookmark', () => {
+    const withBookmark = [
+      {
+        key: 'app:example.com',
+        label: 'example.com',
+        tabs: [],
+        children: [],
+        bookmarks: [{ id: 'b7', name: 'Docs', url: 'https://example.com/docs' }]
+      }
+    ];
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("offers to edit it, with the bookmark's icon in the slot", () => {
+      vi.stubGlobal('chrome', {
+        runtime: { getURL: (path: string) => `chrome-extension://x${path}` }
+      });
+      const markup = render({ groups: withBookmark });
+      const edit = markup.indexOf('Edit Docs in the bookmark manager');
+      const name = markup.indexOf('Docs</span>');
+      const icon = markup.indexOf('_favicon/', edit);
+      expect(edit).toBeGreaterThan(-1);
+      expect(icon).toBeGreaterThan(edit);
+      expect(icon).toBeLessThan(name);
+    });
+
+    it('falls back to a plain ✎ where no icon can be read', () => {
+      vi.stubGlobal('chrome', undefined);
+      const markup = render({ groups: withBookmark });
+      const edit = markup.indexOf('Edit Docs in the bookmark manager');
+      const name = markup.indexOf('Docs</span>');
+      expect(markup.slice(edit, name)).not.toContain('<img');
+      expect(markup.slice(edit, name)).toContain('✎');
+    });
   });
 });

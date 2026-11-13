@@ -76,6 +76,7 @@ import { ensurePat } from './devops/auth/ensurePat';
 import { revokeAllExtensionPats } from './devops/auth/revokeAllExtensionPats';
 import { createDefaultConnectionService } from './devops/auth/connectionService';
 import { startBearerObserver } from './devops/auth/bearerObserver';
+import { requestBookmarkEdit } from './bookmarks/editRequest';
 
 // Observe Azure DevOps request headers so a Bearer is available for PAT
 // minting regardless of which realm issued the call.
@@ -740,7 +741,12 @@ async function centredOnCurrentWindow(size: {
  * It replaces the browser's own because the browser's cannot show what is
  * duplicated or empty, which is most of what it gets opened for.
  */
-async function openBookmarkManager(): Promise<void> {
+async function openBookmarkManager(bookmarkId?: string): Promise<void> {
+  // Written before the window is raised, so a manager already open hears it
+  // through the change event and a new one finds it when it loads.
+  if (bookmarkId !== undefined && bookmarkId !== '') {
+    await requestBookmarkEdit(bookmarkId);
+  }
   await openSingletonWindow('bookmarks');
 }
 
@@ -960,7 +966,8 @@ type RuntimeMessage =
     }
   | {
       type: 'OPEN_BOOKMARK_MANAGER';
-      payload?: undefined;
+      /** With a bookmark id, the manager opens that bookmark for editing. */
+      payload?: { bookmarkId?: string };
     }
   | {
       type: 'OPEN_WINDOW_DECK';
@@ -1287,7 +1294,7 @@ chrome.runtime.onMessage.addListener(
     }
 
     if (message.type === 'OPEN_BOOKMARK_MANAGER') {
-      openBookmarkManager()
+      openBookmarkManager(message.payload?.bookmarkId)
         .then(() => sendResponse({ ok: true, result: null }))
         .catch((error: Error) =>
           sendResponse({ ok: false, error: error.message })

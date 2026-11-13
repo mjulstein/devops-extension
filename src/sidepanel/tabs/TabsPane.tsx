@@ -160,6 +160,12 @@ export function TabsPane({
         onOpenBookmark={(url) => {
           void chrome.tabs.create({ url });
         }}
+        onEditBookmark={(bookmarkId) => {
+          void chrome.runtime.sendMessage({
+            type: 'OPEN_BOOKMARK_MANAGER',
+            payload: { bookmarkId }
+          });
+        }}
         onKeepTab={(group, tab) => {
           // A real bookmark in the group's own folder. That is the whole
           // point: it reaches every browser signed in, including the ones

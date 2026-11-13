@@ -41,6 +41,11 @@ import {
   type ColumnWidths
 } from './columnWidths';
 import { expandFolderName } from '@/sidepanel/appGroups';
+import {
+  subscribeToBookmarkEditRequests,
+  takeBookmarkEditRequest,
+  type BookmarkEditRequest
+} from './editRequest';
 import classes from './BookmarksApp.module.css';
 
 /**
@@ -69,6 +74,12 @@ export function BookmarksApp() {
   const [widths, setWidths] = useState<ColumnWidths>(loadColumnWidths);
   const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
+  // A bookmark asked to be edited from outside the manager: taken from storage
+  // as soon as it arrives, acted on once the tree it names has loaded.
+  const [pendingEdit, setPendingEdit] = useState<BookmarkEditRequest | null>(
+    null
+  );
+  const [editing, setEditing] = useState<BookmarkEditRequest | null>(null);
 
   const refresh = useCallback(() => {
     readTree().then(setTree, (cause: unknown) => {
@@ -83,6 +94,18 @@ export function BookmarksApp() {
 
   useEffect(() => {
     void loadLastKnownTheme().then(applyTheme);
+  }, []);
+
+  useEffect(() => {
+    const take = (): void => {
+      void takeBookmarkEditRequest().then((request) => {
+        if (request !== null) {
+          setPendingEdit(request);
+        }
+      });
+    };
+    take();
+    return subscribeToBookmarkEditRequests(take);
   }, []);
 
   useEffect(() => {
@@ -225,6 +248,20 @@ export function BookmarksApp() {
     },
     [tree]
   );
+
+  // The folder is revealed and the search cleared so the row is on screen,
+  // then the row itself opens its editor. Applied while rendering, once the
+  // tree it names has loaded. A bookmark deleted in the meantime is simply not
+  // found, and the manager opens as it would have anyway.
+  if (pendingEdit !== null && tree.length > 0) {
+    const entry = entries.find((item) => item.id === pendingEdit.bookmarkId);
+    setPendingEdit(null);
+    if (entry !== undefined) {
+      setSearch('');
+      revealFolder(entry.parentId);
+      setEditing(pendingEdit);
+    }
+  }
 
   // Choosing a folder in the tree narrows the lists below to that subtree. A
   // duplicate is only worth reading about where you are working: the whole-tree
@@ -416,6 +453,9 @@ export function BookmarksApp() {
                   act(() => splitIntoFolder(id));
                 }}
                 onMove={handleMove}
+                editRequestedAt={
+                  editing?.bookmarkId === entry.id ? editing.at : undefined
+                }
               />
             ))}
           </ul>
