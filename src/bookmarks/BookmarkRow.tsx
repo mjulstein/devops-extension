@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { Button } from '../sidepanel/atoms/Button';
 import { getFavoriteIconUrl } from '../sidepanel/favoriteIcon';
@@ -30,6 +30,12 @@ interface BookmarkRowProps {
    * than about growing one into a place.
    */
   onSplit?: (id: string) => void;
+  /**
+   * Opens the editor when it changes, for a request from outside the manager
+   * to edit this bookmark. A timestamp rather than a flag, so asking twice for
+   * the same bookmark opens it twice.
+   */
+  editRequestedAt?: number;
 }
 
 /**
@@ -51,9 +57,10 @@ export function BookmarkRow({
   onEdit,
   onDelete,
   onMove,
-  onSplit
+  onSplit,
+  editRequestedAt
 }: BookmarkRowProps) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(editRequestedAt !== undefined);
   const [title, setTitle] = useState(entry.title);
   const [url, setUrl] = useState(entry.url);
 
@@ -66,6 +73,26 @@ export function BookmarkRow({
     setEditing(true);
   }
 
+  // A new request from outside the manager opens the editor. Compared while
+  // rendering rather than in an effect, so the row never draws once closed
+  // first; the entry changing under an open editor is still left alone.
+  const [seenRequest, setSeenRequest] = useState(editRequestedAt);
+  if (editRequestedAt !== seenRequest) {
+    setSeenRequest(editRequestedAt);
+    if (editRequestedAt !== undefined) {
+      beginEditing();
+    }
+  }
+
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing && editRequestedAt !== undefined) {
+      titleInputRef.current?.focus();
+      titleInputRef.current?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [editing, editRequestedAt]);
+
   const icon = getFavoriteIconUrl(entry.url);
 
   if (editing) {
@@ -73,6 +100,7 @@ export function BookmarkRow({
       <li className={clsx(classes.row, classes.editing)}>
         <div className={classes.editFields}>
           <input
+            ref={titleInputRef}
             className={classes.input}
             value={title}
             aria-label="Bookmark title"

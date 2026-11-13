@@ -229,3 +229,35 @@
   color: var(--color-text-muted);
   cursor: default;
 }
+
+/* A tab's close shows the tab's icon until it is pointed at or focused, then
+   the ✕. Both sit in one grid cell so the swap never shifts the row. */
+.faviconClose > * {
+  display: inline-grid;
+}
+
+.tabFavicon,
+.closeGlyph {
+  grid-area: 1 / 1;
+  place-self: center;
+}
+
+.tabFavicon {
+  inline-size: 14px;
+  block-size: 14px;
+  border-radius: 3px;
+}
+
+.closeGlyph {
+  visibility: hidden;
+}
+
+.faviconClose:hover .tabFavicon,
+.faviconClose:focus-visible .tabFavicon {
+  visibility: hidden;
+}
+
+.faviconClose:hover .closeGlyph,
+.faviconClose:focus-visible .closeGlyph {
+  visibility: visible;
+}

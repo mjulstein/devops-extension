@@ -120,6 +120,17 @@ and reaching past a title to find an x at the end of a ragged row is the slower
 half of doing it. The name is the control that switches, so the thing you read
 is the thing you press.
 
+The tab's own favicon sits in that slot and becomes the **✕** under the pointer
+or on keyboard focus. A row is recognised by its icon before its title is read,
+and the close is still one press. A tab with no icon shows a plain **✕**.
+
+A bookmark with no tab open has nothing to close, so its slot shows the
+bookmark's icon and becomes a **✎** instead. Pressing it opens the bookmark
+manager with that bookmark's folder revealed and its editor open. The request
+travels through session storage (`src/bookmarks/editRequest.ts`), because the
+manager is a single window that is raised rather than reloaded when it is
+already open.
+
 ## Sub-groups
 
 A folder inside an app folder is drawn under it, holding the tabs its own name

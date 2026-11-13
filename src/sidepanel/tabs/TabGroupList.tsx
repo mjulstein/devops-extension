@@ -9,6 +9,7 @@ import {
   type TabGroupNode
 } from '@/sidepanel/tabGroups';
 import { sameBase } from '@/sidepanel/appGroups';
+import { getCachedFaviconUrl } from '@/sidepanel/favoriteIcon';
 import { GroupMoveMenu, type GroupMove } from './GroupMoveMenu';
 import classes from './TabGroupList.module.css';
 
@@ -20,6 +21,8 @@ interface TabGroupListProps {
   onDuplicate: (id: number) => void;
   /** Opens a bookmark that has no tab at its address yet. */
   onOpenBookmark: (url: string) => void;
+  /** Opens the bookmark manager with this bookmark's editor open. */
+  onEditBookmark: (id: string) => void;
   /**
    * Keeps a tab where it already is: a real bookmark in the group's own
    * folder, so it syncs to every browser signed in, extension or not.
@@ -73,6 +76,7 @@ export function TabGroupList({
   onSwitchTo,
   onDuplicate,
   onOpenBookmark,
+  onEditBookmark,
   onKeepTab,
   collapsed,
   onToggleCollapsed,
@@ -251,7 +255,27 @@ export function TabGroupList({
                         <Button
                           size="compact"
                           variant="quiet"
-                          icon="✕"
+                          // The tab's own icon stands where the ✕ goes and
+                          // turns into it under the pointer or keyboard focus:
+                          // a row is recognised by its icon long before its
+                          // title is read, and the close is still one press.
+                          className={clsx(
+                            tab.favIconUrl !== null && classes.faviconClose
+                          )}
+                          icon={
+                            tab.favIconUrl === null ? (
+                              '✕'
+                            ) : (
+                              <>
+                                <img
+                                  className={classes.tabFavicon}
+                                  src={tab.favIconUrl}
+                                  alt=""
+                                />
+                                <span className={classes.closeGlyph}>✕</span>
+                              </>
+                            )
+                          }
                           description={`Close ${tab.title}`}
                           onClick={() => {
                             onClose(tab.id);
@@ -317,12 +341,36 @@ export function TabGroupList({
                   <ul className={classes.list}>
                     {(group.bookmarks ?? []).map((bookmark) => (
                       <li key={bookmark.id} className={classes.row}>
-                        {/* No ✕: there is no tab to close. The bookmark is a
-                        definition, and removing it is the bookmark manager's
-                        job rather than a stray delete on a list of tabs. */}
-                        <span
-                          className={classes.closePlaceholder}
-                          aria-hidden="true"
+                        {/* No ✕: there is no tab to close. The slot shows the
+                        bookmark's icon instead and turns into an edit under the
+                        pointer, since a bookmark that is wrong is most often
+                        noticed here, and removing one stays the manager's job
+                        rather than a stray delete on a list of tabs. */}
+                        <Button
+                          size="compact"
+                          variant="quiet"
+                          className={clsx(
+                            getCachedFaviconUrl(bookmark.url) !== null &&
+                              classes.faviconClose
+                          )}
+                          icon={
+                            getCachedFaviconUrl(bookmark.url) === null ? (
+                              '✎'
+                            ) : (
+                              <>
+                                <img
+                                  className={classes.tabFavicon}
+                                  src={getCachedFaviconUrl(bookmark.url) ?? ''}
+                                  alt=""
+                                />
+                                <span className={classes.closeGlyph}>✎</span>
+                              </>
+                            )
+                          }
+                          description={`Edit ${bookmark.name} in the bookmark manager`}
+                          onClick={() => {
+                            onEditBookmark(bookmark.id);
+                          }}
                         />
                         <button
                           type="button"
@@ -349,6 +397,7 @@ export function TabGroupList({
                     onSwitchTo={onSwitchTo}
                     onDuplicate={onDuplicate}
                     onOpenBookmark={onOpenBookmark}
+                    onEditBookmark={onEditBookmark}
                     onKeepTab={onKeepTab}
                     collapsed={collapsed}
                     onToggleCollapsed={onToggleCollapsed}
