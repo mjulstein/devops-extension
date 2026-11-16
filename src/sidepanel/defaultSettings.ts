@@ -9,5 +9,6 @@ export const defaultSettings: Settings = {
   quickTaskArchiveId: '',
   staleTabDays: '',
   bookmarkFolderName: '',
+  workDayMinChanges: '',
   themeOverrides: { light: {}, dark: {} }
 };

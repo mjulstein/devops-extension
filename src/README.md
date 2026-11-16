@@ -19,6 +19,7 @@ Keep this document shallow: describe the files that live directly in `src/` and 
 
 - [`devops`](./devops/README.md) — Azure DevOps-specific DOM detection, URL/context parsing, REST calls, and work-item operations.
 - [`bookmarks`](./bookmarks/README.md) — the extension's own bookmark manager page: a drag-and-drop organiser plus duplicate and empty-folder lists.
+- [`workday`](./workday/README.md) — the last-working-day dashboard: what you did on your last real working day, what it left open, and your quick tasks.
 - [`favoritesPalette`](./favoritesPalette/README.md) — the centred favorites dialog the content script draws over an Azure DevOps page, inheriting that page's theme variables.
 - [`sidepanel`](./sidepanel/README.md) — side panel state, storage helpers, navigation chrome, and runtime messaging helpers.
 

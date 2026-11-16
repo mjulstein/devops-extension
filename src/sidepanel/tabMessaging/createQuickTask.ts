@@ -9,12 +9,13 @@ export async function createQuickTask(
   settings: Settings,
   pageTitle: string,
   pageUrl: string,
-  title?: string
+  title?: string,
+  noteUrl?: string
 ): Promise<RuntimeResponse<CreatedQuickTask>> {
   return expectRuntimeResponse(
     await chrome.runtime.sendMessage({
       type: 'CREATE_QUICK_TASK',
-      payload: { settings, pageTitle, pageUrl, title }
+      payload: { settings, pageTitle, pageUrl, title, noteUrl }
     }),
     'CREATE_QUICK_TASK'
   );

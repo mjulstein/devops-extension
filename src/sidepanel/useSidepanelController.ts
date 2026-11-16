@@ -2327,6 +2327,7 @@ function getTrimmedSettingsFromState(settings: Settings): Settings {
     quickTaskParentId: settings.quickTaskParentId.trim(),
     quickTaskArchiveId: settings.quickTaskArchiveId.trim(),
     staleTabDays: settings.staleTabDays.trim(),
+    workDayMinChanges: settings.workDayMinChanges.trim(),
     bookmarkFolderName: settings.bookmarkFolderName.trim(),
     // Not text, so there is nothing to trim — carried through as it is, or
     // saving would wipe every colour the user set.

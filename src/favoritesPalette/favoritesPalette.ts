@@ -30,7 +30,11 @@ import {
   resolvePaletteKey,
   type PaletteView
 } from './paletteModel';
-import { APPS_PREFIX, parseFavoritesQuery } from '@/sidepanel/favoritesQuery';
+import {
+  APPS_PREFIX,
+  isDashboardShortcut,
+  parseFavoritesQuery
+} from '@/sidepanel/favoritesQuery';
 import {
   completeCommand,
   QUICK_COMMANDS,
@@ -78,6 +82,8 @@ export interface PaletteOptions {
    * extension page itself, so this too is the caller's job.
    */
   onOpenBookmarkManager?: () => void;
+  /** Opens the last-working-day dashboard, asked for by typing `!` alone. */
+  onOpenDashboard?: () => void;
   /**
    * The side panel's resolved colour tokens, so the dialog matches the panel
    * rather than only the page. Absent, it falls back to Azure DevOps's own
@@ -326,6 +332,7 @@ export function openFavoritesPalette({
   onOpenPage,
   searchAllBookmarks,
   onOpenBookmarkManager,
+  onOpenDashboard,
   tokens,
   onTogglePin,
   isPinned = false,
@@ -726,6 +733,11 @@ export function openFavoritesPalette({
   }
 
   search.addEventListener('input', () => {
+    if (onOpenDashboard && isDashboardShortcut(search.value)) {
+      onOpenDashboard();
+      close();
+      return;
+    }
     rebuild();
     requestWidenedSearch();
   });

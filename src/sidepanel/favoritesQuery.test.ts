@@ -30,3 +30,13 @@ describe('parseFavoritesQuery', () => {
     });
   });
 });
+
+describe('isDashboardShortcut', () => {
+  it('is only the bang on its own', async () => {
+    const { isDashboardShortcut } = await import('./favoritesQuery');
+    expect(isDashboardShortcut('!')).toBe(true);
+    expect(isDashboardShortcut(' ! ')).toBe(true);
+    expect(isDashboardShortcut('!x')).toBe(false);
+    expect(isDashboardShortcut('')).toBe(false);
+  });
+});

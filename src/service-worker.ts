@@ -46,6 +46,7 @@ import {
 } from './devops/orphanWorkItems';
 import { getWorkItemDetails } from './devops/workItemDetails';
 import { fetchInProgressByMe } from './devops/inProgressByMeApi';
+import { fetchWindowActivity } from './devops/workDayApi';
 import {
   carryPathAcrossEnvironments,
   isSamePage,
@@ -611,6 +612,12 @@ const SINGLETON_WINDOWS = {
     // left there, which is also why nothing ever closes it but its own button.
     defaults: { width: 380, height: 900 }
   },
+  workDay: {
+    page: 'workday.html',
+    boundsKey: 'workDayWindowBounds',
+    // A dashboard: two columns, so room for both side by side.
+    defaults: { width: 1200, height: 860 }
+  },
   panel: {
     page: 'sidepanel.html',
     boundsKey: 'panelWindowBounds',
@@ -974,6 +981,14 @@ type RuntimeMessage =
       payload?: undefined;
     }
   | {
+      type: 'OPEN_WORK_DAY_DASHBOARD';
+      payload?: undefined;
+    }
+  | {
+      type: 'FETCH_WORK_DAY_ACTIVITY';
+      payload: { settings: Settings; from: string; to: string };
+    }
+  | {
       type: 'OPEN_STARRED_PAGE';
       payload: {
         url: string;
@@ -1032,6 +1047,7 @@ type RuntimeMessage =
         pageTitle: string;
         pageUrl: string;
         title?: string;
+        noteUrl?: string;
       };
     }
   | {
@@ -1313,6 +1329,33 @@ chrome.runtime.onMessage.addListener(
       return true;
     }
 
+    if (message.type === 'OPEN_WORK_DAY_DASHBOARD') {
+      openSingletonWindow('workDay')
+        .then(() => sendResponse({ ok: true, result: null }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'FETCH_WORK_DAY_ACTIVITY') {
+      const { settings, from, to } = message.payload;
+      resolveWorkItemsContext(settings)
+        .then((context) =>
+          fetchWindowActivity(
+            context.organization,
+            context.project,
+            settings.assignedTo,
+            { from, to }
+          )
+        )
+        .then((result) => sendResponse({ ok: true, result }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
     if (message.type === 'OPEN_STARRED_PAGE') {
       // Sent by the in-page palette, which cannot manage tabs itself.
       openStarredPage(message.payload.url, message.payload.newTab === true)
@@ -1515,7 +1558,7 @@ chrome.runtime.onMessage.addListener(
     }
 
     if (message.type === 'CREATE_QUICK_TASK') {
-      const { settings, pageTitle, pageUrl, title } = message.payload;
+      const { settings, pageTitle, pageUrl, title, noteUrl } = message.payload;
       const parentId = Number(settings.quickTaskParentId.trim());
 
       resolveWorkItemsContext(settings)
@@ -1525,6 +1568,7 @@ chrome.runtime.onMessage.addListener(
             project: context.project,
             parentId,
             title,
+            noteUrl,
             pageTitle,
             pageUrl,
             assignedTo: settings.assignedTo

@@ -191,6 +191,9 @@ function handleRuntimeMessage(
         onOpenBookmarkManager: () => {
           void chrome.runtime.sendMessage({ type: 'OPEN_BOOKMARK_MANAGER' });
         },
+        onOpenDashboard: () => {
+          void chrome.runtime.sendMessage({ type: 'OPEN_WORK_DAY_DASHBOARD' });
+        },
         onOpenPage: (url, newTab) => {
           void chrome.runtime.sendMessage({
             type: 'OPEN_STARRED_PAGE',

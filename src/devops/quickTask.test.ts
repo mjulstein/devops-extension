@@ -1,6 +1,7 @@
 import {
   buildQuickTaskDescription,
   buildQuickTaskTitle,
+  stripMentions,
   pickInProgressState
 } from './quickTask';
 import { parseIdentity } from './identity';
@@ -140,5 +141,29 @@ describe('pickInProgressState', () => {
     expect(pickInProgressState(undefined)).toBeNull();
     expect(pickInProgressState([null, 3, {}])).toBeNull();
     expect(pickInProgressState([{ category: 'InProgress' }])).toBeNull();
+  });
+});
+
+describe('stripMentions', () => {
+  it('drops # and ! before a number and nothing else', () => {
+    expect(stripMentions('Follow up #123 and !45, issue #abc')).toBe(
+      'Follow up 123 and 45, issue #abc'
+    );
+    expect(stripMentions('wow! 3 #')).toBe('wow! 3 #');
+  });
+
+  it('keeps titles free of mentions', () => {
+    expect(buildQuickTaskTitle('Review !77 for #12')).toBe('Review 77 for 12');
+  });
+
+  it('keeps the url intact in the description', () => {
+    expect(
+      buildQuickTaskDescription(
+        'Fix #9',
+        'https://example.com/_workitems/edit/9#x'
+      )
+    ).toBe(
+      '<div><a href="https://example.com/_workitems/edit/9#x">Fix 9</a></div>'
+    );
   });
 });

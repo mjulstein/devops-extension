@@ -115,6 +115,14 @@ hold a window at the top and a right-click on a row's icon to move it. It is
 meant to be parked down the side of a screen; there is only ever one of it, and
 it closes when you close it.
 
+Typing **!** alone in the favorites search opens the **last working day**
+dashboard in a window of its own: the last day with at least N of your own
+work-item changes (Settings → **Insights**, default 3), so weekends and
+vacations are skipped. It lists what you did to each item, what the day left
+open (items still in the state you moved them to, items created with no parent,
+handovers), and your quick tasks. **← Back** and **Forward →** step between
+working days.
+
 Every page's title carries the short git sha the build came from — the popped
 out panel, the bookmark manager and the settings window all show it in their
 title bar — so you can tell whether the reload you think you did actually

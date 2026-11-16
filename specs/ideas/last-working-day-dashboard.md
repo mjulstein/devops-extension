@@ -89,7 +89,12 @@ settings go here too.
 - How many `/updates` calls a busy 15-day window costs, and whether results per day
   should be cached like the empty windows.
 
+## Status
+
+First iteration implemented (see [`src/workday`](../../src/workday/README.md)). The quick-task
+area reuses `QuickTaskList` unchanged, fed by its own hook; the placeholder was not needed.
+Loose ends are derived from the touched items' current fields, with no extra queries.
+
 ## Promotion criteria
 
-Promote to a numbered spec once the query cost is measured on a real account and the
-quick-task wiring decision (reuse vs. placeholder) is made.
+Promote to a numbered spec once the query cost is measured on a real account.
