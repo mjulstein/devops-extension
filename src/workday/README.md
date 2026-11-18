@@ -9,7 +9,11 @@ A **working day** is a local-time day with at least N of your own work-item
 changes (Settings → **Insights**, default 3), so weekends, vacations and the
 odd stray comment fall away by themselves. The search starts at yesterday and
 covers 15 days; **← Back** and **Forward →** step between working days, and
-Back past the last one searches the 15 days before. A 15-day window that held
+Back past the last one searches the 15 days before. A working day takes the
+quiet days after it along, up to the next working day or yesterday, so a few
+changes on a weekend show with the Friday before; the heading names the range
+only as far as there were changes. Quiet days inside a stretch already
+recorded as empty were never fetched, so they are not joined. A 15-day window that held
 no working day is remembered in `chrome.storage.local` under
 `workDayEmptyRanges`, keyed on user and N, and never searched again.
 

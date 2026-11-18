@@ -217,13 +217,34 @@ export interface DayItemSummary {
   created: boolean;
 }
 
+/**
+ * The days a working day speaks for: itself plus the quiet days after it.
+ *
+ * A few changes on a weekend do not make a working day, but they belong with
+ * one, so they are joined to the working day before them. The span runs up to
+ * the day before the next working day, or to `lastDay` (yesterday) when there
+ * is none. Days with no changes in the span cost nothing.
+ *
+ * `workingDaysDesc` is every known working day, newest first.
+ */
+export function spanOf(
+  day: string,
+  workingDaysDesc: string[],
+  lastDay: string
+): DayRange {
+  const newer = [...workingDaysDesc].reverse().find((d) => d > day);
+  return { from: day, to: newer ? addDays(newer, -1) : lastDay };
+}
+
+/** Per-item summaries of the changes inside a span, newest first. */
 export function summariseDay(
   changes: ActivityChange[],
-  day: string
+  span: DayRange
 ): DayItemSummary[] {
   const byId = new Map<number, ActivityChange[]>();
   for (const change of changes) {
-    if (dayKey(new Date(change.at)) !== day) {
+    const day = dayKey(new Date(change.at));
+    if (day < span.from || day > span.to) {
       continue;
     }
     const list = byId.get(change.id) ?? [];

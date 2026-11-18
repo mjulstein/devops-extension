@@ -8,6 +8,7 @@ import {
   nextWindow,
   parseMinChanges,
   recordEmpty,
+  spanOf,
   summariseDay,
   workingDays,
   type ActivityChange
@@ -130,14 +131,20 @@ describe('workingDays and summariseDay', () => {
   });
 
   it('summarises per item, newest first', () => {
-    const summary = summariseDay(changes, '2026-11-10');
+    const summary = summariseDay(changes, {
+      from: '2026-11-10',
+      to: '2026-11-10'
+    });
     expect(summary.map((s) => s.id)).toEqual([2, 1]);
     expect(summary[1].actions).toEqual(['created', '→ Active']);
     expect(summary[1].movedTo).toBe('Active');
   });
 
   it('finds loose ends', () => {
-    const summary = summariseDay(changes, '2026-11-10');
+    const summary = summariseDay(changes, {
+      from: '2026-11-10',
+      to: '2026-11-10'
+    });
     expect(
       findLooseEnds(
         summary,
@@ -159,5 +166,38 @@ describe('workingDays and summariseDay', () => {
         me
       ).handedOver
     ).toEqual([1]);
+  });
+});
+
+describe('spanOf', () => {
+  it('joins the quiet days after a working day up to yesterday', () => {
+    expect(
+      spanOf('2026-11-13', ['2026-11-13', '2026-11-10'], '2026-11-15')
+    ).toEqual({
+      from: '2026-11-13',
+      to: '2026-11-15'
+    });
+  });
+
+  it('stops before the next working day', () => {
+    expect(
+      spanOf('2026-11-10', ['2026-11-13', '2026-11-10'], '2026-11-15')
+    ).toEqual({
+      from: '2026-11-10',
+      to: '2026-11-12'
+    });
+  });
+
+  it('counts the joined days in the summary', () => {
+    const changes: ActivityChange[] = [
+      { id: 1, at: at('2026-11-13'), kind: 'edited' },
+      { id: 2, at: at('2026-11-14'), kind: 'commented' },
+      { id: 3, at: at('2026-11-16'), kind: 'edited' }
+    ];
+    expect(
+      summariseDay(changes, { from: '2026-11-13', to: '2026-11-15' }).map(
+        (s) => s.id
+      )
+    ).toEqual([2, 1]);
   });
 });

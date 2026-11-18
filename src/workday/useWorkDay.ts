@@ -12,6 +12,7 @@ import {
   nextWindow,
   parseMinChanges,
   recordEmpty,
+  spanOf,
   workingDays,
   type ActivityChange,
   type DayRange
@@ -60,6 +61,8 @@ export interface WorkDayState {
   minChanges: number;
   /** The day on screen, or null while none is found. */
   day: string | null;
+  /** That day plus the quiet days joined to it. */
+  span: DayRange | null;
   /** Every change loaded so far, across windows. */
   changes: ActivityChange[];
   items: Map<number, ActivityItem>;
@@ -198,6 +201,7 @@ export function useWorkDay(): WorkDayState {
     identity,
     minChanges,
     day,
+    span: day ? spanOf(day, loadedDays, yesterday) : null,
     changes,
     items,
     searchedFrom,

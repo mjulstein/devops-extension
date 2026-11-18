@@ -5,6 +5,7 @@ import { applyTheme, loadLastKnownTheme } from '@/sidepanel/theme';
 import { WorkItemRow } from '@/sidepanel/work-items/atoms/WorkItemRow';
 import { QuickTaskList } from '@/sidepanel/work-items/atoms/QuickTaskList';
 import {
+  dayKey,
   dayStart,
   findLooseEnds,
   summariseDay,
@@ -58,9 +59,15 @@ export function WorkDayApp() {
     void loadLastKnownTheme().then(applyTheme);
   }, []);
 
-  const summaries: DayItemSummary[] = workDay.day
-    ? summariseDay(workDay.changes, workDay.day)
+  const summaries: DayItemSummary[] = workDay.span
+    ? summariseDay(workDay.changes, workDay.span)
     : [];
+  // The heading names the joined days only as far as there were changes:
+  // quiet days with none would only stretch it.
+  const lastChangeDay = summaries.reduce<string | null>((latest, summary) => {
+    const day = dayKey(new Date(summary.lastAt));
+    return latest === null || day > latest ? day : latest;
+  }, null);
   const changeCount = summaries.reduce((sum, s) => sum + s.changeCount, 0);
   const looseEnds = findLooseEnds(
     summaries,
@@ -113,7 +120,11 @@ export function WorkDayApp() {
         <div className={classes.heading}>
           {workDay.day ? (
             <>
-              <h1 className={classes.title}>{formatDay(workDay.day)}</h1>
+              <h1 className={classes.title}>
+                {lastChangeDay && lastChangeDay !== workDay.day
+                  ? `${formatDay(workDay.day)} – ${formatDay(lastChangeDay)}`
+                  : formatDay(workDay.day)}
+              </h1>
               <p className={classes.context}>
                 {plural(changeCount, 'change', 'changes')} across{' '}
                 {plural(summaries.length, 'item', 'items')} by {subject} · a

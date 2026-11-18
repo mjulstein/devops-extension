@@ -118,7 +118,8 @@ it closes when you close it.
 Typing **!** alone in the favorites search opens the **last working day**
 dashboard in a window of its own: the last day with at least N of your own
 work-item changes (Settings → **Insights**, default 3), so weekends and
-vacations are skipped. It lists what you did to each item, what the day left
+vacations are skipped. A few changes on the days after it, such as a weekend,
+are joined to that day's screen. It lists what you did to each item, what the day left
 open (items still in the state you moved them to, items created with no parent,
 handovers), and your quick tasks. **← Back** and **Forward →** step between
 working days.
