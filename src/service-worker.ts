@@ -46,6 +46,7 @@ import {
 } from './devops/orphanWorkItems';
 import { getWorkItemDetails } from './devops/workItemDetails';
 import { fetchInProgressByMe } from './devops/inProgressByMeApi';
+import { fetchReplies } from './devops/repliesApi';
 import { fetchWindowActivity } from './devops/workDayApi';
 import {
   carryPathAcrossEnvironments,
@@ -989,6 +990,10 @@ type RuntimeMessage =
       payload: { settings: Settings; from: string; to: string };
     }
   | {
+      type: 'FETCH_WORK_DAY_REPLIES';
+      payload: { settings: Settings };
+    }
+  | {
       type: 'OPEN_STARRED_PAGE';
       payload: {
         url: string;
@@ -1347,6 +1352,23 @@ chrome.runtime.onMessage.addListener(
             context.project,
             settings.assignedTo,
             { from, to }
+          )
+        )
+        .then((result) => sendResponse({ ok: true, result }))
+        .catch((error: Error) =>
+          sendResponse({ ok: false, error: error.message })
+        );
+      return true;
+    }
+
+    if (message.type === 'FETCH_WORK_DAY_REPLIES') {
+      const { settings } = message.payload;
+      resolveWorkItemsContext(settings)
+        .then((context) =>
+          fetchReplies(
+            context.organization,
+            context.project,
+            settings.assignedTo
           )
         )
         .then((result) => sendResponse({ ok: true, result }))

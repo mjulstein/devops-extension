@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import type { WorkItem } from '@/types';
 import { Button } from '@/sidepanel/atoms/Button';
 import { applyTheme, loadLastKnownTheme } from '@/sidepanel/theme';
@@ -14,6 +14,8 @@ import {
 import type { ActivityItem } from '@/devops/workDayApi';
 import { useWorkDay } from './useWorkDay';
 import { useQuickTasksFeed } from './useQuickTasksFeed';
+import { useReplies } from './useReplies';
+import type { Reply } from '@/devops/replies';
 import classes from './WorkDayApp.module.css';
 
 function toWorkItem(item: ActivityItem): WorkItem {
@@ -39,6 +41,17 @@ function formatDay(day: string): string {
   });
 }
 
+function timeAgo(iso: string, now: number): string {
+  const minutes = Math.max(0, Math.round((now - Date.parse(iso)) / 60000));
+  if (minutes < 60) {
+    return `${String(minutes)} min ago`;
+  }
+  const hours = Math.round(minutes / 60);
+  return hours < 48
+    ? `${String(hours)} h ago`
+    : `${String(Math.round(hours / 24))} days ago`;
+}
+
 function plural(count: number, one: string, many: string): string {
   return `${String(count)} ${count === 1 ? one : many}`;
 }
@@ -54,6 +67,8 @@ function plural(count: number, one: string, many: string): string {
 export function WorkDayApp() {
   const workDay = useWorkDay();
   const quick = useQuickTasksFeed(workDay.settings);
+  const replies = useReplies(workDay.settings);
+  const [now] = useState(() => Date.now());
 
   useEffect(() => {
     void loadLastKnownTheme().then(applyTheme);
@@ -106,6 +121,42 @@ export function WorkDayApp() {
       </div>
     );
   };
+
+  const replyRow = (reply: Reply) => (
+    <div
+      key={reply.key}
+      role="listitem"
+      className={reply.mention ? classes.mentionRow : classes.replyRow}
+    >
+      <a href={reply.url} target="_blank" rel="noreferrer">
+        {reply.title}
+      </a>
+      <span className={classes.note}>
+        {reply.lastAuthor} · {timeAgo(reply.lastAt, now)}
+        {reply.excerpt && ` · ${reply.excerpt}`}
+      </span>
+      <span className={classes.replyActions}>
+        {quick.parentId !== null && (
+          <Button
+            onClick={() => {
+              quick.draftFollowUp(reply.title, reply.url);
+            }}
+            description="Draft a quick task to follow this up. It is not linked to the thread; edit the title and create it below"
+          >
+            ✎ Follow up
+          </Button>
+        )}
+        <Button
+          onClick={() => {
+            void replies.markSeen(reply);
+          }}
+          description="Hide this thread until somebody writes in it again"
+        >
+          ✓ Seen
+        </Button>
+      </span>
+    </div>
+  );
 
   return (
     <div className={classes.wrap}>
@@ -170,6 +221,16 @@ export function WorkDayApp() {
         <div className={classes.right}>
           <section className={classes.column} aria-label="Loose ends">
             <h2 className={classes.sectionTitle}>Loose ends</h2>
+            {replies.error && <p className={classes.error}>{replies.error}</p>}
+            {replies.isLoading && (
+              <p className={classes.note}>Reading recent threads…</p>
+            )}
+            <LooseEndGroup title="Mentioned you, no answer yet">
+              {replies.mentions.map(replyRow)}
+            </LooseEndGroup>
+            <LooseEndGroup title="Replied to you (last 14 days)">
+              {replies.replies.map(replyRow)}
+            </LooseEndGroup>
             <LooseEndGroup title="Still in the state you moved them to">
               {looseEnds.stillInState.map((id) => rowFor(id, undefined, true))}
             </LooseEndGroup>

@@ -23,6 +23,12 @@ no working day is remembered in `chrome.storage.local` under
 
 - `WorkDayApp.tsx` + `WorkDayApp.module.css` — the page: heading, the day's
   items on the left, loose ends top right, quick tasks bottom right.
+- `useReplies.ts` — the **Mentioned you** / **Replied to you** groups: threads
+  from the last 14 days, independent of Back / Forward, read through
+  `FETCH_WORK_DAY_REPLIES`. **✓ Seen** is browser-local (`workDayRepliesSeen`)
+  and lasts until a newer message. Logic in
+  [`src/devops/replies.ts`](../devops/replies.ts), calls in
+  [`src/devops/repliesApi.ts`](../devops/repliesApi.ts).
 - `useWorkDay.ts` — loading, the window search and Back / Forward.
 - `useQuickTasksFeed.ts` — feeds the side panel's own `QuickTaskList`
   unchanged, through the same messages and pinned ids as the panel. The

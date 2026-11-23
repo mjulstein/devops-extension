@@ -107,3 +107,29 @@
   color: var(--color-text-muted);
   overflow-wrap: anywhere;
 }
+
+.replyRow,
+.mentionRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+.mentionRow {
+  border-inline-start: 3px solid var(--color-danger);
+  background: var(--color-surface);
+  font-weight: 600;
+}
+
+.mentionRow .note {
+  font-weight: normal;
+}
+
+.replyActions {
+  display: flex;
+  gap: 6px;
+  margin-inline-start: 8px;
+  font-size: 11px;
+}

@@ -122,7 +122,10 @@ vacations are skipped. A few changes on the days after it, such as a weekend,
 are joined to that day's screen. It lists what you did to each item, what the day left
 open (items still in the state you moved them to, items created with no parent,
 handovers), and your quick tasks. **← Back** and **Forward →** step between
-working days.
+working days. Above the loose ends, threads from the last 14 days that wait on
+you: unanswered @mentions (highlighted, first) and work item or pull request
+discussions where someone wrote after you. **✓ Seen** hides one until it moves
+again.
 
 Every page's title carries the short git sha the build came from — the popped
 out panel, the bookmark manager and the settings window all show it in their

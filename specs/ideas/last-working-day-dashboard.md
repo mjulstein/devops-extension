@@ -58,6 +58,26 @@ Two columns, dashboard style.
   wiring cannot be reused without changing the component, render an empty labelled box
   instead. Reinventing quick tasks is out of scope.
 
+### Replied to you
+
+Two more loose-end groups, on top, over a rolling **14 days** that does not follow
+Back / Forward (a reply is a loose end whichever day is on screen):
+
+- **Mentioned you, no answer yet** — highlighted, always first.
+- **Replied to you** — a thread the user wrote in, where somebody else wrote after the
+  user's last comment.
+
+Sources: work item discussions (WIQL `@RecentMentions` / `@MyRecentActivity`, or
+`ChangedBy EVER` for a user override) and pull request threads from the same candidate
+set as the PRs tab (own + active + updated in the window), since commenting does not
+make you a reviewer. Resolved and system threads are skipped. Each row links to the
+thread and shows the last author, how long ago, and the first line of the latest
+message, with **✎ Follow up** (title `PR 45: …`, no `!`) and **✓ Seen**, which hides
+the thread browser-locally (`workDayRepliesSeen`) until somebody writes in it again.
+
+Limits: only the current project; a user override is matched by name, so its PR
+threads come from the active / updated sets alone, and mentions do not use the macro.
+
 ## Settings
 
 A new **Insights** region on the Settings tab, holding N (default 3). Future dashboard
