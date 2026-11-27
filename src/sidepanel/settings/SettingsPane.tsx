@@ -1,3 +1,4 @@
+import { DEFAULT_MIN_CHANGES, parseMinChanges } from '@/devops/workDay';
 import type { PatRecord, Settings } from '@/types';
 import type { AdoTheme } from '@/devops/theme';
 import { useEffect, useState } from 'react';
@@ -227,6 +228,11 @@ export function SettingsPane({
       title: 'Colours for light and dark mode'
     },
     {
+      id: 'insights',
+      label: SETTINGS_TAB_LABELS.insights,
+      title: 'The last-working-day dashboard'
+    },
+    {
       id: 'token',
       label: SETTINGS_TAB_LABELS.token,
       title: 'Personal access token status'
@@ -250,6 +256,7 @@ export function SettingsPane({
       quickTaskParentId: settings.quickTaskParentId.trim(),
       quickTaskArchiveId: settings.quickTaskArchiveId.trim(),
       staleTabDays: settings.staleTabDays.trim(),
+      workDayMinChanges: settings.workDayMinChanges.trim(),
       bookmarkFolderName: settings.bookmarkFolderName.trim(),
       themeOverrides: settings.themeOverrides
     },
@@ -570,6 +577,38 @@ export function SettingsPane({
             activeTheme={activeTheme}
             onChange={onChange}
           />
+        </div>
+      )}
+
+      {activeTab === 'insights' && (
+        <div className={classes.regionBody}>
+          <SettingsHelp summary="About the last working day">
+            <p>
+              Type <strong>!</strong> alone in the favorites search to open the
+              dashboard. It looks back from yesterday for the first day with at
+              least this many of your changes, so a stray comment on a weekend
+              does not count as a working day. Leave it empty for the default of{' '}
+              {DEFAULT_MIN_CHANGES}.
+            </p>
+          </SettingsHelp>
+
+          <label className={classes.fieldLabel}>
+            Changes that make a working day
+            <input
+              className={classes.textInput}
+              type="number"
+              min={1}
+              inputMode="numeric"
+              placeholder={String(DEFAULT_MIN_CHANGES)}
+              value={settings.workDayMinChanges}
+              onChange={(event) =>
+                onChange({ ...settings, workDayMinChanges: event.target.value })
+              }
+            />
+            <span className={classes.helperText}>
+              In force now: {parseMinChanges(settings.workDayMinChanges)}.
+            </span>
+          </label>
         </div>
       )}
 

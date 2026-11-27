@@ -24,8 +24,21 @@ const TASK_TYPE = 'Task';
 // Azure DevOps rejects System.Title over 255 characters.
 const MAX_TITLE_LENGTH = 255;
 
+/**
+ * Drops the `#` or `!` in front of a number.
+ *
+ * Azure DevOps reads `#123` as a work-item mention and `!123` as a pull-request
+ * mention, and a mention shows up on the other item. Quick tasks are personal
+ * notes, so none of their text may point at anybody else's work; the number is
+ * kept, since it is still useful to the person reading their own note. Urls are
+ * left alone: a hyperlink is not a mention.
+ */
+export function stripMentions(text: string): string {
+  return text.replace(/[#!]+(?=\d)/g, '');
+}
+
 export function buildQuickTaskTitle(pageTitle: string): string {
-  const collapsed = pageTitle.replace(/\s+/g, ' ').trim();
+  const collapsed = stripMentions(pageTitle).replace(/\s+/g, ' ').trim();
   if (!collapsed) {
     return '';
   }
@@ -114,6 +127,11 @@ export interface QuickTaskRequest {
    * description link is written — a typed task is not about a page.
    */
   title?: string;
+  /**
+   * A link to keep with a typed title, as the description. Set by a follow-up
+   * drafted on the dashboard; a plain hyperlink, never a mention or relation.
+   */
+  noteUrl?: string;
   pageTitle: string;
   pageUrl: string;
   /** Explicit assignee override; falls back to the signed-in identity. */
@@ -173,9 +191,10 @@ export async function createQuickTask(
     });
   }
 
-  // A typed task has no originating page, so it gets no link.
+  // A typed task has no originating page, so it gets no link unless one was
+  // handed over with it.
   const description = typedTitle
-    ? ''
+    ? buildQuickTaskDescription(typedTitle, request.noteUrl ?? '')
     : buildQuickTaskDescription(pageTitle, pageUrl);
   if (description) {
     operations.push({

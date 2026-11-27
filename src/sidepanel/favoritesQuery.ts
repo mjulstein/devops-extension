@@ -52,6 +52,17 @@ export const APPS_PREFIX = '-';
  */
 export const WORK_ITEMS_PREFIX = '#';
 
+/**
+ * The search typed as nothing but this opens the last-working-day dashboard.
+ *
+ * Alone, not as a prefix: it is a door, not a search, and needs no Enter.
+ */
+export const DASHBOARD_SHORTCUT = '!';
+
+export function isDashboardShortcut(raw: string): boolean {
+  return raw.trim() === DASHBOARD_SHORTCUT;
+}
+
 export function parseFavoritesQuery(raw: string): FavoritesQuery {
   if (raw.startsWith(COMMANDS_PREFIX)) {
     return { scope: 'commands', term: raw.slice(1).trimStart() };

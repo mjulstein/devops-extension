@@ -12,7 +12,11 @@ import {
   type WidenedSearchData,
   appRowTarget
 } from '../favoritesListing';
-import { APPS_PREFIX, parseFavoritesQuery } from '../favoritesQuery';
+import {
+  APPS_PREFIX,
+  isDashboardShortcut,
+  parseFavoritesQuery
+} from '../favoritesQuery';
 import { searchAllBookmarks } from '../bookmarkSync';
 import { getFavoriteIconUrl } from '../favoriteIcon';
 import { useSectionIcons } from '../useSectionIcons';
@@ -499,6 +503,13 @@ export function StarredPagesMenu({
               placeholder="Search favorites — . for all bookmarks"
               aria-label="Search favorites"
               onChange={(event) => {
+                if (isDashboardShortcut(event.target.value)) {
+                  void chrome.runtime.sendMessage({
+                    type: 'OPEN_WORK_DAY_DASHBOARD'
+                  });
+                  close();
+                  return;
+                }
                 setQuery(event.target.value);
                 setAppStep(0);
                 setHighlight(0);

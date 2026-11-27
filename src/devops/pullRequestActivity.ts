@@ -19,7 +19,7 @@ import { fetchIdentity, type DevOpsIdentity } from './identity';
 // updated inside the window, then one threads request each, concurrently.
 // Measured at 148 candidates: ~2.5s.
 
-const GIT_API_VERSION = '7.0';
+export const GIT_API_VERSION = '7.0';
 // queryTimeRangeType/minTime only exist on the 7.1 preview.
 const GIT_API_VERSION_TIME_RANGE = '7.1-preview.1';
 const PAGE_SIZE = 500;
@@ -28,7 +28,7 @@ const THREAD_CONCURRENCY = 12;
 /** How far back "recently" reaches for comments and closed PRs. */
 export const ACTIVITY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
-interface RawPullRequest {
+export interface RawPullRequest {
   pullRequestId: number;
   title?: string;
   status?: string;
@@ -137,7 +137,7 @@ export function mentionsIdentity(
   );
 }
 
-async function getJson(url: string): Promise<unknown> {
+export async function getJson(url: string): Promise<unknown> {
   try {
     const response = await authFetch(url, {
       method: 'GET',
@@ -149,7 +149,7 @@ async function getJson(url: string): Promise<unknown> {
   }
 }
 
-function valuesFrom(data: unknown): unknown[] {
+export function valuesFrom(data: unknown): unknown[] {
   if (!data || typeof data !== 'object') {
     return [];
   }
@@ -169,6 +169,47 @@ interface RawComment {
 
 function threadsFrom(data: unknown): { comments?: RawComment[] }[] {
   return valuesFrom(data) as { comments?: RawComment[] }[];
+}
+
+/**
+ * The pull requests worth reading threads of: the user's own, every active
+ * one, and every one updated since `since`. Commenting does not make you a
+ * reviewer, so a narrower search misses most of the threads you posted in.
+ */
+export async function fetchCandidatePullRequests(
+  base: string,
+  identityId: string,
+  since: string
+): Promise<{ authoredIds: Set<number>; candidates: RawPullRequest[] }> {
+  const [authored, active, updated] = await Promise.all([
+    getJson(
+      `${base}/pullrequests?searchCriteria.creatorId=${encodeURIComponent(identityId)}` +
+        `&searchCriteria.status=all&$top=${PAGE_SIZE}&api-version=${GIT_API_VERSION}`
+    ),
+    getJson(
+      `${base}/pullrequests?searchCriteria.status=active&$top=${PAGE_SIZE}` +
+        `&api-version=${GIT_API_VERSION}`
+    ),
+    getJson(
+      `${base}/pullrequests?searchCriteria.status=all&searchCriteria.queryTimeRangeType=Updated` +
+        `&searchCriteria.minTime=${encodeURIComponent(since)}&$top=${PAGE_SIZE}` +
+        `&api-version=${GIT_API_VERSION_TIME_RANGE}`
+    )
+  ]);
+  const authoredIds = new Set(
+    pullRequestsFrom(authored).map((pr) => pr.pullRequestId)
+  );
+  const byId = new Map<number, RawPullRequest>();
+  for (const pr of [
+    ...pullRequestsFrom(authored),
+    ...pullRequestsFrom(active),
+    ...pullRequestsFrom(updated)
+  ]) {
+    if (typeof pr.pullRequestId === 'number') {
+      byId.set(pr.pullRequestId, pr);
+    }
+  }
+  return { authoredIds, candidates: Array.from(byId.values()) };
 }
 
 /**
@@ -194,38 +235,11 @@ export async function fetchPullRequestActivity(
     `${encodeURIComponent(project)}/_apis/git`;
   const since = new Date(now - ACTIVITY_WINDOW_MS).toISOString();
 
-  const [authored, active, updated] = await Promise.all([
-    getJson(
-      `${base}/pullrequests?searchCriteria.creatorId=${encodeURIComponent(identity.id)}` +
-        `&searchCriteria.status=all&$top=${PAGE_SIZE}&api-version=${GIT_API_VERSION}`
-    ),
-    getJson(
-      `${base}/pullrequests?searchCriteria.status=active&$top=${PAGE_SIZE}` +
-        `&api-version=${GIT_API_VERSION}`
-    ),
-    getJson(
-      `${base}/pullrequests?searchCriteria.status=all&searchCriteria.queryTimeRangeType=Updated` +
-        `&searchCriteria.minTime=${encodeURIComponent(since)}&$top=${PAGE_SIZE}` +
-        `&api-version=${GIT_API_VERSION_TIME_RANGE}`
-    )
-  ]);
-
-  const authoredIds = new Set(
-    pullRequestsFrom(authored).map((pr) => pr.pullRequestId)
+  const { authoredIds, candidates } = await fetchCandidatePullRequests(
+    base,
+    identity.id,
+    since
   );
-
-  const byId = new Map<number, RawPullRequest>();
-  for (const pr of [
-    ...pullRequestsFrom(authored),
-    ...pullRequestsFrom(active),
-    ...pullRequestsFrom(updated)
-  ]) {
-    if (typeof pr.pullRequestId === 'number') {
-      byId.set(pr.pullRequestId, pr);
-    }
-  }
-
-  const candidates = Array.from(byId.values());
   const items: PullRequestActivityItem[] = [];
 
   for (let index = 0; index < candidates.length; index += THREAD_CONCURRENCY) {

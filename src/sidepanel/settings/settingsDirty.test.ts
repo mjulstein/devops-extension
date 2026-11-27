@@ -12,6 +12,7 @@ const SAVED: Settings = {
   quickTaskParentId: '9000',
   quickTaskArchiveId: '9100',
   staleTabDays: '',
+  workDayMinChanges: '',
   bookmarkFolderName: 'my-favorites',
   themeOverrides: { light: {}, dark: {} }
 };

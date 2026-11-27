@@ -17,7 +17,8 @@ function copyManifestPlugin() {
         'bookmarks.html',
         'palette.html',
         'settings.html',
-        'windows.html'
+        'windows.html',
+        'workday.html'
       ]) {
         const nested = resolve(`dist/src/${page}`);
         if (existsSync(nested)) {
@@ -153,6 +154,7 @@ export default defineConfig({
         palette: resolve('src/palette.html'),
         settings: resolve('src/settings.html'),
         windows: resolve('src/windows.html'),
+        workday: resolve('src/workday.html'),
         'service-worker': resolve('src/service-worker.ts')
       },
       output: {

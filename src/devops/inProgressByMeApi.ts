@@ -66,7 +66,7 @@ export async function resolveIdentity(
   return typeof account === 'string' ? account : '';
 }
 
-async function queryIds(
+export async function queryIds(
   organization: string,
   project: string,
   wiql: string
